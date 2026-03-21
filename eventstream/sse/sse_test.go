@@ -62,9 +62,10 @@ func TestUpgrader_UpgradeToEventStream(T *testing.T) {
 	T.Run("response writer does not support flushing", func(t *testing.T) {
 		t.Parallel()
 
+		ctx := t.Context()
 		u := NewUpgrader()
 		w := &nonFlushableResponseWriter{header: http.Header{}}
-		r := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", http.NoBody)
 
 		stream, err := u.UpgradeToEventStream(w, r)
 		assert.Nil(t, stream)

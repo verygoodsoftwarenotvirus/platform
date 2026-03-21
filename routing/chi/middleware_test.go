@@ -17,6 +17,7 @@ func TestBuildLoggingMiddleware(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
+		ctx := t.Context()
 		tracer := tracing.NewTracer(tracing.NewNoopTracerProvider().Tracer(""))
 		middleware := buildLoggingMiddleware(logging.NewNoopLogger(), tracer, false)
 
@@ -24,7 +25,7 @@ func TestBuildLoggingMiddleware(T *testing.T) {
 
 		hf := http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {})
 
-		req, res := httptest.NewRequest(http.MethodPost, "/nil", http.NoBody), httptest.NewRecorder()
+		req, res := httptest.NewRequestWithContext(ctx, http.MethodPost, "/nil", http.NoBody), httptest.NewRecorder()
 
 		middleware(hf).ServeHTTP(res, req)
 	})

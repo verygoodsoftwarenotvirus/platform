@@ -5,14 +5,15 @@ import (
 	"os"
 	"testing"
 
+	"github.com/verygoodsoftwarenotvirus/platform/secrets/gcp"
+	"github.com/verygoodsoftwarenotvirus/platform/secrets/ssm"
+
 	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsssm "github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/aws/aws-sdk-go-v2/service/ssm/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/verygoodsoftwarenotvirus/platform/secrets/gcp"
-	"github.com/verygoodsoftwarenotvirus/platform/secrets/ssm"
 )
 
 type mockGCPClient struct {

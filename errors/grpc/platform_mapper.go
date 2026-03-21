@@ -12,7 +12,7 @@ import (
 )
 
 // PlatformMapper maps platform-level errors to gRPC codes.
-// It does not depend on any domain (mealplanning, etc.).
+// It does not depend on any domain.
 var PlatformMapper GRPCErrorMapper = platformMapper{}
 
 type platformMapper struct{}

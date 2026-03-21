@@ -11,7 +11,7 @@ import (
 )
 
 // PlatformMapper maps platform-level errors to HTTP error codes and messages.
-// It does not depend on any domain (mealplanning, etc.).
+// It does not depend on any domain.
 var PlatformMapper HTTPErrorMapper = platformMapper{}
 
 type platformMapper struct{}

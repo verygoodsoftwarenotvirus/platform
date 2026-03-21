@@ -13,9 +13,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
 
-	validation "github.com/go-ozzo/ozzo-validation/v4"
-
 	ps "cloud.google.com/go/pubsub/v2"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
 
 const (

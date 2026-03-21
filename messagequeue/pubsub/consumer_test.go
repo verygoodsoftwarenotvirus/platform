@@ -9,12 +9,11 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/random"
 
+	"cloud.google.com/go/pubsub/v2"
+	"cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tcpubsub "github.com/testcontainers/testcontainers-go/modules/gcloud/pubsub"
-
-	"cloud.google.com/go/pubsub/v2"
-	"cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

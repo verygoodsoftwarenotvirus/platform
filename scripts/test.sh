@@ -5,4 +5,4 @@ set -euo pipefail
 # Usage: test.sh
 
 # shellcheck disable=SC2086,SC2046
-CGO_ENABLED=1 go test -shuffle=on -race -vet=all -failfast $(go list github.com/dinnerdonebetter/backend/... | grep -Ev '(cmd|integration|mock|fakes|converters|utils|generated)')
+CGO_ENABLED=1 go test -shuffle=on -race -vet=all -failfast $(go list github.com/verygoodsoftwarenotvirus/platform/... | grep -Ev '(cmd|integration|mock|fakes|converters|utils|generated)')

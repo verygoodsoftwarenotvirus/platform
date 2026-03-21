@@ -7,7 +7,6 @@ import (
 
 	"github.com/cockroachdb/errors/errorspb"
 	gogoproto "github.com/gogo/protobuf/proto"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

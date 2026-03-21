@@ -3,11 +3,11 @@ set -euo pipefail
 
 # Build packages. Two modes:
 # 1) Single binary with VCS ldflags: build.sh -o <output_path> <package>
-#    e.g. build.sh -o /server github.com/dinnerdonebetter/backend/cmd/services/api
+#    e.g. build.sh -o /server github.com/org/package
 # 2) Build all packages (no VCS): build.sh <package_list>
 #    e.g. build.sh "$(go list ./...)"
 
-VERSION_PKG="github.com/dinnerdonebetter/backend/internal/platform/version"
+VERSION_PKG="github.com/verygoodsoftwarenotirus/platform/version"
 
 if [[ "${1:-}" == "-o" ]]; then
 	OUT="${2:?missing output path after -o}"

@@ -33,7 +33,7 @@ func TestConnectionDetails_LoadFromURL(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		exampleURI := "postgres://dbuser:hunter2@pgdatabase:5432/dinner-done-better?sslmode=disable"
+		exampleURI := "postgres://dbuser:hunter2@pgdatabase:5432/database?sslmode=disable"
 
 		d := &ConnectionDetails{}
 
@@ -42,14 +42,14 @@ func TestConnectionDetails_LoadFromURL(T *testing.T) {
 		assert.Equal(t, d.Username, "dbuser")
 		assert.Equal(t, d.Password, "hunter2")
 		assert.Equal(t, d.Host, "pgdatabase")
-		assert.Equal(t, d.Database, "dinner-done-better")
+		assert.Equal(t, d.Database, "database")
 		assert.Equal(t, d.DisableSSL, true)
 	})
 
 	T.Run("with invalid port", func(t *testing.T) {
 		t.Parallel()
 
-		exampleURI := "postgres://dbuser:hunter2@pgdatabase:5432_yo_2345/dinner-done-better?sslmode=disable"
+		exampleURI := "postgres://dbuser:hunter2@pgdatabase:5432_yo_2345/database?sslmode=disable"
 
 		d := &ConnectionDetails{}
 

@@ -9,8 +9,10 @@ const (
 	// We need the frame at index 3, since we never want runtime.Callers or getFunctionCaller or StartSpan itself.
 	runtimeFrameBuffer = 3
 	counterBuffer      = 2
+)
 
-	this = "github.com/dinnerdonebetter/backend/"
+var (
+	PackagePrefix = "github.com/verygoodsoftwarenotvirus/platform/"
 )
 
 // GetCallerName is largely (and respectfully) inspired by/copied from https://stackoverflow.com/a/35213181
@@ -32,5 +34,5 @@ func GetCallerName() string {
 		}
 	}
 
-	return strings.TrimPrefix(frame.Function, this)
+	return strings.TrimPrefix(frame.Function, PackagePrefix)
 }

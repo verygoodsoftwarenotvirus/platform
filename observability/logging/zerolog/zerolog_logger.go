@@ -12,11 +12,10 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
 
 	"github.com/rs/zerolog"
-
 	"go.opentelemetry.io/otel/trace"
 )
 
-const here = "github.com/dinnerdonebetter/backend/"
+const here = "github.com/verygoodsoftwarenotvirus/platform/"
 
 func init() {
 	location, err := time.LoadLocation("America/Chicago")

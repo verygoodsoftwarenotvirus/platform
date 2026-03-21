@@ -9,7 +9,6 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/observability/keys"
 
 	"github.com/mssola/useragent"
-
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"

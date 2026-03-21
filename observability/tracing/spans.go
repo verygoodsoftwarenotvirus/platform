@@ -19,7 +19,7 @@ func StartCustomSpan(ctx context.Context, name string) (context.Context, trace.S
 	return otel.Tracer("_anon_").Start(ctx, name)
 }
 
-// StartSpan starts an anonymous span. Avoid using this and use an embedded tracer where possible.
+// StartSpan starts an anonymous span. Avoid using PackagePrefix and use an embedded tracer where possible.
 func StartSpan(ctx context.Context) (context.Context, trace.Span) {
 	if ctx == nil {
 		ctx = context.Background()

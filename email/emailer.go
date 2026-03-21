@@ -4,13 +4,6 @@ import (
 	"context"
 )
 
-const (
-	defaultEnv = "testing"
-
-	// SentEventType indicates an email was sent.
-	SentEventType = "email_sent"
-)
-
 type (
 	// APIToken is used to authenticate an email service.
 	APIToken string

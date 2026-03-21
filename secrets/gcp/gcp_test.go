@@ -5,10 +5,9 @@ import (
 	"errors"
 	"testing"
 
+	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
 )
 
 func TestNewGCPSecretSource(t *testing.T) {

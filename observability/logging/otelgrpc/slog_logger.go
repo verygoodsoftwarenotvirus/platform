@@ -13,7 +13,6 @@ import (
 	o11yutils "github.com/verygoodsoftwarenotvirus/platform/observability/utils"
 
 	slogmulti "github.com/samber/slog-multi"
-
 	"go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
 	"go.opentelemetry.io/otel/log/global"

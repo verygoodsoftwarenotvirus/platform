@@ -17,7 +17,6 @@ import (
 	textsearch "github.com/verygoodsoftwarenotvirus/platform/search/text"
 
 	"github.com/hashicorp/go-multierror"
-
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )

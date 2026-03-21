@@ -1,10 +1,8 @@
 package email
 
 import (
-	"errors"
 	"fmt"
 	"html/template"
-	"sync"
 	"time"
 
 	"github.com/matcornic/hermes/v2"
@@ -23,32 +21,6 @@ type (
 		outboundInvitesEmailAddress,
 		passwordResetCreationEmailAddress,
 		passwordResetRedemptionEmailAddress string
-	}
-)
-
-var (
-	ErrMissingEnvCfg = errors.New("missing environment configuration")
-
-	envConfigsMapHat sync.Mutex
-	envConfigsMap    = map[string]*EnvironmentConfig{
-		"dev": {
-			baseURL:                             "https://www.dinnerdonebetter.dev",
-			outboundInvitesEmailAddress:         "noreply@dinnerdonebetter.dev",
-			passwordResetCreationEmailAddress:   "noreply@dinnerdonebetter.dev",
-			passwordResetRedemptionEmailAddress: "noreply@dinnerdonebetter.dev",
-		},
-		"prod": {
-			baseURL:                             "https://www.dinnerdonebetter.com",
-			outboundInvitesEmailAddress:         "noreply@email.dinnerdonebetter.com",
-			passwordResetCreationEmailAddress:   "noreply@email.dinnerdonebetter.com",
-			passwordResetRedemptionEmailAddress: "noreply@email.dinnerdonebetter.com",
-		},
-		defaultEnv: {
-			baseURL:                             "https://not.real.lol",
-			outboundInvitesEmailAddress:         "not@real.lol",
-			passwordResetCreationEmailAddress:   "not@real.lol",
-			passwordResetRedemptionEmailAddress: "not@real.lol",
-		},
 	}
 )
 
@@ -87,11 +59,4 @@ func (c *EnvironmentConfig) BuildHermes(branding *EmailBranding) *hermes.Hermes 
 			Copyright: copyright,
 		},
 	}
-}
-
-func GetConfigForEnvironment(env string) *EnvironmentConfig {
-	envConfigsMapHat.Lock()
-	defer envConfigsMapHat.Unlock()
-
-	return envConfigsMap[env]
 }

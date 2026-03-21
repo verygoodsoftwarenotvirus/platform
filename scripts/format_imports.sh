@@ -4,7 +4,7 @@ set -euo pipefail
 # Format Go imports using gci
 # Usage: format_imports.sh <package_prefix> <project_root>
 
-PACKAGE_PREFIX="${1:-github.com/dinnerdonebetter/backend}"
+PACKAGE_PREFIX="${1:-github.com/verygoodsoftwarenotvirus/platform}"
 PROJECT_ROOT="${2:-$(pwd)}"
 
 # Find all Go files and pass them to gci

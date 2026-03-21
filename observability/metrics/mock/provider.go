@@ -6,7 +6,6 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/observability/metrics"
 
 	"github.com/stretchr/testify/mock"
-
 	"go.opentelemetry.io/otel/metric"
 )
 

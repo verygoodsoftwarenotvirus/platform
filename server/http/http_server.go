@@ -20,7 +20,6 @@ import (
 )
 
 const (
-	serverNamespace   = "dinner_done_better_api"
 	defaultLoggerName = "api_server"
 
 	appleAppSiteAssociationPath = "/.well-known/apple-app-site-association"
@@ -103,7 +102,7 @@ func (s *server) Serve() {
 
 	s.httpServer.Handler = otelhttp.NewHandler(
 		s.router.Handler(),
-		serverNamespace,
+		"http_server",
 		otelhttp.WithSpanNameFormatter(tracing.FormatSpan),
 		otelhttp.WithFilter(skipNoisePaths),
 	)

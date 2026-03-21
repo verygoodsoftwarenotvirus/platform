@@ -56,10 +56,7 @@ func buildChiMux(
 				return false
 			}
 
-			result := slices.Contains(
-				append(cfg.ValidDomains, "dinner-done-better.dev.svc.cluster.local:8000"),
-				u.Hostname(),
-			) || cfg.EnableCORSForLocalhost && u.Hostname() == "localhost"
+			result := slices.Contains(cfg.ValidDomains, u.Hostname()) || cfg.EnableCORSForLocalhost && u.Hostname() == "localhost"
 			logger.WithValue("result", result).Info("CORS Middleware")
 
 			return result

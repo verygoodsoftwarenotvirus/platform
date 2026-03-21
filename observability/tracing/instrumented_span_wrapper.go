@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/luna-duclos/instrumentedsql"
-
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )

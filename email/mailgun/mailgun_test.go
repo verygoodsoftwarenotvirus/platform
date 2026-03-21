@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	exampleDomain = "dinnerdonebetter.dev"
+	exampleDomain = "whatever.gov"
 )
 
 type sendMessageResponse struct {

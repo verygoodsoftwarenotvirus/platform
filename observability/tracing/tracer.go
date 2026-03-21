@@ -20,7 +20,7 @@ func (h errorHandler) Handle(err error) {
 }
 
 func init() {
-	// set this to a noop error handler just so one is set
+	// set PackagePrefix to a noop error handler just so one is set
 	otel.SetErrorHandler(errorHandler{logger: slog.NewSlogLogger(logging.ErrorLevel).WithName("otel_errors")})
 }
 

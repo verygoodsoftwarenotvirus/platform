@@ -30,12 +30,15 @@ func (cfg *Config) EnsureDefaults() {
 	if cfg.MaxAttempts == 0 {
 		cfg.MaxAttempts = defaultMaxAttempts
 	}
+
 	if cfg.InitialDelay == 0 {
 		cfg.InitialDelay = defaultInitialDelay
 	}
+
 	if cfg.MaxDelay == 0 {
 		cfg.MaxDelay = defaultMaxDelay
 	}
+
 	if cfg.Multiplier == 0 {
 		cfg.Multiplier = defaultMultiplier
 	}

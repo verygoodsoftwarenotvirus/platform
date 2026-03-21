@@ -19,7 +19,6 @@ import (
 
 	"github.com/XSAM/otelsql"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-
 	"go.opentelemetry.io/otel/attribute"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )

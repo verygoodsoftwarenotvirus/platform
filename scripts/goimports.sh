@@ -4,4 +4,4 @@ set -euo pipefail
 # Format Go imports using goimports
 # Usage: goimports.sh
 
-goimports -w .
+go tool goimports -w .

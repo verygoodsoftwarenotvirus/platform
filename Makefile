@@ -31,24 +31,8 @@ $(ARTIFACTS_DIR):
 
 ## PREREQUISITES
 
-.PHONY: ensure_fieldalignment_installed
-ensure_fieldalignment_installed:
-	@$(SCRIPTS_DIR)/ensure_tool_installed.sh fieldalignment "go install golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment@v0.37.0"
-
-.PHONY: ensure_tagalign_installed
-ensure_tagalign_installed:
-	@$(SCRIPTS_DIR)/ensure_tool_installed.sh tagalign "go install github.com/4meepo/tagalign/cmd/tagalign@v1.4.3"
-
-.PHONY: ensure_gci_installed
-ensure_gci_installed:
-	@$(SCRIPTS_DIR)/ensure_tool_installed.sh gci "go install github.com/daixiang0/gci@v0.13.5"
-
-.PHONY: ensure_goimports_installed
-ensure_goimports_installed:
-	@$(SCRIPTS_DIR)/ensure_tool_installed.sh goimports "go install golang.org/x/tools/cmd/goimports@v0.29.0"
-
 .PHONY: setup
-setup: $(ARTIFACTS_DIR) revendor ensure_fieldalignment_installed ensure_tagalign_installed ensure_gci_installed
+setup: $(ARTIFACTS_DIR) revendor
 
 .PHONY: clean_vendor
 clean_vendor:
@@ -63,15 +47,15 @@ revendor: clean_vendor vendor
 ## FORMATTING
 
 .PHONY: format_imports
-format_imports: ensure_gci_installed
+format_imports:
 	$(SCRIPTS_DIR)/format_imports.sh $(THIS) $(PWD)
 
 .PHONY: format_go_fieldalignment
-format_go_fieldalignment: ensure_fieldalignment_installed
+format_go_fieldalignment:
 	@$(SCRIPTS_DIR)/format_go_fieldalignment.sh
 
 .PHONY: format_go_tag_alignment
-format_go_tag_alignment: ensure_tagalign_installed
+format_go_tag_alignment:
 	@$(SCRIPTS_DIR)/format_go_tag_alignment.sh
 
 .PHONY: go_fix
@@ -79,7 +63,7 @@ go_fix:
 	go fix ./...
 
 .PHONY: goimports
-goimports: ensure_goimports_installed
+goimports:
 	$(SCRIPTS_DIR)/goimports.sh
 
 .PHONY: format_golang

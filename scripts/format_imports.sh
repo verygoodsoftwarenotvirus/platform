@@ -14,7 +14,7 @@ while IFS= read -r -d '' file; do
 done < <(find "${PROJECT_ROOT}" -type f -not -path '*/vendor/*' -name "*.go" -print0)
 
 if [ ${#go_files[@]} -gt 0 ]; then
-  gci write \
+  go tool gci write \
     --section standard \
     --section "prefix(${PACKAGE_PREFIX})" \
     --section "prefix($(dirname "${PACKAGE_PREFIX}"))" \

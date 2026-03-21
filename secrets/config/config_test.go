@@ -1,0 +1,203 @@
+package secretscfg
+
+import (
+	"context"
+	"os"
+	"testing"
+
+	"github.com/verygoodsoftwarenotvirus/platform/secrets/gcp"
+	"github.com/verygoodsoftwarenotvirus/platform/secrets/ssm"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsssm "github.com/aws/aws-sdk-go-v2/service/ssm"
+	"github.com/aws/aws-sdk-go-v2/service/ssm/types"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
+)
+
+type mockGCPClient struct {
+	value string
+}
+
+func (m *mockGCPClient) AccessSecretVersion(ctx context.Context, req *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
+	return &secretmanagerpb.AccessSecretVersionResponse{
+		Payload: &secretmanagerpb.SecretPayload{Data: []byte(m.value)},
+	}, nil
+}
+
+func (m *mockGCPClient) Close() error { return nil }
+
+type mockSSMClient struct {
+	value string
+}
+
+func (m *mockSSMClient) GetParameter(ctx context.Context, params *awsssm.GetParameterInput, optFns ...func(*awsssm.Options)) (*awsssm.GetParameterOutput, error) {
+	return &awsssm.GetParameterOutput{
+		Parameter: &types.Parameter{
+			Value: aws.String(m.value),
+		},
+	}, nil
+}
+
+func TestConfig_ValidateWithContext(t *testing.T) {
+	t.Parallel()
+
+	t.Run("valid env provider", func(t *testing.T) {
+		t.Parallel()
+		cfg := &Config{Provider: ProviderEnv}
+		require.NoError(t, cfg.ValidateWithContext(context.Background()))
+	})
+
+	t.Run("valid noop provider", func(t *testing.T) {
+		t.Parallel()
+		cfg := &Config{Provider: ProviderNoop}
+		require.NoError(t, cfg.ValidateWithContext(context.Background()))
+	})
+
+	t.Run("valid gcp provider", func(t *testing.T) {
+		t.Parallel()
+		cfg := &Config{Provider: ProviderGCP, GCP: &gcp.Config{ProjectID: "my-project"}}
+		require.NoError(t, cfg.ValidateWithContext(context.Background()))
+	})
+
+	t.Run("invalid gcp provider missing config", func(t *testing.T) {
+		t.Parallel()
+		cfg := &Config{Provider: ProviderGCP}
+		require.Error(t, cfg.ValidateWithContext(context.Background()))
+	})
+
+	t.Run("valid ssm provider", func(t *testing.T) {
+		t.Parallel()
+		cfg := &Config{Provider: ProviderSSM, SSM: &ssm.Config{Region: "us-east-1"}}
+		require.NoError(t, cfg.ValidateWithContext(context.Background()))
+	})
+
+	t.Run("invalid ssm provider missing config", func(t *testing.T) {
+		t.Parallel()
+		cfg := &Config{Provider: ProviderSSM}
+		require.Error(t, cfg.ValidateWithContext(context.Background()))
+	})
+
+	t.Run("unknown provider", func(t *testing.T) {
+		t.Parallel()
+		cfg := &Config{Provider: "vault"}
+		require.Error(t, cfg.ValidateWithContext(context.Background()))
+	})
+}
+
+func TestConfig_ProvideSecretSource(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil config returns env source", func(t *testing.T) {
+		t.Parallel()
+
+		var cfg *Config
+		source, err := cfg.ProvideSecretSource(context.Background())
+		require.NoError(t, err)
+		require.NotNil(t, source)
+
+		key := "TEST_NIL_CONFIG_" + t.Name()
+		value := "from-env"
+		require.NoError(t, os.Setenv(key, value))
+		t.Cleanup(func() { _ = os.Unsetenv(key) })
+
+		got, err := source.GetSecret(context.Background(), key)
+		require.NoError(t, err)
+		assert.Equal(t, value, got)
+	})
+
+	t.Run("empty provider returns env source", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{Provider: ""}
+		source, err := cfg.ProvideSecretSource(context.Background())
+		require.NoError(t, err)
+		require.NotNil(t, source)
+
+		key := "TEST_EMPTY_PROVIDER_" + t.Name()
+		value := "from-env"
+		require.NoError(t, os.Setenv(key, value))
+		t.Cleanup(func() { _ = os.Unsetenv(key) })
+
+		got, err := source.GetSecret(context.Background(), key)
+		require.NoError(t, err)
+		assert.Equal(t, value, got)
+	})
+
+	t.Run("env provider returns env source", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{Provider: ProviderEnv}
+		source, err := cfg.ProvideSecretSource(context.Background())
+		require.NoError(t, err)
+		require.NotNil(t, source)
+
+		key := "TEST_ENV_PROVIDER_" + t.Name()
+		value := "from-env"
+		require.NoError(t, os.Setenv(key, value))
+		t.Cleanup(func() { _ = os.Unsetenv(key) })
+
+		got, err := source.GetSecret(context.Background(), key)
+		require.NoError(t, err)
+		assert.Equal(t, value, got)
+	})
+
+	t.Run("noop provider returns noop source", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{Provider: ProviderNoop}
+		source, err := cfg.ProvideSecretSource(context.Background())
+		require.NoError(t, err)
+		require.NotNil(t, source)
+
+		got, err := source.GetSecret(context.Background(), "any")
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+
+	t.Run("gcp provider with mock client", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{
+			Provider:  ProviderGCP,
+			GCP:       &gcp.Config{ProjectID: "test-project"},
+			GCPClient: &mockGCPClient{value: "gcp-secret-value"},
+		}
+		source, err := cfg.ProvideSecretSource(context.Background())
+		require.NoError(t, err)
+		require.NotNil(t, source)
+
+		got, err := source.GetSecret(context.Background(), "MY_SECRET")
+		require.NoError(t, err)
+		assert.Equal(t, "gcp-secret-value", got)
+	})
+
+	t.Run("ssm provider with mock client", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{
+			Provider:  ProviderSSM,
+			SSM:       &ssm.Config{Region: "us-east-1"},
+			SSMClient: &mockSSMClient{value: "ssm-param-value"},
+		}
+		source, err := cfg.ProvideSecretSource(context.Background())
+		require.NoError(t, err)
+		require.NotNil(t, source)
+
+		got, err := source.GetSecret(context.Background(), "MY_PARAM")
+		require.NoError(t, err)
+		assert.Equal(t, "ssm-param-value", got)
+	})
+
+	t.Run("unknown provider returns error", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{Provider: "vault"}
+		source, err := cfg.ProvideSecretSource(context.Background())
+		require.Error(t, err)
+		assert.Nil(t, source)
+		assert.Contains(t, err.Error(), "unknown")
+	})
+}

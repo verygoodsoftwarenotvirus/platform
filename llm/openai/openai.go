@@ -1,0 +1,86 @@
+package openai
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/verygoodsoftwarenotvirus/platform/llm"
+	"github.com/verygoodsoftwarenotvirus/platform/pointer"
+
+	anyllm "github.com/mozilla-ai/any-llm-go"
+	anyllmopenai "github.com/mozilla-ai/any-llm-go/providers/openai"
+)
+
+// NewProvider creates a new OpenAI-backed LLM provider.
+func NewProvider(cfg *Config) (llm.Provider, error) {
+	if cfg == nil {
+		return nil, fmt.Errorf("openai config is required")
+	}
+
+	opts := []anyllm.Option{
+		anyllm.WithAPIKey(cfg.APIKey),
+	}
+	if cfg.BaseURL != "" {
+		opts = append(opts, anyllm.WithBaseURL(cfg.BaseURL))
+	}
+	if cfg.Timeout > 0 {
+		opts = append(opts, anyllm.WithTimeout(cfg.Timeout))
+	}
+
+	provider, err := anyllmopenai.New(opts...)
+	if err != nil {
+		return nil, fmt.Errorf("create openai provider: %w", err)
+	}
+
+	return &openaiProvider{
+		provider:     provider,
+		defaultModel: cfg.DefaultModel,
+	}, nil
+}
+
+type openaiProvider struct {
+	provider     *anyllmopenai.Provider
+	defaultModel string
+}
+
+// Completion implements llm.Provider.
+func (p *openaiProvider) Completion(ctx context.Context, params llm.CompletionParams) (*llm.CompletionResult, error) {
+	model := params.Model
+	if model == "" {
+		model = p.defaultModel
+	}
+	if model == "" {
+		model = "gpt-4o-mini"
+	}
+
+	anyllmParams := anyllm.CompletionParams{
+		Model:    model,
+		Messages: toAnyLLMMessages(pointer.ToSlice(params.Messages)),
+	}
+
+	resp, err := p.provider.Completion(ctx, anyllmParams)
+	if err != nil {
+		return nil, err
+	}
+
+	return toCompletionResult(resp), nil
+}
+
+func toAnyLLMMessages(msgs []*llm.Message) []anyllm.Message {
+	out := make([]anyllm.Message, len(msgs))
+	for i, m := range msgs {
+		out[i] = anyllm.Message{
+			Role:    m.Role,
+			Content: m.Content,
+		}
+	}
+	return out
+}
+
+func toCompletionResult(resp *anyllm.ChatCompletion) *llm.CompletionResult {
+	content := ""
+	if len(resp.Choices) > 0 {
+		content = resp.Choices[0].Message.ContentString()
+	}
+	return &llm.CompletionResult{Content: content}
+}

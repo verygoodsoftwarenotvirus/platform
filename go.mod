@@ -54,6 +54,7 @@ require (
 	github.com/rs/zerolog v1.34.0
 	github.com/rubyist/circuitbreaker v2.2.1+incompatible
 	github.com/rudderlabs/analytics-go/v4 v4.2.3
+	github.com/samber/do/v2 v2.0.0
 	github.com/samber/slog-multi v1.7.1
 	github.com/segmentio/analytics-go/v3 v3.3.0
 	github.com/sendgrid/rest v2.6.9+incompatible
@@ -225,6 +226,7 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
+	github.com/samber/go-type-to-string v1.8.0 // indirect
 	github.com/samber/lo v1.52.0 // indirect
 	github.com/samber/slog-common v0.20.0 // indirect
 	github.com/segmentio/backo-go v1.1.0 // indirect

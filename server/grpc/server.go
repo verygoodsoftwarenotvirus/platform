@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/verygoodsoftwarenotvirus/platform/internalerrors"
 	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
@@ -134,11 +135,20 @@ func LoggingInterceptor(logger logging.Logger) grpc.UnaryServerInterceptor {
 	l := logging.EnsureLogger(logger)
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		var ev uint8
+
+		start := time.Now()
 		result, err := handler(ctx, req)
+		end := time.Since(start)
+
 		if err != nil {
 			ev = 1
 		}
-		l.WithValue("rpc.method", info.FullMethod).WithValue("err", ev).Info("rpc invoked")
+
+		l.WithValues(map[string]any{
+			"rpc.method": info.FullMethod,
+			"elapsed":    end,
+			"error":      ev,
+		}).Info("rpc invoked")
 
 		return result, err
 	}

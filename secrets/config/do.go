@@ -1,0 +1,19 @@
+package secretscfg
+
+import (
+	"context"
+
+	"github.com/verygoodsoftwarenotvirus/platform/secrets"
+
+	"github.com/samber/do/v2"
+)
+
+// RegisterSecretSource registers a secrets.SecretSource with the injector.
+func RegisterSecretSource(i do.Injector) {
+	do.Provide[secrets.SecretSource](i, func(i do.Injector) (secrets.SecretSource, error) {
+		return ProvideSecretSourceFromConfig(
+			do.MustInvoke[context.Context](i),
+			do.MustInvoke[*Config](i),
+		)
+	})
+}

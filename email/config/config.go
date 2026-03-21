@@ -2,8 +2,11 @@ package emailcfg
 
 import (
 	"context"
+	"fmt"
+	"html/template"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/verygoodsoftwarenotvirus/platform/circuitbreaking"
 	"github.com/verygoodsoftwarenotvirus/platform/email"
@@ -16,6 +19,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/matcornic/hermes/v2"
 )
 
 const (
@@ -34,15 +38,37 @@ const (
 type (
 	// Config is the configuration structure.
 	Config struct {
-		Sendgrid       *sendgrid.Config       `env:"init"     envPrefix:"SENDGRID_"         json:"sendgrid"`
-		Mailgun        *mailgun.Config        `env:"init"     envPrefix:"MAILGUN_"          json:"mailgun"`
-		Mailjet        *mailjet.Config        `env:"init"     envPrefix:"MAILJET_"          json:"mailjet"`
-		Resend         *resend.Config         `env:"init"     envPrefix:"RESEND_"           json:"resend"`
-		Postmark       *postmark.Config       `env:"init"     envPrefix:"POSTMARK_"         json:"postmark"`
-		Provider       string                 `env:"PROVIDER" json:"provider"`
-		CircuitBreaker circuitbreaking.Config `env:"init"     envPrefix:"CIRCUIT_BREAKING_" json:"circuitBreakerConfig"`
+		Sendgrid                            *sendgrid.Config       `env:"init"                                    envPrefix:"SENDGRID_"                      json:"sendgrid"`
+		Mailgun                             *mailgun.Config        `env:"init"                                    envPrefix:"MAILGUN_"                       json:"mailgun"`
+		Mailjet                             *mailjet.Config        `env:"init"                                    envPrefix:"MAILJET_"                       json:"mailjet"`
+		Resend                              *resend.Config         `env:"init"                                    envPrefix:"RESEND_"                        json:"resend"`
+		Postmark                            *postmark.Config       `env:"init"                                    envPrefix:"POSTMARK_"                      json:"postmark"`
+		Provider                            string                 `env:"PROVIDER"                                json:"provider"`
+		BaseURL                             template.URL           `env:"BASE_URL"                                json:"baseURL"`
+		OutboundInvitesEmailAddress         string                 `env:"OUTBOUND_INVITES_EMAIL_ADDRESS"          json:"outboundInvitesEmailAddress"`
+		PasswordResetCreationEmailAddress   string                 `env:"PASSWORD_RESET_CREATION_EMAIL_ADDRESS"   json:"passwordResetCreationEmailAddress"`
+		PasswordResetRedemptionEmailAddress string                 `env:"PASSWORD_RESET_REDEMPTION_EMAIL_ADDRESS" json:"passwordResetRedemptionEmailAddress"`
+		CircuitBreaker                      circuitbreaking.Config `env:"init"                                    envPrefix:"CIRCUIT_BREAKING_"              json:"circuitBreakerConfig"`
 	}
 )
+
+// BuildHermes builds a Hermes instance for rendering email templates.
+func (cfg *Config) BuildHermes(branding *email.EmailBranding) *hermes.Hermes {
+	var name, logo, copyright string
+	if branding != nil {
+		name = branding.CompanyName
+		logo = branding.LogoURL
+		copyright = fmt.Sprintf("Copyright © %d %s. All rights reserved.", time.Now().Year(), branding.CompanyName)
+	}
+	return &hermes.Hermes{
+		Product: hermes.Product{
+			Name:      name,
+			Link:      string(cfg.BaseURL),
+			Logo:      logo,
+			Copyright: copyright,
+		},
+	}
+}
 
 var _ validation.ValidatableWithContext = (*Config)(nil)
 

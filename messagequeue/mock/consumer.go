@@ -3,7 +3,7 @@ package mockpublishers
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/messagequeue"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/messagequeue"
 
 	"github.com/stretchr/testify/mock"
 )
@@ -30,6 +30,6 @@ type Consumer struct {
 }
 
 // Consume implements the interface.
-func (m *Consumer) Consume(stopChan chan bool, errors chan error) {
-	m.Called(stopChan, errors)
+func (m *Consumer) Consume(ctx context.Context, stopChan chan bool, errors chan error) {
+	m.Called(ctx, stopChan, errors)
 }

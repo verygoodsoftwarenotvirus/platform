@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"strings"
 
-	platformerrors "github.com/verygoodsoftwarenotvirus/platform/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/messagequeue"
-	"github.com/verygoodsoftwarenotvirus/platform/messagequeue/pubsub"
-	"github.com/verygoodsoftwarenotvirus/platform/messagequeue/redis"
-	"github.com/verygoodsoftwarenotvirus/platform/messagequeue/sqs"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
+	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/messagequeue"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/messagequeue/pubsub"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/messagequeue/redis"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/messagequeue/sqs"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	ps "cloud.google.com/go/pubsub/v2"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
@@ -83,17 +83,17 @@ func cleanString(s string) string {
 	return strings.ToLower(strings.TrimSpace(s))
 }
 
-// ProvideConsumerProvider provides a PublisherProvider.
-func ProvideConsumerProvider(ctx context.Context, logger logging.Logger, c *Config) (messagequeue.ConsumerProvider, error) {
+// ProvideConsumerProvider provides a ConsumerProvider.
+func ProvideConsumerProvider(ctx context.Context, logger logging.Logger, tracerProvider tracing.TracerProvider, c *Config) (messagequeue.ConsumerProvider, error) {
 	if c == nil {
 		return nil, ErrNilConfig
 	}
 
 	switch cleanString(string(c.Consumer.Provider)) {
 	case string(ProviderRedis):
-		return redis.ProvideRedisConsumerProvider(logger, c.Consumer.Redis), nil
+		return redis.ProvideRedisConsumerProvider(logger, tracerProvider, c.Consumer.Redis), nil
 	case string(ProviderSQS):
-		return sqs.ProvideSQSConsumerProvider(ctx, logger, c.Consumer.SQS), nil
+		return sqs.ProvideSQSConsumerProvider(ctx, logger, tracerProvider, c.Consumer.SQS), nil
 	case string(ProviderPubSub):
 		client, err := ps.NewClientWithConfig(ctx, c.Consumer.PubSub.ProjectID, &ps.ClientConfig{
 			EnableOpenTelemetryTracing: true,
@@ -102,7 +102,7 @@ func ProvideConsumerProvider(ctx context.Context, logger logging.Logger, c *Conf
 			return nil, fmt.Errorf("establishing PubSub client: %w", err)
 		}
 
-		return pubsub.ProvidePubSubConsumerProvider(logger, client), nil
+		return pubsub.ProvidePubSubConsumerProvider(logger, tracerProvider, client), nil
 	default:
 		logger.Info("Using noop consumer provider")
 		return &messagequeue.NoopConsumerProvider{}, nil

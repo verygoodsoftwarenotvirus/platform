@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/secrets"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/secrets"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,10 +13,10 @@ import (
 
 var _ secrets.SecretSource = (*envSecretSource)(nil)
 
-func TestEnvSecretSource_GetSecret(t *testing.T) {
-	t.Parallel()
+func TestEnvSecretSource_GetSecret(T *testing.T) {
+	T.Parallel()
 
-	t.Run("returns set env var", func(t *testing.T) {
+	T.Run("returns set env var", func(t *testing.T) {
 		t.Parallel()
 
 		key := "TEST_SECRET_" + t.Name()
@@ -32,7 +32,7 @@ func TestEnvSecretSource_GetSecret(t *testing.T) {
 		assert.Equal(t, value, got)
 	})
 
-	t.Run("returns empty for unset env var", func(t *testing.T) {
+	T.Run("returns empty for unset env var", func(t *testing.T) {
 		t.Parallel()
 
 		key := "TEST_SECRET_UNSET_" + t.Name()
@@ -47,10 +47,14 @@ func TestEnvSecretSource_GetSecret(t *testing.T) {
 	})
 }
 
-func TestEnvSecretSource_Close(t *testing.T) {
-	t.Parallel()
+func TestEnvSecretSource_Close(T *testing.T) {
+	T.Parallel()
 
-	source := NewEnvSecretSource()
-	err := source.Close()
-	require.NoError(t, err)
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		source := NewEnvSecretSource()
+		err := source.Close()
+		require.NoError(t, err)
+	})
 }

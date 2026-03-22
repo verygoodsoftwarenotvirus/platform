@@ -10,10 +10,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewGCPSecretSource(t *testing.T) {
-	t.Parallel()
+func TestNewGCPSecretSource(T *testing.T) {
+	T.Parallel()
 
-	t.Run("nil config returns error", func(t *testing.T) {
+	T.Run("nil config returns error", func(t *testing.T) {
 		t.Parallel()
 		source, err := NewGCPSecretSource(context.Background(), nil, nil)
 		require.Error(t, err)
@@ -21,7 +21,7 @@ func TestNewGCPSecretSource(t *testing.T) {
 		assert.Contains(t, err.Error(), "config is required")
 	})
 
-	t.Run("missing ProjectID returns error", func(t *testing.T) {
+	T.Run("missing ProjectID returns error", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{ProjectID: ""}
 		source, err := NewGCPSecretSource(context.Background(), cfg, nil)
@@ -29,7 +29,7 @@ func TestNewGCPSecretSource(t *testing.T) {
 		assert.Nil(t, source)
 	})
 
-	t.Run("with mock client succeeds", func(t *testing.T) {
+	T.Run("with mock client succeeds", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{ProjectID: "test-project"}
 		mock := &mockGCPClient{value: "secret-value"}
@@ -40,10 +40,10 @@ func TestNewGCPSecretSource(t *testing.T) {
 	})
 }
 
-func TestGCPSecretSource_GetSecret(t *testing.T) {
-	t.Parallel()
+func TestGCPSecretSource_GetSecret(T *testing.T) {
+	T.Parallel()
 
-	t.Run("success", func(t *testing.T) {
+	T.Run("success", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{ProjectID: "test-project"}
 		mock := &mockGCPClient{value: "my-secret-value"}
@@ -56,7 +56,7 @@ func TestGCPSecretSource_GetSecret(t *testing.T) {
 		assert.Equal(t, "my-secret-value", got)
 	})
 
-	t.Run("error from client", func(t *testing.T) {
+	T.Run("error from client", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{ProjectID: "test-project"}
 		mock := &mockGCPClient{err: errors.New("gcp error")}
@@ -69,7 +69,7 @@ func TestGCPSecretSource_GetSecret(t *testing.T) {
 		assert.Contains(t, err.Error(), "gcp error")
 	})
 
-	t.Run("full resource name passed through", func(t *testing.T) {
+	T.Run("full resource name passed through", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{ProjectID: "test-project"}
 		mock := &mockGCPClient{value: "full-name-secret"}
@@ -83,17 +83,21 @@ func TestGCPSecretSource_GetSecret(t *testing.T) {
 	})
 }
 
-func TestGCPSecretSource_Close(t *testing.T) {
-	t.Parallel()
+func TestGCPSecretSource_Close(T *testing.T) {
+	T.Parallel()
 
-	cfg := &Config{ProjectID: "test-project"}
-	mock := &mockGCPClient{}
-	source, err := NewGCPSecretSource(context.Background(), cfg, mock)
-	require.NoError(t, err)
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
 
-	err = source.Close()
-	require.NoError(t, err)
-	assert.True(t, mock.closed)
+		cfg := &Config{ProjectID: "test-project"}
+		mock := &mockGCPClient{}
+		source, err := NewGCPSecretSource(context.Background(), cfg, mock)
+		require.NoError(t, err)
+
+		err = source.Close()
+		require.NoError(t, err)
+		assert.True(t, mock.closed)
+	})
 }
 
 type mockGCPClient struct {

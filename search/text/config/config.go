@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/circuitbreaking"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
-	textsearch "github.com/verygoodsoftwarenotvirus/platform/search/text"
-	"github.com/verygoodsoftwarenotvirus/platform/search/text/algolia"
-	"github.com/verygoodsoftwarenotvirus/platform/search/text/elasticsearch"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/circuitbreaking"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
+	textsearch "github.com/verygoodsoftwarenotvirus/platform/v2/search/text"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/search/text/algolia"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/search/text/elasticsearch"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )

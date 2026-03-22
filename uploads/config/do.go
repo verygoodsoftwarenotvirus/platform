@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/verygoodsoftwarenotvirus/platform/uploads/objectstorage"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/uploads/objectstorage"
 
 	"github.com/samber/do/v2"
 )

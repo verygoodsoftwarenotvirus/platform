@@ -10,12 +10,12 @@ import (
 	"strings"
 	"time"
 
-	encryptioncfg "github.com/verygoodsoftwarenotvirus/platform/cryptography/encryption/config"
-	"github.com/verygoodsoftwarenotvirus/platform/database"
-	"github.com/verygoodsoftwarenotvirus/platform/database/postgres"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
+	encryptioncfg "github.com/verygoodsoftwarenotvirus/platform/v2/cryptography/encryption/config"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/database"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/database/postgres"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	"github.com/XSAM/otelsql"
 	validation "github.com/go-ozzo/ozzo-validation/v4"

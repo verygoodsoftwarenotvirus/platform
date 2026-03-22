@@ -4,12 +4,12 @@ import (
 	"context"
 	"sync"
 
-	"github.com/verygoodsoftwarenotvirus/platform/cache"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/cache"
 )
 
 type inMemoryCacheImpl[T any] struct {
-	cache    map[string]*T
-	cacheHat sync.RWMutex
+	cache   map[string]*T
+	cacheMu sync.RWMutex
 }
 
 // NewInMemoryCache builds an in-memory cache.
@@ -20,8 +20,8 @@ func NewInMemoryCache[T any]() cache.Cache[T] {
 }
 
 func (i *inMemoryCacheImpl[T]) Get(_ context.Context, key string) (*T, error) {
-	i.cacheHat.RLock()
-	defer i.cacheHat.RUnlock()
+	i.cacheMu.RLock()
+	defer i.cacheMu.RUnlock()
 
 	if val, ok := i.cache[key]; ok {
 		return val, nil
@@ -31,8 +31,8 @@ func (i *inMemoryCacheImpl[T]) Get(_ context.Context, key string) (*T, error) {
 }
 
 func (i *inMemoryCacheImpl[T]) Set(_ context.Context, key string, value *T) error {
-	i.cacheHat.Lock()
-	defer i.cacheHat.Unlock()
+	i.cacheMu.Lock()
+	defer i.cacheMu.Unlock()
 
 	i.cache[key] = value
 
@@ -40,8 +40,8 @@ func (i *inMemoryCacheImpl[T]) Set(_ context.Context, key string, value *T) erro
 }
 
 func (i *inMemoryCacheImpl[T]) Delete(_ context.Context, key string) error {
-	i.cacheHat.Lock()
-	defer i.cacheHat.Unlock()
+	i.cacheMu.Lock()
+	defer i.cacheMu.Unlock()
 
 	delete(i.cache, key)
 

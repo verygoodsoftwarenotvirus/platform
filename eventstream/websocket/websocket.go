@@ -9,7 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/eventstream"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/eventstream"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	gorillawebsocket "github.com/gorilla/websocket"
 )
@@ -29,12 +30,13 @@ const (
 
 // Upgrader upgrades HTTP connections to WebSocket event streams.
 type Upgrader struct {
+	tracer            tracing.Tracer
 	wsUpgrader        gorillawebsocket.Upgrader
 	heartbeatInterval time.Duration
 }
 
 // NewUpgrader creates a new WebSocket Upgrader.
-func NewUpgrader(cfg *Config) *Upgrader {
+func NewUpgrader(tracerProvider tracing.TracerProvider, cfg *Config) *Upgrader {
 	heartbeat := defaultHeartbeatInterval
 	readBuf := defaultBufferSize
 	writeBuf := defaultBufferSize
@@ -52,6 +54,7 @@ func NewUpgrader(cfg *Config) *Upgrader {
 	}
 
 	return &Upgrader{
+		tracer: tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer("websocket_stream")),
 		wsUpgrader: gorillawebsocket.Upgrader{
 			ReadBufferSize:  readBuf,
 			WriteBufferSize: writeBuf,
@@ -68,7 +71,7 @@ func (u *Upgrader) UpgradeToEventStream(w http.ResponseWriter, r *http.Request) 
 		return nil, fmt.Errorf("upgrading to websocket: %w", err)
 	}
 
-	return newWSStream(conn, u.heartbeatInterval), nil
+	return newWSStream(conn, u.heartbeatInterval, u.tracer), nil
 }
 
 // UpgradeToBidirectionalStream upgrades an HTTP connection to a bidirectional WebSocket event stream.
@@ -78,11 +81,12 @@ func (u *Upgrader) UpgradeToBidirectionalStream(w http.ResponseWriter, r *http.R
 		return nil, fmt.Errorf("upgrading to websocket: %w", err)
 	}
 
-	return newBidirectionalWSStream(conn, u.heartbeatInterval), nil
+	return newBidirectionalWSStream(conn, u.heartbeatInterval, u.tracer), nil
 }
 
 // wsStream is a unidirectional (send-only) WebSocket event stream.
 type wsStream struct {
+	tracer            tracing.Tracer
 	conn              *gorillawebsocket.Conn
 	heartbeatInterval *time.Ticker
 	done              chan struct{}
@@ -90,10 +94,11 @@ type wsStream struct {
 	closed            bool
 }
 
-func newWSStream(conn *gorillawebsocket.Conn, heartbeat time.Duration) *wsStream {
+func newWSStream(conn *gorillawebsocket.Conn, heartbeat time.Duration, tracer tracing.Tracer) *wsStream {
 	s := &wsStream{
-		conn: conn,
-		done: make(chan struct{}),
+		conn:   conn,
+		done:   make(chan struct{}),
+		tracer: tracer,
 	}
 
 	if heartbeat > 0 {
@@ -121,7 +126,10 @@ func (s *wsStream) heartbeatLoop() {
 }
 
 // Send writes an event to the WebSocket connection as JSON.
-func (s *wsStream) Send(_ context.Context, event *eventstream.Event) error {
+func (s *wsStream) Send(ctx context.Context, event *eventstream.Event) error {
+	_, span := s.tracer.StartCustomSpan(ctx, "ws_send")
+	defer span.End()
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -162,9 +170,9 @@ type bidirectionalWSStream struct {
 	incoming chan *eventstream.Event
 }
 
-func newBidirectionalWSStream(conn *gorillawebsocket.Conn, heartbeat time.Duration) *bidirectionalWSStream {
+func newBidirectionalWSStream(conn *gorillawebsocket.Conn, heartbeat time.Duration, tracer tracing.Tracer) *bidirectionalWSStream {
 	s := &bidirectionalWSStream{
-		wsStream: newWSStream(conn, heartbeat),
+		wsStream: newWSStream(conn, heartbeat, tracer),
 		incoming: make(chan *eventstream.Event, incomingChannelBuffer),
 	}
 

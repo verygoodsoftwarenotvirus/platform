@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/verygoodsoftwarenotvirus/platform/observability/keys"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/keys"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
 
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
@@ -16,25 +16,30 @@ import (
 type zapLogger struct {
 	requestIDFunc logging.RequestIDFunc
 	logger        *zap.Logger
+	atomicLevel   zap.AtomicLevel
 }
 
 // NewZapLogger builds a new zapLogger.
 func NewZapLogger(lvl logging.Level) logging.Logger {
+	atomicLevel := zap.NewAtomicLevel()
+
 	switch lvl {
 	case logging.DebugLevel:
-		l, err := zap.NewDevelopment()
+		atomicLevel.SetLevel(zap.DebugLevel)
+		l, err := zap.NewDevelopment(zap.AddCallerSkip(1))
 		if err != nil {
 			panic(err)
 		}
 
-		return &zapLogger{logger: l.WithOptions(zap.AddCallerSkip(1))}
+		return &zapLogger{logger: l, atomicLevel: atomicLevel}
 	default:
-		l, err := zap.NewProduction()
+		atomicLevel.SetLevel(zap.InfoLevel)
+		l, err := zap.NewProduction(zap.AddCallerSkip(1))
 		if err != nil {
 			panic(err)
 		}
 
-		return &zapLogger{logger: l.WithOptions(zap.AddCallerSkip(1))}
+		return &zapLogger{logger: l, atomicLevel: atomicLevel}
 	}
 }
 
@@ -52,7 +57,6 @@ func (l *zapLogger) SetLevel(level logging.Level) {
 	case logging.InfoLevel:
 		lvl = zap.InfoLevel
 	case logging.DebugLevel:
-		l.logger.WithOptions(zap.WithCaller(true))
 		lvl = zap.DebugLevel
 	case logging.WarnLevel:
 		lvl = zap.WarnLevel
@@ -62,8 +66,7 @@ func (l *zapLogger) SetLevel(level logging.Level) {
 		lvl = zap.InfoLevel
 	}
 
-	_ = lvl
-	// there isn't really a way to set the level of a zap logger, but this doesn't really seem to get called anyway lol
+	l.atomicLevel.SetLevel(lvl)
 }
 
 // SetRequestIDFunc sets the request ID retrieval function.
@@ -121,36 +124,32 @@ func (l *zapLogger) WithError(err error) logging.Logger {
 
 // WithSpan satisfies our contract for the logging.Logger WithSpan method.
 func (l *zapLogger) WithSpan(span trace.Span) logging.Logger {
-	spanCtx := span.SpanContext()
-	spanID := spanCtx.SpanID().String()
-	traceID := spanCtx.TraceID().String()
+	si := logging.ExtractSpanInfo(span)
 
-	l2 := l.logger.With(zap.String(keys.SpanIDKey, spanID), zap.String(keys.TraceIDKey, traceID))
+	l2 := l.logger.With(zap.String(keys.SpanIDKey, si.SpanID), zap.String(keys.TraceIDKey, si.TraceID))
 
 	return &zapLogger{logger: l2}
 }
 
 func (l *zapLogger) attachRequestToLog(req *http.Request) *zap.Logger {
-	if req != nil {
-		l2 := l.logger.With(zap.String("method", req.Method))
-
-		if req.URL != nil {
-			l2 = l2.With(zap.String("path", req.URL.Path))
-			if req.URL.RawQuery != "" {
-				l2 = l2.With(zap.String(keys.URLQueryKey, req.URL.RawQuery))
-			}
-		}
-
-		if l.requestIDFunc != nil {
-			if reqID := l.requestIDFunc(req); reqID != "" {
-				l2 = l2.With(zap.String("request.id", reqID))
-			}
-		}
-
-		return l2
+	ri := logging.ExtractRequestInfo(req, l.requestIDFunc)
+	if req == nil {
+		return l.logger
 	}
 
-	return l.logger
+	l2 := l.logger.With(zap.String(keys.RequestMethodKey, ri.Method))
+
+	if ri.Path != "" {
+		l2 = l2.With(zap.String("path", ri.Path))
+	}
+	if ri.Query != "" {
+		l2 = l2.With(zap.String(keys.URLQueryKey, ri.Query))
+	}
+	if ri.RequestID != "" {
+		l2 = l2.With(zap.String(keys.RequestIDKey, ri.RequestID))
+	}
+
+	return l2
 }
 
 // WithRequest satisfies our contract for the logging.Logger WithRequest method.

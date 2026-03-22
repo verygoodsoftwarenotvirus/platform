@@ -8,10 +8,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewDatabaseChecker(t *testing.T) {
-	t.Parallel()
+func TestNewDatabaseChecker(T *testing.T) {
+	T.Parallel()
 
-	t.Run("ready", func(t *testing.T) {
+	T.Run("ready", func(t *testing.T) {
 		t.Parallel()
 
 		client := &mockDBClient{ready: true}
@@ -23,7 +23,7 @@ func TestNewDatabaseChecker(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("not ready", func(t *testing.T) {
+	T.Run("not ready", func(t *testing.T) {
 		t.Parallel()
 
 		client := &mockDBClient{ready: false}
@@ -34,7 +34,7 @@ func TestNewDatabaseChecker(t *testing.T) {
 		require.Error(t, err)
 	})
 
-	t.Run("nil client", func(t *testing.T) {
+	T.Run("nil client", func(t *testing.T) {
 		t.Parallel()
 
 		checker := NewDatabaseChecker("postgres", nil)

@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/metrics"
-	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/observability/metrics/mock"
-	"github.com/verygoodsoftwarenotvirus/platform/reflection"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/metrics"
+	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v2/observability/metrics/mock"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/reflection"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -85,36 +85,40 @@ func TestProvideCircuitBreaker(T *testing.T) {
 }
 
 //nolint:paralleltest // race condition in the core circuit breaker library, I think?
-func TestEnsureCircuitBreaker(t *testing.T) {
-	assert.NotNil(t, EnsureCircuitBreaker(nil))
+func TestEnsureCircuitBreaker(T *testing.T) {
+	T.Run("standard", func(t *testing.T) {
+		assert.NotNil(t, EnsureCircuitBreaker(nil))
+	})
 }
 
 //nolint:paralleltest // race condition in the core circuit breaker library, I think?
-func TestCircuitBreaker_Integration(t *testing.T) {
-	t.SkipNow() // cannot run this with the race detector on
+func TestCircuitBreaker_Integration(T *testing.T) {
+	T.Run("standard", func(t *testing.T) {
+		t.SkipNow() // cannot run this with the race detector on
 
-	ctx := t.Context()
+		ctx := t.Context()
 
-	cfg := &Config{
-		Name:                   t.Name(),
-		ErrorRate:              1,
-		MinimumSampleThreshold: 1,
-	}
+		cfg := &Config{
+			Name:                   t.Name(),
+			ErrorRate:              1,
+			MinimumSampleThreshold: 1,
+		}
 
-	cb, err := ProvideCircuitBreaker(ctx, cfg, logging.NewNoopLogger(), metrics.NewNoopMetricsProvider())
-	assert.NotNil(t, cb)
-	assert.NoError(t, err)
+		cb, err := ProvideCircuitBreaker(ctx, cfg, logging.NewNoopLogger(), metrics.NewNoopMetricsProvider())
+		assert.NotNil(t, cb)
+		assert.NoError(t, err)
 
-	assert.True(t, cb.CanProceed())
-	cb.Failed()
-	assert.True(t, cb.CannotProceed())
-	cb.Succeeded()
-	assert.Eventually(
-		t,
-		func() bool {
-			return cb.CanProceed()
-		},
-		5*time.Second,
-		500*time.Millisecond,
-	)
+		assert.True(t, cb.CanProceed())
+		cb.Failed()
+		assert.True(t, cb.CannotProceed())
+		cb.Succeeded()
+		assert.Eventually(
+			t,
+			func() bool {
+				return cb.CanProceed()
+			},
+			5*time.Second,
+			500*time.Millisecond,
+		)
+	})
 }

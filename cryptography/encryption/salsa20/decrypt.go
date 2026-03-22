@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 
-	"github.com/verygoodsoftwarenotvirus/platform/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability"
 
 	"golang.org/x/crypto/salsa20"
 )

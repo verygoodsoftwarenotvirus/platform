@@ -3,7 +3,7 @@ package featureflagscfg
 import (
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/featureflags/launchdarkly"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/featureflags/launchdarkly"
 
 	"github.com/stretchr/testify/assert"
 )

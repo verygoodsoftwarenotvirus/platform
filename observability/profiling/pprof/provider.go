@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/profiling"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/profiling"
 )
 
 // ProvideProfilingProvider creates a pprof-based profiling provider that exposes

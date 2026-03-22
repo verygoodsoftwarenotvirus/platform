@@ -4,14 +4,14 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	loggingcfg "github.com/verygoodsoftwarenotvirus/platform/observability/logging/config"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/metrics"
-	metricscfg "github.com/verygoodsoftwarenotvirus/platform/observability/metrics/config"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/profiling"
-	profilingcfg "github.com/verygoodsoftwarenotvirus/platform/observability/profiling/config"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
-	tracingcfg "github.com/verygoodsoftwarenotvirus/platform/observability/tracing/config"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	loggingcfg "github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging/config"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/metrics"
+	metricscfg "github.com/verygoodsoftwarenotvirus/platform/v2/observability/metrics/config"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/profiling"
+	profilingcfg "github.com/verygoodsoftwarenotvirus/platform/v2/observability/profiling/config"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
+	tracingcfg "github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing/config"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )

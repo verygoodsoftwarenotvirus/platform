@@ -3,20 +3,20 @@ package notifications
 import (
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMultiPlatformPushSender_SendPush(t *testing.T) {
-	t.Parallel()
+func TestMultiPlatformPushSender_SendPush(T *testing.T) {
+	T.Parallel()
 
-	ctx := t.Context()
+	ctx := T.Context()
 	logger := logging.NewNoopLogger()
 	tracer := tracing.NewNoopTracerProvider()
 
-	t.Run("ios returns ErrPlatformNotSupported when apnsSender nil", func(t *testing.T) {
+	T.Run("ios returns ErrPlatformNotSupported when apnsSender nil", func(t *testing.T) {
 		t.Parallel()
 
 		sender := NewMultiPlatformPushSender(nil, nil, logger, tracer)
@@ -25,7 +25,7 @@ func TestMultiPlatformPushSender_SendPush(t *testing.T) {
 		assert.ErrorIs(t, err, ErrPlatformNotSupported)
 	})
 
-	t.Run("android returns ErrPlatformNotSupported when fcmSender nil", func(t *testing.T) {
+	T.Run("android returns ErrPlatformNotSupported when fcmSender nil", func(t *testing.T) {
 		t.Parallel()
 
 		sender := NewMultiPlatformPushSender(nil, nil, logger, tracer)
@@ -34,7 +34,7 @@ func TestMultiPlatformPushSender_SendPush(t *testing.T) {
 		assert.ErrorIs(t, err, ErrPlatformNotSupported)
 	})
 
-	t.Run("unknown platform returns error", func(t *testing.T) {
+	T.Run("unknown platform returns error", func(t *testing.T) {
 		t.Parallel()
 
 		sender := NewMultiPlatformPushSender(nil, nil, logger, tracer)

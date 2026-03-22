@@ -3,7 +3,7 @@ package redis
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
@@ -43,7 +43,7 @@ func BuildContainerBackedRedisConfig(ctx context.Context) (config *Config, shutd
 	redisAddress, err := redisContainer.ConnectionString(ctx)
 	if err != nil {
 		if termErr := redisContainer.Terminate(ctx); termErr != nil {
-			log.Printf("failed to terminate redis container: %v\n", termErr)
+			slog.Error("failed to terminate redis container", slog.Any("error", termErr))
 		}
 		return nil, nil, fmt.Errorf("failed to build redis connection string: %w", err)
 	}

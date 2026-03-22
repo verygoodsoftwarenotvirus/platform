@@ -8,10 +8,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestProvideSecretSourceFromConfig(t *testing.T) {
-	t.Parallel()
+func TestProvideSecretSourceFromConfig(T *testing.T) {
+	T.Parallel()
 
-	t.Run("nil config returns env source", func(t *testing.T) {
+	T.Run("nil config returns env source", func(t *testing.T) {
 		t.Parallel()
 
 		var cfg *Config
@@ -29,7 +29,7 @@ func TestProvideSecretSourceFromConfig(t *testing.T) {
 		require.Equal(t, value, got)
 	})
 
-	t.Run("empty provider returns env source", func(t *testing.T) {
+	T.Run("empty provider returns env source", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ""}
@@ -47,7 +47,7 @@ func TestProvideSecretSourceFromConfig(t *testing.T) {
 		require.Equal(t, value, got)
 	})
 
-	t.Run("noop provider returns noop source", func(t *testing.T) {
+	T.Run("noop provider returns noop source", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ProviderNoop}
@@ -60,7 +60,7 @@ func TestProvideSecretSourceFromConfig(t *testing.T) {
 		require.Empty(t, got)
 	})
 
-	t.Run("env provider returns env source", func(t *testing.T) {
+	T.Run("env provider returns env source", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ProviderEnv}

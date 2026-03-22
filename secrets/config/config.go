@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/secrets"
-	"github.com/verygoodsoftwarenotvirus/platform/secrets/env"
-	"github.com/verygoodsoftwarenotvirus/platform/secrets/gcp"
-	"github.com/verygoodsoftwarenotvirus/platform/secrets/ssm"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/secrets"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/secrets/env"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/secrets/gcp"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/secrets/ssm"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )

@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"hash/fnv"
 
-	"github.com/verygoodsoftwarenotvirus/platform/cryptography/hashing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/cryptography/hashing"
 )
 
 var _ hashing.Hasher = (*fnvHasher)(nil)

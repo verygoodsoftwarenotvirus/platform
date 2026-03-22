@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/verygoodsoftwarenotvirus/platform/llm"
-	"github.com/verygoodsoftwarenotvirus/platform/pointer"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/llm"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/pointer"
 
 	anyllm "github.com/mozilla-ai/any-llm-go"
 	anyllmopenai "github.com/mozilla-ai/any-llm-go/providers/openai"

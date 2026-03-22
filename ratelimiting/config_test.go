@@ -8,10 +8,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestConfig_EnsureDefaults(t *testing.T) {
-	t.Parallel()
+func TestConfig_EnsureDefaults(T *testing.T) {
+	T.Parallel()
 
-	t.Run("sets defaults for zero values", func(t *testing.T) {
+	T.Run("sets defaults for zero values", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{}
@@ -21,7 +21,7 @@ func TestConfig_EnsureDefaults(t *testing.T) {
 		assert.Equal(t, 20, cfg.BurstSize)
 	})
 
-	t.Run("preserves non-zero values", func(t *testing.T) {
+	T.Run("preserves non-zero values", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{
@@ -35,10 +35,10 @@ func TestConfig_EnsureDefaults(t *testing.T) {
 	})
 }
 
-func TestConfig_ProvideRateLimiter(t *testing.T) {
-	t.Parallel()
+func TestConfig_ProvideRateLimiter(T *testing.T) {
+	T.Parallel()
 
-	t.Run("nil config returns noop", func(t *testing.T) {
+	T.Run("nil config returns noop", func(t *testing.T) {
 		t.Parallel()
 
 		var cfg *Config
@@ -51,7 +51,7 @@ func TestConfig_ProvideRateLimiter(t *testing.T) {
 		assert.True(t, allowed)
 	})
 
-	t.Run("empty provider returns noop", func(t *testing.T) {
+	T.Run("empty provider returns noop", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ""}
@@ -64,7 +64,7 @@ func TestConfig_ProvideRateLimiter(t *testing.T) {
 		assert.True(t, allowed)
 	})
 
-	t.Run("noop provider returns noop", func(t *testing.T) {
+	T.Run("noop provider returns noop", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ProviderNoop}
@@ -77,7 +77,7 @@ func TestConfig_ProvideRateLimiter(t *testing.T) {
 		assert.True(t, allowed)
 	})
 
-	t.Run("memory provider returns in-memory limiter", func(t *testing.T) {
+	T.Run("memory provider returns in-memory limiter", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{
@@ -98,7 +98,7 @@ func TestConfig_ProvideRateLimiter(t *testing.T) {
 		assert.False(t, allowed)
 	})
 
-	t.Run("unknown provider returns error", func(t *testing.T) {
+	T.Run("unknown provider returns error", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: "unknown"}
@@ -109,10 +109,10 @@ func TestConfig_ProvideRateLimiter(t *testing.T) {
 	})
 }
 
-func TestConfig_ValidateWithContext(t *testing.T) {
-	t.Parallel()
+func TestConfig_ValidateWithContext(T *testing.T) {
+	T.Parallel()
 
-	t.Run("valid config", func(t *testing.T) {
+	T.Run("valid config", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := context.Background()
@@ -125,7 +125,7 @@ func TestConfig_ValidateWithContext(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("invalid RequestsPerSec", func(t *testing.T) {
+	T.Run("invalid RequestsPerSec", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := context.Background()
@@ -138,7 +138,7 @@ func TestConfig_ValidateWithContext(t *testing.T) {
 		require.Error(t, err)
 	})
 
-	t.Run("invalid BurstSize", func(t *testing.T) {
+	T.Run("invalid BurstSize", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := context.Background()

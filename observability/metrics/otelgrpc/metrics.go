@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/metrics"
-	o11yutils "github.com/verygoodsoftwarenotvirus/platform/observability/utils"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/metrics"
+	o11yutils "github.com/verygoodsoftwarenotvirus/platform/v2/observability/utils"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/hashicorp/go-multierror"

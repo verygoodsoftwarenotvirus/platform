@@ -7,7 +7,7 @@ import (
 type (
 	// Consumer produces events onto a queue.
 	Consumer interface {
-		Consume(stopChan chan bool, errors chan error)
+		Consume(ctx context.Context, stopChan chan bool, errors chan error)
 	}
 
 	ConsumerFunc func(context.Context, []byte) error

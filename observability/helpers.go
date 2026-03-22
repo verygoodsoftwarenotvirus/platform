@@ -1,8 +1,8 @@
 package observability
 
 import (
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 )
 
 func ObserveValues(values map[string]any, span tracing.Span, logger logging.Logger) logging.Logger {

@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/notifications"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/notifications"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,26 +38,26 @@ func createTestP8File(t *testing.T) string {
 	return path
 }
 
-func TestConfig_ValidateWithContext(t *testing.T) {
-	t.Parallel()
+func TestConfig_ValidateWithContext(T *testing.T) {
+	T.Parallel()
 
-	ctx := t.Context()
+	ctx := T.Context()
 
-	t.Run("with noop provider", func(t *testing.T) {
+	T.Run("with noop provider", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ProviderNoop}
 		assert.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
-	t.Run("with empty provider", func(t *testing.T) {
+	T.Run("with empty provider", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ""}
 		assert.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
-	t.Run("with apns_fcm provider and both nil", func(t *testing.T) {
+	T.Run("with apns_fcm provider and both nil", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{
@@ -68,7 +68,7 @@ func TestConfig_ValidateWithContext(t *testing.T) {
 		assert.Error(t, cfg.ValidateWithContext(ctx))
 	})
 
-	t.Run("with apns_fcm provider and nil APNs but FCM present", func(t *testing.T) {
+	T.Run("with apns_fcm provider and nil APNs but FCM present", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{
@@ -79,7 +79,7 @@ func TestConfig_ValidateWithContext(t *testing.T) {
 		assert.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
-	t.Run("with apns_fcm provider and nil FCM but APNs present", func(t *testing.T) {
+	T.Run("with apns_fcm provider and nil FCM but APNs present", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{
@@ -90,7 +90,7 @@ func TestConfig_ValidateWithContext(t *testing.T) {
 		assert.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
-	t.Run("with apns_fcm provider and both configs", func(t *testing.T) {
+	T.Run("with apns_fcm provider and both configs", func(t *testing.T) {
 		t.Parallel()
 
 		p8Path := createTestP8File(t)
@@ -103,14 +103,14 @@ func TestConfig_ValidateWithContext(t *testing.T) {
 	})
 }
 
-func TestConfig_ProvidePushSender(t *testing.T) {
-	t.Parallel()
+func TestConfig_ProvidePushSender(T *testing.T) {
+	T.Parallel()
 
-	ctx := t.Context()
+	ctx := T.Context()
 	logger := logging.NewNoopLogger()
 	tracer := tracing.NewNoopTracerProvider()
 
-	t.Run("with empty provider returns noop", func(t *testing.T) {
+	T.Run("with empty provider returns noop", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := Config{Provider: ""}
@@ -121,7 +121,7 @@ func TestConfig_ProvidePushSender(t *testing.T) {
 		assert.NoError(t, sender.SendPush(ctx, "ios", "token", notifications.PushMessage{Title: "title", Body: "body"}))
 	})
 
-	t.Run("with noop provider returns noop", func(t *testing.T) {
+	T.Run("with noop provider returns noop", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := Config{Provider: ProviderNoop}
@@ -131,7 +131,7 @@ func TestConfig_ProvidePushSender(t *testing.T) {
 		assert.NoError(t, sender.SendPush(ctx, "android", "token", notifications.PushMessage{Title: "title", Body: "body"}))
 	})
 
-	t.Run("with apns_fcm provider and nil APNs returns noop or FCM-only sender", func(t *testing.T) {
+	T.Run("with apns_fcm provider and nil APNs returns noop or FCM-only sender", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := Config{
@@ -146,7 +146,7 @@ func TestConfig_ProvidePushSender(t *testing.T) {
 		_ = sender.SendPush(ctx, "ios", "token", notifications.PushMessage{Title: "title", Body: "body"})
 	})
 
-	t.Run("with apns_fcm provider and nil FCM returns iOS-only sender", func(t *testing.T) {
+	T.Run("with apns_fcm provider and nil FCM returns iOS-only sender", func(t *testing.T) {
 		t.Parallel()
 
 		p8Path := createTestP8File(t)
@@ -164,7 +164,7 @@ func TestConfig_ProvidePushSender(t *testing.T) {
 		assert.ErrorIs(t, err, notifications.ErrPlatformNotSupported)
 	})
 
-	t.Run("with apns_fcm provider and invalid APNs path returns noop or FCM-only sender", func(t *testing.T) {
+	T.Run("with apns_fcm provider and invalid APNs path returns noop or FCM-only sender", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := Config{
@@ -179,7 +179,7 @@ func TestConfig_ProvidePushSender(t *testing.T) {
 		_ = sender.SendPush(ctx, "ios", "token", notifications.PushMessage{Title: "title", Body: "body"})
 	})
 
-	t.Run("with apns_fcm provider and invalid FCM path returns iOS-only sender", func(t *testing.T) {
+	T.Run("with apns_fcm provider and invalid FCM path returns iOS-only sender", func(t *testing.T) {
 		t.Parallel()
 
 		p8Path := createTestP8File(t)
@@ -197,7 +197,7 @@ func TestConfig_ProvidePushSender(t *testing.T) {
 		assert.ErrorIs(t, err, notifications.ErrPlatformNotSupported)
 	})
 
-	t.Run("with unknown provider returns noop", func(t *testing.T) {
+	T.Run("with unknown provider returns noop", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := Config{Provider: "unknown"}

@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/cache"
-	"github.com/verygoodsoftwarenotvirus/platform/cache/memory"
-	"github.com/verygoodsoftwarenotvirus/platform/cache/redis"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/cache"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/cache/memory"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/cache/redis"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )

@@ -7,11 +7,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/verygoodsoftwarenotvirus/platform/encoding"
-	"github.com/verygoodsoftwarenotvirus/platform/messagequeue"
-	"github.com/verygoodsoftwarenotvirus/platform/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/encoding"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/messagequeue"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	"cloud.google.com/go/pubsub/v2"
 )
@@ -27,14 +27,12 @@ type (
 		encoder   encoding.ClientEncoder
 		logger    logging.Logger
 		publisher messagePublisher
-		topic     string
 	}
 )
 
 // buildPubSubPublisher provides a Pub/Sub-backed pubSubPublisher.
 func buildPubSubPublisher(logger logging.Logger, pubsubClient *pubsub.Publisher, tracerProvider tracing.TracerProvider, topic string) *pubSubPublisher {
 	return &pubSubPublisher{
-		topic:     topic,
 		encoder:   encoding.ProvideClientEncoder(logger, tracerProvider, encoding.ContentTypeJSON),
 		logger:    logging.EnsureLogger(logger),
 		publisher: pubsubClient,

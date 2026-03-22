@@ -6,8 +6,8 @@ import (
 	"maps"
 	"runtime"
 
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/profiling"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/profiling"
 
 	"github.com/grafana/pyroscope-go"
 )

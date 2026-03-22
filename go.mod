@@ -1,4 +1,4 @@
-module github.com/verygoodsoftwarenotvirus/platform
+module github.com/verygoodsoftwarenotvirus/platform/v2
 
 go 1.26
 
@@ -26,7 +26,6 @@ require (
 	github.com/go-faker/faker/v4 v4.7.0
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/go-redis/redis/v8 v8.11.5
-	github.com/go-yaml/yaml v2.1.0+incompatible
 	github.com/gogo/protobuf v1.3.2
 	github.com/google/wire v0.7.0
 	github.com/gorilla/websocket v1.5.3
@@ -91,6 +90,7 @@ require (
 	google.golang.org/api v0.272.0
 	google.golang.org/grpc v1.79.3
 	google.golang.org/protobuf v1.36.11
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -272,7 +272,6 @@ require (
 	google.golang.org/genproto v0.0.0-20260217215200-42d3e9bedb6d // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260316180232-0b37fe3546d5 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260311181403-84a4fc48630c // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 tool (

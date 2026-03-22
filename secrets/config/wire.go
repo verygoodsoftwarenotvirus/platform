@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/verygoodsoftwarenotvirus/platform/secrets"
-	"github.com/verygoodsoftwarenotvirus/platform/secrets/env"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/secrets"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/secrets/env"
 
 	"github.com/google/wire"
 )

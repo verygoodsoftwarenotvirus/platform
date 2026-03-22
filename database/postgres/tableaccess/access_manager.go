@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/database"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/database"
 )
 
 type Privilege string

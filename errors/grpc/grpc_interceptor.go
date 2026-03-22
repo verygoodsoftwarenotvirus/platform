@@ -3,7 +3,7 @@ package grpc
 import (
 	"context"
 
-	platformerrors "github.com/verygoodsoftwarenotvirus/platform/errors"
+	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 
 	"github.com/cockroachdb/errors/errorspb"
 	gogoproto "github.com/gogo/protobuf/proto"

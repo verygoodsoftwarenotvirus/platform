@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/eventstream"
-	"github.com/verygoodsoftwarenotvirus/platform/eventstream/sse"
-	"github.com/verygoodsoftwarenotvirus/platform/eventstream/websocket"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/eventstream"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/eventstream/sse"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/eventstream/websocket"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
@@ -39,24 +40,24 @@ func (cfg *Config) ValidateWithContext(ctx context.Context) error {
 }
 
 // ProvideEventStreamUpgrader provides an EventStreamUpgrader based on configuration.
-func ProvideEventStreamUpgrader(cfg *Config) (eventstream.EventStreamUpgrader, error) {
+func ProvideEventStreamUpgrader(tracerProvider tracing.TracerProvider, cfg *Config) (eventstream.EventStreamUpgrader, error) {
 	switch strings.TrimSpace(strings.ToLower(cfg.Provider)) {
 	case ProviderSSE:
-		return sse.NewUpgrader(), nil
+		return sse.NewUpgrader(tracerProvider), nil
 	case ProviderWebSocket:
-		return websocket.NewUpgrader(cfg.WebSocket), nil
+		return websocket.NewUpgrader(tracerProvider, cfg.WebSocket), nil
 	default:
 		return nil, fmt.Errorf("invalid eventstream provider: %q", cfg.Provider)
 	}
 }
 
 // ProvideBidirectionalEventStreamUpgrader provides a BidirectionalEventStreamUpgrader based on configuration.
-func ProvideBidirectionalEventStreamUpgrader(cfg *Config) (eventstream.BidirectionalEventStreamUpgrader, error) {
+func ProvideBidirectionalEventStreamUpgrader(tracerProvider tracing.TracerProvider, cfg *Config) (eventstream.BidirectionalEventStreamUpgrader, error) {
 	switch strings.TrimSpace(strings.ToLower(cfg.Provider)) {
 	case ProviderSSE:
 		return nil, errors.New("SSE does not support bidirectional event streams")
 	case ProviderWebSocket:
-		return websocket.NewUpgrader(cfg.WebSocket), nil
+		return websocket.NewUpgrader(tracerProvider, cfg.WebSocket), nil
 	default:
 		return nil, fmt.Errorf("invalid eventstream provider: %q", cfg.Provider)
 	}

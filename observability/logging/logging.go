@@ -49,7 +49,6 @@ type Logger interface {
 
 	SetRequestIDFunc(RequestIDFunc)
 
-	// TODO: eliminate me, use WithSpan instead
 	Clone() Logger
 	WithName(string) Logger
 	WithValues(map[string]any) Logger

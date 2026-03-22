@@ -10,10 +10,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestExponentialBackoffPolicy_Execute(t *testing.T) {
-	t.Parallel()
+func TestExponentialBackoffPolicy_Execute(T *testing.T) {
+	T.Parallel()
 
-	t.Run("success on first attempt", func(t *testing.T) {
+	T.Run("success on first attempt", func(t *testing.T) {
 		t.Parallel()
 
 		policy := NewExponentialBackoffPolicy(Config{MaxAttempts: 3})
@@ -29,7 +29,7 @@ func TestExponentialBackoffPolicy_Execute(t *testing.T) {
 		assert.Equal(t, 1, attempts)
 	})
 
-	t.Run("success after retries", func(t *testing.T) {
+	T.Run("success after retries", func(t *testing.T) {
 		t.Parallel()
 
 		policy := NewExponentialBackoffPolicy(Config{
@@ -53,7 +53,7 @@ func TestExponentialBackoffPolicy_Execute(t *testing.T) {
 		assert.Equal(t, 3, attempts)
 	})
 
-	t.Run("returns last error after max attempts", func(t *testing.T) {
+	T.Run("returns last error after max attempts", func(t *testing.T) {
 		t.Parallel()
 
 		policy := NewExponentialBackoffPolicy(Config{
@@ -79,7 +79,7 @@ func TestExponentialBackoffPolicy_Execute(t *testing.T) {
 		assert.Equal(t, 3, attempts)
 	})
 
-	t.Run("respects context cancellation", func(t *testing.T) {
+	T.Run("respects context cancellation", func(t *testing.T) {
 		t.Parallel()
 
 		policy := NewExponentialBackoffPolicy(Config{

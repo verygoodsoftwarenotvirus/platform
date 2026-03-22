@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/capitalism"
-	"github.com/verygoodsoftwarenotvirus/platform/capitalism/stripe"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/capitalism"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/capitalism/stripe"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )

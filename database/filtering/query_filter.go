@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/observability/keys"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/keys"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
 )
 
 const (
@@ -62,7 +62,7 @@ type (
 		PreviousCursor     string       `json:"previousCursor"`
 		FilteredCount      uint64       `json:"filteredCount"`
 		TotalCount         uint64       `json:"totalCount"`
-		MaxResponseSize    uint8        `json:"maxResponseSize"` // TODO: deprecate
+		MaxResponseSize    uint8        `json:"maxResponseSize"`
 	}
 
 	// QueryFilter represents all the filters a User could apply to a list query.

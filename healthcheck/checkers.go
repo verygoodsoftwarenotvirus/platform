@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/verygoodsoftwarenotvirus/platform/database"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/database"
 )
 
 // DatabaseReadyChecker checks if a database client is ready.

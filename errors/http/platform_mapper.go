@@ -4,10 +4,10 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/verygoodsoftwarenotvirus/platform/circuitbreaking"
-	"github.com/verygoodsoftwarenotvirus/platform/database"
-	platformerrors "github.com/verygoodsoftwarenotvirus/platform/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/types"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/circuitbreaking"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/database"
+	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/types"
 )
 
 // PlatformMapper maps platform-level errors to HTTP error codes and messages.

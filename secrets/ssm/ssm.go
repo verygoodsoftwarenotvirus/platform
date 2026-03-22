@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/secrets"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/secrets"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"

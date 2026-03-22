@@ -3,7 +3,7 @@ package emailmock
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/email"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/email"
 
 	"github.com/stretchr/testify/mock"
 )

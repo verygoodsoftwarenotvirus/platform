@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/circuitbreaking"
-	"github.com/verygoodsoftwarenotvirus/platform/featureflags"
-	"github.com/verygoodsoftwarenotvirus/platform/featureflags/launchdarkly"
-	"github.com/verygoodsoftwarenotvirus/platform/featureflags/posthog"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/circuitbreaking"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/featureflags"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/featureflags/launchdarkly"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/featureflags/posthog"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )

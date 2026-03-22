@@ -9,10 +9,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestConfig_EnsureDefaults(t *testing.T) {
-	t.Parallel()
+func TestConfig_EnsureDefaults(T *testing.T) {
+	T.Parallel()
 
-	t.Run("sets defaults for zero values", func(t *testing.T) {
+	T.Run("sets defaults for zero values", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{}
@@ -23,7 +23,7 @@ func TestConfig_EnsureDefaults(t *testing.T) {
 		assert.Equal(t, defaultMaxIdleConnsPerHost, cfg.MaxIdleConnsPerHost)
 	})
 
-	t.Run("preserves non-zero values", func(t *testing.T) {
+	T.Run("preserves non-zero values", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{
@@ -39,10 +39,10 @@ func TestConfig_EnsureDefaults(t *testing.T) {
 	})
 }
 
-func TestConfig_ValidateWithContext(t *testing.T) {
-	t.Parallel()
+func TestConfig_ValidateWithContext(T *testing.T) {
+	T.Parallel()
 
-	t.Run("valid config", func(t *testing.T) {
+	T.Run("valid config", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := context.Background()
@@ -56,7 +56,7 @@ func TestConfig_ValidateWithContext(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("invalid timeout", func(t *testing.T) {
+	T.Run("invalid timeout", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := context.Background()
@@ -70,7 +70,7 @@ func TestConfig_ValidateWithContext(t *testing.T) {
 		require.Error(t, err)
 	})
 
-	t.Run("invalid MaxIdleConns", func(t *testing.T) {
+	T.Run("invalid MaxIdleConns", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := context.Background()
@@ -84,7 +84,7 @@ func TestConfig_ValidateWithContext(t *testing.T) {
 		require.Error(t, err)
 	})
 
-	t.Run("invalid MaxIdleConnsPerHost", func(t *testing.T) {
+	T.Run("invalid MaxIdleConnsPerHost", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := context.Background()

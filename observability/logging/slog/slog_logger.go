@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/verygoodsoftwarenotvirus/platform/observability/keys"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/keys"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
 
 	"go.opentelemetry.io/otel/trace"
 )
@@ -108,36 +108,32 @@ func (l *slogLogger) WithError(err error) logging.Logger {
 
 // WithSpan satisfies our contract for the logging.Logger WithSpan method.
 func (l *slogLogger) WithSpan(span trace.Span) logging.Logger {
-	spanCtx := span.SpanContext()
-	spanID := spanCtx.SpanID().String()
-	traceID := spanCtx.TraceID().String()
+	si := logging.ExtractSpanInfo(span)
 
-	l2 := l.logger.With(slog.String(keys.SpanIDKey, spanID), slog.String(keys.TraceIDKey, traceID))
+	l2 := l.logger.With(slog.String(keys.SpanIDKey, si.SpanID), slog.String(keys.TraceIDKey, si.TraceID))
 
 	return &slogLogger{logger: l2}
 }
 
 func (l *slogLogger) attachRequestToLog(req *http.Request) *slog.Logger {
-	if req != nil {
-		l2 := l.logger.With(slog.String(keys.RequestMethodKey, req.Method))
-
-		if req.URL != nil {
-			l2 = l2.With(slog.String("path", req.URL.Path))
-			if req.URL.RawQuery != "" {
-				l2 = l2.With(slog.String(keys.URLQueryKey, req.URL.RawQuery))
-			}
-		}
-
-		if l.requestIDFunc != nil {
-			if reqID := l.requestIDFunc(req); reqID != "" {
-				l2 = l2.With(slog.String(keys.RequestIDKey, reqID))
-			}
-		}
-
-		return l2
+	ri := logging.ExtractRequestInfo(req, l.requestIDFunc)
+	if req == nil {
+		return l.logger
 	}
 
-	return l.logger
+	l2 := l.logger.With(slog.String(keys.RequestMethodKey, ri.Method))
+
+	if ri.Path != "" {
+		l2 = l2.With(slog.String("path", ri.Path))
+	}
+	if ri.Query != "" {
+		l2 = l2.With(slog.String(keys.URLQueryKey, ri.Query))
+	}
+	if ri.RequestID != "" {
+		l2 = l2.With(slog.String(keys.RequestIDKey, ri.RequestID))
+	}
+
+	return l2
 }
 
 // WithRequest satisfies our contract for the logging.Logger WithRequest method.

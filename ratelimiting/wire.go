@@ -1,7 +1,7 @@
 package ratelimiting
 
 import (
-	"fmt"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 
 	"github.com/google/wire"
 )
@@ -20,7 +20,7 @@ func ProvideRateLimiterFromConfig(cfg *Config) (RateLimiter, error) {
 	}
 	limiter, err := cfg.ProvideRateLimiter()
 	if err != nil {
-		return nil, fmt.Errorf("provide rate limiter: %w", err)
+		return nil, errors.Wrap(err, "provide rate limiter")
 	}
 	return limiter, nil
 }

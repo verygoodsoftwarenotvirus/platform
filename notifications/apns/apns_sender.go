@@ -2,9 +2,9 @@ package apns
 
 import (
 	"context"
-	"fmt"
 	"regexp"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
@@ -41,12 +41,12 @@ type Sender struct {
 // NewSender creates an APNs sender from config.
 func NewSender(cfg *Config, tracerProvider tracing.TracerProvider, logger logging.Logger) (*Sender, error) {
 	if cfg == nil || cfg.AuthKeyPath == "" || cfg.KeyID == "" || cfg.TeamID == "" || cfg.BundleID == "" {
-		return nil, fmt.Errorf("apns: missing required config (authKeyPath, keyID, teamID, bundleID)")
+		return nil, errors.New("apns: missing required config (authKeyPath, keyID, teamID, bundleID)")
 	}
 
 	authKey, err := token.AuthKeyFromFile(cfg.AuthKeyPath)
 	if err != nil {
-		return nil, fmt.Errorf("apns: loading auth key: %w", err)
+		return nil, errors.Wrap(err, "apns: loading auth key")
 	}
 
 	t := &token.Token{
@@ -55,7 +55,7 @@ func NewSender(cfg *Config, tracerProvider tracing.TracerProvider, logger loggin
 		TeamID:  cfg.TeamID,
 	}
 	if _, err = t.Generate(); err != nil {
-		return nil, fmt.Errorf("apns: generating token: %w", err)
+		return nil, errors.Wrap(err, "apns: generating token")
 	}
 
 	client := apns2.NewTokenClient(t)
@@ -81,7 +81,7 @@ func (s *Sender) Send(ctx context.Context, deviceToken, title, body string, badg
 	defer span.End()
 
 	if !apnsDeviceTokenHexPattern.MatchString(deviceToken) {
-		return fmt.Errorf("apns: invalid device token format (expected 64 hex chars, got len %d)", len(deviceToken))
+		return errors.Newf("apns: invalid device token format (expected 64 hex chars, got len %d)", len(deviceToken))
 	}
 
 	logger := s.logger.WithValue("title", title)
@@ -102,11 +102,11 @@ func (s *Sender) Send(ctx context.Context, deviceToken, title, body string, badg
 
 	res, err := s.client.PushWithContext(ctx, n)
 	if err != nil {
-		return fmt.Errorf("apns: push failed: %w", err)
+		return errors.Wrap(err, "apns: push failed")
 	}
 
 	if !res.Sent() {
-		err = fmt.Errorf("apns: %s (status %d)", res.Reason, res.StatusCode)
+		err = errors.Newf("apns: %s (status %d)", res.Reason, res.StatusCode)
 		logger = logger.WithValue("statusCode", res.StatusCode).
 			WithValue("reason", res.Reason).
 			WithValue("apnsID", res.ApnsID)

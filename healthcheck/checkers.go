@@ -2,9 +2,9 @@ package healthcheck
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v2/database"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 )
 
 // DatabaseReadyChecker checks if a database client is ready.
@@ -28,7 +28,7 @@ func (d *databaseChecker) Name() string {
 
 func (d *databaseChecker) Check(ctx context.Context) error {
 	if d.client == nil {
-		return fmt.Errorf("database client is nil")
+		return errors.New("database client is nil")
 	}
 	if !d.client.IsReady(ctx) {
 		return database.ErrDatabaseNotReady

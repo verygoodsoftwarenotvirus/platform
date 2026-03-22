@@ -13,6 +13,7 @@ import (
 	encryptioncfg "github.com/verygoodsoftwarenotvirus/platform/v2/cryptography/encryption/config"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/database"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/database/postgres"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/metrics"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
@@ -61,10 +62,40 @@ type (
 	}
 )
 
+const (
+	defaultPingWaitPeriod  = 1 * time.Second
+	defaultConnMaxLifetime = 30 * time.Minute
+	defaultMaxIdleConns    = 5
+	defaultMaxOpenConns    = 7
+)
+
 var (
 	_ validation.ValidatableWithContext = (*Config)(nil)
 	_ database.ClientConfig             = (*Config)(nil)
 )
+
+// EnsureDefaults sets sensible defaults for zero-valued fields.
+func (cfg *Config) EnsureDefaults() {
+	if cfg.Provider == "" {
+		cfg.Provider = ProviderPostgres
+	}
+
+	if cfg.PingWaitPeriod == 0 {
+		cfg.PingWaitPeriod = defaultPingWaitPeriod
+	}
+
+	if cfg.ConnMaxLifetime == 0 {
+		cfg.ConnMaxLifetime = defaultConnMaxLifetime
+	}
+
+	if cfg.MaxIdleConns == 0 {
+		cfg.MaxIdleConns = defaultMaxIdleConns
+	}
+
+	if cfg.MaxOpenConns == 0 {
+		cfg.MaxOpenConns = defaultMaxOpenConns
+	}
+}
 
 // GetConnectionString implements database.ClientConfig.
 func (cfg *Config) GetReadConnectionString() string {
@@ -135,7 +166,7 @@ func (cfg *Config) ConnectToDatabase() (*sql.DB, error) {
 		},
 	))
 	if err != nil {
-		return nil, fmt.Errorf("connecting to postgres database: %w", err)
+		return nil, errors.Wrap(err, "connecting to postgres database")
 	}
 
 	db.SetMaxIdleConns(cfg.GetMaxIdleConns())
@@ -224,7 +255,7 @@ func ProvideDatabase(
 	case ProviderPostgres:
 		client, err = postgres.ProvideDatabaseClient(ctx, logger, tracerProvider, cfg, dbMetricsProvider)
 	default:
-		return nil, fmt.Errorf("invalid database provider: %q", cfg.Provider)
+		return nil, errors.Newf("invalid database provider: %q", cfg.Provider)
 	}
 
 	if err != nil {
@@ -234,7 +265,7 @@ func ProvideDatabase(
 	// Run migrations if enabled and migrator is provided
 	if cfg.RunMigrations && migrator != nil {
 		if err = migrator.Migrate(ctx, client.WriteDB()); err != nil {
-			return nil, fmt.Errorf("running migrations: %w", err)
+			return nil, errors.Wrap(err, "running migrations")
 		}
 	}
 

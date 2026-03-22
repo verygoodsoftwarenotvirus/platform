@@ -2,9 +2,9 @@ package fcm
 
 import (
 	"context"
-	"fmt"
 	"os"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
@@ -35,14 +35,14 @@ type Sender struct {
 // NewSender creates an FCM sender from config.
 func NewSender(ctx context.Context, cfg *Config, tracerProvider tracing.TracerProvider, logger logging.Logger) (*Sender, error) {
 	if cfg == nil {
-		return nil, fmt.Errorf("fcm: config is required")
+		return nil, errors.New("fcm: config is required")
 	}
 
 	var opts []option.ClientOption
 	if cfg.CredentialsPath != "" {
 		creds, err := os.ReadFile(cfg.CredentialsPath)
 		if err != nil {
-			return nil, fmt.Errorf("fcm: credentials file not found: %w", err)
+			return nil, errors.Wrap(err, "fcm: credentials file not found")
 		}
 		opts = append(opts, option.WithAuthCredentialsJSON(option.ServiceAccount, creds))
 	}
@@ -50,12 +50,12 @@ func NewSender(ctx context.Context, cfg *Config, tracerProvider tracing.TracerPr
 
 	app, err := firebase.NewApp(ctx, nil, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("fcm: initializing app: %w", err)
+		return nil, errors.Wrap(err, "fcm: initializing app")
 	}
 
 	client, err := app.Messaging(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("fcm: creating messaging client: %w", err)
+		return nil, errors.Wrap(err, "fcm: creating messaging client")
 	}
 
 	return &Sender{

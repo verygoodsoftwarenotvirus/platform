@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v2/circuitbreaking"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
@@ -46,7 +47,7 @@ func provideElasticsearchClient(cfg *Config) (*elasticsearch.Client, error) {
 		Logger:        nil,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("initializing search client: %w", err)
+		return nil, errors.Wrap(err, "initializing search client")
 	}
 
 	return c, nil
@@ -55,13 +56,13 @@ func provideElasticsearchClient(cfg *Config) (*elasticsearch.Client, error) {
 func ProvideIndexManager[T any](ctx context.Context, logger logging.Logger, tracerProvider tracing.TracerProvider, cfg *Config, indexName string, circuitBreaker circuitbreaking.CircuitBreaker) (textsearch.Index[T], error) {
 	c, err := provideElasticsearchClient(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("initializing search client: %w", err)
+		return nil, errors.Wrap(err, "initializing search client")
 	}
 
 	logger = logging.EnsureLogger(logger)
 
 	if ready := elasticsearchIsReadyToInit(ctx, cfg, logger, 10); !ready {
-		return nil, fmt.Errorf("initializing search client: %w", err)
+		return nil, errors.Wrap(err, "initializing search client")
 	}
 
 	im := &indexManager[T]{

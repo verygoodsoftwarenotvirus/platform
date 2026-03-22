@@ -2,10 +2,9 @@ package msgconfig
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
-	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/messagequeue"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/messagequeue/pubsub"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/messagequeue/redis"
@@ -27,7 +26,7 @@ const (
 )
 
 var (
-	ErrNilConfig = platformerrors.New("nil config provided")
+	ErrNilConfig = errors.New("nil config provided")
 )
 
 type (
@@ -99,7 +98,7 @@ func ProvideConsumerProvider(ctx context.Context, logger logging.Logger, tracerP
 			EnableOpenTelemetryTracing: true,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("establishing PubSub client: %w", err)
+			return nil, errors.Wrap(err, "establishing PubSub client")
 		}
 
 		return pubsub.ProvidePubSubConsumerProvider(logger, tracerProvider, client), nil
@@ -125,7 +124,7 @@ func ProvidePublisherProvider(ctx context.Context, logger logging.Logger, tracer
 			EnableOpenTelemetryTracing: true,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("establishing PubSub client: %w", err)
+			return nil, errors.Wrap(err, "establishing PubSub client")
 		}
 
 		return pubsub.ProvidePubSubPublisherProvider(logger, tracerProvider, client, c.Publisher.PubSub.ProjectID), nil

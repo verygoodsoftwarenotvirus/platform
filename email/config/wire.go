@@ -2,10 +2,10 @@ package emailcfg
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v2/email"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/metrics"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
@@ -24,7 +24,7 @@ var (
 func ProvideEmailer(ctx context.Context, cfg *Config, logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider, client *http.Client) (email.Emailer, error) {
 	circuitBreaker, err := cfg.CircuitBreaker.ProvideCircuitBreaker(ctx, logger, metricsProvider)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize email circuit breaker: %w", err)
+		return nil, errors.Wrap(err, "failed to initialize email circuit breaker")
 	}
 
 	return cfg.ProvideEmailer(logger, tracerProvider, client, circuitBreaker)

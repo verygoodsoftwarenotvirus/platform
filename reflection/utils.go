@@ -1,10 +1,11 @@
 package reflection
 
 import (
-	"fmt"
 	"reflect"
 	"runtime"
 	"strings"
+
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 )
 
 // GetTagNameByValue searches struct s (or *s) for a field whose value equals fieldValue
@@ -19,17 +20,17 @@ import (
 func GetTagNameByValue(strukt, fieldValue any, tagKey string) (string, error) {
 	v := reflect.ValueOf(strukt)
 	if !v.IsValid() {
-		return "", fmt.Errorf("nil value")
+		return "", errors.New("nil value")
 	}
 
 	if v.Kind() == reflect.Pointer {
 		if v.IsNil() {
-			return "", fmt.Errorf("nil pointer to struct")
+			return "", errors.New("nil pointer to struct")
 		}
 		v = v.Elem()
 	}
 	if v.Kind() != reflect.Struct {
-		return "", fmt.Errorf("GetTagNameByValue: expected struct or pointer to struct, got %strukt", v.Kind())
+		return "", errors.Newf("GetTagNameByValue: expected struct or pointer to struct, got %strukt", v.Kind())
 	}
 
 	t := v.Type()
@@ -70,7 +71,7 @@ func GetTagNameByValue(strukt, fieldValue any, tagKey string) (string, error) {
 	if tag, ok := walk(v, t); ok {
 		return tag, nil
 	}
-	return "", fmt.Errorf("no matching field with that value found in struct")
+	return "", errors.New("no matching field with that value found in struct")
 }
 
 // GetMethodName is meant to fetch the name of a given method passed in as an argument.
@@ -103,7 +104,7 @@ func GetFieldTypes(strukt any) (map[string]any, error) {
 	default:
 		rv := reflect.ValueOf(strukt)
 		if !rv.IsValid() {
-			return nil, fmt.Errorf("nil value")
+			return nil, errors.New("nil value")
 		}
 
 		if rv.Kind() == reflect.Pointer {
@@ -123,7 +124,7 @@ func GetFieldTypes(strukt any) (map[string]any, error) {
 	}
 
 	if t.Kind() != reflect.Struct {
-		return nil, fmt.Errorf("GetFieldTypes: expected struct or pointer to struct, got %v", t.Kind())
+		return nil, errors.Newf("GetFieldTypes: expected struct or pointer to struct, got %v", t.Kind())
 	}
 
 	result := make(map[string]any)
@@ -146,7 +147,7 @@ func GetFieldTypes(strukt any) (map[string]any, error) {
 		if fieldType.Kind() == reflect.Struct {
 			nestedMap, err := GetFieldTypes(fieldType)
 			if err != nil {
-				return nil, fmt.Errorf("error processing nested struct field %s: %w", x.Name, err)
+				return nil, errors.Wrapf(err, "error processing nested struct field %s", x.Name)
 			}
 			result[x.Name] = nestedMap
 		} else {

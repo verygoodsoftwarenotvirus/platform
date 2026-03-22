@@ -2,11 +2,11 @@ package config
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v2/capitalism"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/capitalism/stripe"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
@@ -47,6 +47,6 @@ func ProvideCapitalismImplementation(logger logging.Logger, tracerProvider traci
 	case StripeProvider:
 		return stripe.ProvideStripePaymentManager(logger, tracerProvider, cfg.Stripe), nil
 	default:
-		return nil, fmt.Errorf("unknown provider: %q", cfg.Provider)
+		return nil, errors.Newf("unknown provider: %q", cfg.Provider)
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/internalerrors"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/keys"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
@@ -70,7 +71,7 @@ func NewOtelSlogLogger(ctx context.Context, lvl logging.Level, serviceName strin
 		// Create the OTLP log exporter that sends logs to configured destination
 		logExporter, err := otlploggrpc.New(ctx, options...)
 		if err != nil {
-			return nil, fmt.Errorf("instantiating otlploggrpc exporter: %w", err)
+			return nil, errors.Wrap(err, "instantiating otlploggrpc exporter")
 		}
 
 		// Create the logger provider

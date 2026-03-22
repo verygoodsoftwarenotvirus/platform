@@ -2,9 +2,9 @@ package secretscfg
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/secrets"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/secrets/env"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/secrets/gcp"
@@ -59,15 +59,15 @@ func (cfg *Config) ProvideSecretSource(ctx context.Context) (secrets.SecretSourc
 		return secrets.NewNoopSecretSource(), nil
 	case ProviderGCP:
 		if cfg.GCP == nil {
-			return nil, fmt.Errorf("gcp provider requires gcp config")
+			return nil, errors.New("gcp provider requires gcp config")
 		}
 		return gcp.NewGCPSecretSource(ctx, cfg.GCP, cfg.GCPClient)
 	case ProviderSSM:
 		if cfg.SSM == nil {
-			return nil, fmt.Errorf("ssm provider requires ssm config")
+			return nil, errors.New("ssm provider requires ssm config")
 		}
 		return ssm.NewSSMSecretSource(ctx, cfg.SSM, cfg.SSMClient)
 	default:
-		return nil, fmt.Errorf("unknown secret source provider: %q", cfg.Provider)
+		return nil, errors.Newf("unknown secret source provider: %q", cfg.Provider)
 	}
 }

@@ -77,11 +77,11 @@ func NewUploadManager(ctx context.Context, logger logging.Logger, tracerProvider
 	}
 
 	if err := cfg.ValidateWithContext(ctx); err != nil {
-		return nil, fmt.Errorf("upload manager provided invalid config: %w", err)
+		return nil, platformerrors.Wrap(err, "upload manager provided invalid config")
 	}
 
 	if err := u.selectBucket(ctx, cfg); err != nil {
-		return nil, fmt.Errorf("initializing bucket: %w", err)
+		return nil, platformerrors.Wrap(err, "initializing bucket")
 	}
 
 	return u, nil
@@ -97,28 +97,28 @@ func (u *Uploader) selectBucket(ctx context.Context, cfg *Config) (err error) {
 		if u.bucket, err = s3blob.OpenBucketV2(ctx, s3v2.New(s3v2.Options{}), cfg.S3Config.BucketName, &s3blob.Options{
 			UseLegacyList: false,
 		}); err != nil {
-			return fmt.Errorf("initializing s3 bucket: %w", err)
+			return platformerrors.Wrap(err, "initializing s3 bucket")
 		}
 	case GCPCloudStorageProvider:
 		creds, credsErr := gcp.DefaultCredentials(ctx)
 		if credsErr != nil {
-			return fmt.Errorf("initializing GCP objectstorage: %w", credsErr)
+			return platformerrors.Wrap(credsErr, "initializing GCP objectstorage")
 		}
 
 		client, clientErr := gcp.NewHTTPClient(gcp.DefaultTransport(), creds.TokenSource)
 		if clientErr != nil {
-			return fmt.Errorf("initializing GCP objectstorage: %w", clientErr)
+			return platformerrors.Wrap(clientErr, "initializing GCP objectstorage")
 		}
 
 		u.bucket, err = gcsblob.OpenBucket(ctx, client, cfg.GCP.BucketName, nil)
 		if err != nil {
-			return fmt.Errorf("initializing GCP objectstorage: %w", err)
+			return platformerrors.Wrap(err, "initializing GCP objectstorage")
 		}
 
 		if available, availabilityErr := u.bucket.IsAccessible(ctx); availabilityErr != nil {
-			return fmt.Errorf("verifying bucket accessibility: %w", availabilityErr)
+			return platformerrors.Wrap(availabilityErr, "verifying bucket accessibility")
 		} else if !available {
-			return fmt.Errorf("bucket %q is unavailable", cfg.BucketName)
+			return platformerrors.Newf("bucket %q is unavailable", cfg.BucketName)
 		}
 
 	case MemoryProvider:
@@ -132,7 +132,7 @@ func (u *Uploader) selectBucket(ctx context.Context, cfg *Config) (err error) {
 			URLSigner: nil,
 			CreateDir: true,
 		}); err != nil {
-			return fmt.Errorf("initializing filesystem bucket: %w", err)
+			return platformerrors.Wrap(err, "initializing filesystem bucket")
 		}
 	}
 

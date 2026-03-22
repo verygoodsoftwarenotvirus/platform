@@ -2,8 +2,8 @@ package observability
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
 	loggingcfg "github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging/config"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/metrics"
@@ -51,22 +51,22 @@ type Pillars struct {
 func (cfg *Config) ProvidePillars(ctx context.Context) (*Pillars, error) {
 	logger, err := cfg.Logging.ProvideLogger(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("setting up logger: %w", err)
+		return nil, errors.Wrap(err, "setting up logger")
 	}
 
 	tracerProvider, err := cfg.Tracing.ProvideTracerProvider(ctx, logger)
 	if err != nil {
-		return nil, fmt.Errorf("setting up tracer provider: %w", err)
+		return nil, errors.Wrap(err, "setting up tracer provider")
 	}
 
 	metricsProvider, err := cfg.Metrics.ProvideMetricsProvider(ctx, logger)
 	if err != nil {
-		return nil, fmt.Errorf("setting up metrics provider: %w", err)
+		return nil, errors.Wrap(err, "setting up metrics provider")
 	}
 
 	profiler, err := cfg.Profiling.ProvideProfilingProvider(ctx, logger)
 	if err != nil {
-		return nil, fmt.Errorf("setting up profiling provider: %w", err)
+		return nil, errors.Wrap(err, "setting up profiling provider")
 	}
 
 	return &Pillars{

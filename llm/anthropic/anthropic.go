@@ -2,8 +2,8 @@ package anthropic
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/llm"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/pointer"
 
@@ -14,7 +14,7 @@ import (
 // NewProvider creates a new Anthropic-backed LLM provider.
 func NewProvider(cfg *Config) (llm.Provider, error) {
 	if cfg == nil {
-		return nil, fmt.Errorf("anthropic config is required")
+		return nil, errors.New("anthropic config is required")
 	}
 
 	opts := []anyllm.Option{
@@ -29,7 +29,7 @@ func NewProvider(cfg *Config) (llm.Provider, error) {
 
 	provider, err := anyllmanthropic.New(opts...)
 	if err != nil {
-		return nil, fmt.Errorf("create anthropic provider: %w", err)
+		return nil, errors.Wrap(err, "create anthropic provider")
 	}
 
 	return &anthropicProvider{

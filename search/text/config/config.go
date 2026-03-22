@@ -2,10 +2,10 @@ package textsearchcfg
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v2/circuitbreaking"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/metrics"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
@@ -54,7 +54,7 @@ func ProvideIndex[T any](
 ) (textsearch.Index[T], error) {
 	circuitBreaker, err := circuitbreaking.ProvideCircuitBreaker(ctx, &cfg.CircuitBreaker, logger, metricsProvider)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize text search circuit breaker: %w", err)
+		return nil, errors.Wrap(err, "failed to initialize text search circuit breaker")
 	}
 
 	switch strings.TrimSpace(strings.ToLower(cfg.Provider)) {

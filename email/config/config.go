@@ -72,6 +72,11 @@ func (cfg *Config) BuildHermes(branding *email.EmailBranding) *hermes.Hermes {
 
 var _ validation.ValidatableWithContext = (*Config)(nil)
 
+// EnsureDefaults sets sensible defaults for zero-valued fields.
+func (cfg *Config) EnsureDefaults() {
+	cfg.CircuitBreaker.EnsureDefaults()
+}
+
 // ValidateWithContext validates a Config.
 func (cfg *Config) ValidateWithContext(ctx context.Context) error {
 	return validation.ValidateStructWithContext(

@@ -2,8 +2,9 @@ package ratelimiting
 
 import (
 	"context"
-	"fmt"
 	"strings"
+
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
@@ -56,6 +57,6 @@ func (cfg *Config) ProvideRateLimiter() (RateLimiter, error) {
 	case ProviderMemory:
 		return NewInMemoryRateLimiter(cfg.RequestsPerSec, cfg.BurstSize), nil
 	default:
-		return nil, fmt.Errorf("unknown rate limiter provider: %q", cfg.Provider)
+		return nil, errors.Newf("unknown rate limiter provider: %q", cfg.Provider)
 	}
 }

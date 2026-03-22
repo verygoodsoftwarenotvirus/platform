@@ -2,10 +2,10 @@ package otelgrpc
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/metrics"
 	o11yutils "github.com/verygoodsoftwarenotvirus/platform/v2/observability/utils"
@@ -64,7 +64,7 @@ func setupMetricsProvider(ctx context.Context, logger logging.Logger, serviceNam
 		options...,
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("setting up metrics exporter: %w", err)
+		return nil, nil, errors.Wrap(err, "setting up metrics exporter")
 	}
 
 	meterProvider := sdkmetric.NewMeterProvider(
@@ -83,14 +83,14 @@ func setupMetricsProvider(ctx context.Context, logger logging.Logger, serviceNam
 
 	if cfg.EnableRuntimeMetrics {
 		if err = runtime.Start(runtime.WithMeterProvider(meterProvider)); err != nil {
-			return nil, nil, fmt.Errorf("starting runtime metrics: %w", err)
+			return nil, nil, errors.Wrap(err, "starting runtime metrics")
 		}
 		logger.Info("started runtime metrics")
 	}
 
 	if cfg.EnableHostMetrics {
 		if err = host.Start(host.WithMeterProvider(meterProvider)); err != nil {
-			return nil, nil, fmt.Errorf("starting host metrics: %w", err)
+			return nil, nil, errors.Wrap(err, "starting host metrics")
 		}
 		logger.Info("started host metrics")
 	}
@@ -109,7 +109,7 @@ func ProvideMetricsProvider(ctx context.Context, logger logging.Logger, serviceN
 
 	meterProvider, shutdown, err := setupMetricsProvider(ctx, logger, serviceName, cfg)
 	if err != nil {
-		return nil, fmt.Errorf("creating metric provider: %w", err)
+		return nil, errors.Wrap(err, "creating metric provider")
 	}
 
 	// Set the global meter provider

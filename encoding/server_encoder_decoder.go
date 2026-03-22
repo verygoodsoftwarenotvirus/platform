@@ -5,10 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/xml"
-	"fmt"
 	"io"
 	"net/http"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/keys"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
@@ -183,7 +183,7 @@ func (e *serverEncoderDecoder) MustEncodeJSON(ctx context.Context, v any) []byte
 
 	var b bytes.Buffer
 	if err := json.NewEncoder(&b).Encode(v); err != nil {
-		e.panicker.Panic(fmt.Errorf("encoding JSON content: %w", err))
+		e.panicker.Panic(errors.Wrap(err, "encoding JSON content"))
 	}
 
 	return b.Bytes()
@@ -213,7 +213,7 @@ func (e *serverEncoderDecoder) MustEncode(ctx context.Context, v any) []byte {
 	}
 
 	if err := enc.Encode(v); err != nil {
-		e.panicker.Panic(fmt.Errorf("encoding %s content: %w", ContentTypeToString(e.contentType), err))
+		e.panicker.Panic(errors.Wrapf(err, "encoding %s content", ContentTypeToString(e.contentType)))
 	}
 
 	return b.Bytes()

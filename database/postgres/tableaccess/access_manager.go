@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v2/database"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 )
 
 type Privilege string
@@ -108,7 +109,7 @@ func (p *manager) UserCanAccessDatabase(ctx context.Context, username, dbName st
 // GrantUserAccessToTable grants a specific privilege on a table to a user.
 func (p *manager) GrantUserAccessToTable(ctx context.Context, username, schema, table, privilege string) error {
 	if !isValidPrivilege(Privilege(privilege)) {
-		return fmt.Errorf("invalid privilege: %s", privilege)
+		return errors.Newf("invalid privilege: %s", privilege)
 	}
 
 	_, err := p.db.ExecContext(ctx, fmt.Sprintf("GRANT %s ON TABLE %s TO %s", privilege, fmt.Sprintf("%s.%s", quoteIdent(schema), quoteIdent(table)), quoteIdent(username)))

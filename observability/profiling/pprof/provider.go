@@ -2,13 +2,13 @@ package pprof
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/pprof"
 	"runtime"
 	"strconv"
 	"time"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/profiling"
 )
@@ -66,7 +66,7 @@ type provider struct {
 func (p *provider) Start(ctx context.Context) error {
 	go func() {
 		if err := p.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			p.logger.Error("pprof server error", fmt.Errorf("%w", err))
+			p.logger.Error("pprof server error", err)
 		}
 	}()
 	return nil
@@ -75,7 +75,7 @@ func (p *provider) Start(ctx context.Context) error {
 func (p *provider) Shutdown(ctx context.Context) error {
 	if p.server != nil {
 		if err := p.server.Shutdown(ctx); err != nil {
-			return fmt.Errorf("shutting down pprof server: %w", err)
+			return errors.Wrap(err, "shutting down pprof server")
 		}
 		p.logger.Info("stopped pprof server")
 	}

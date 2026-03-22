@@ -20,7 +20,8 @@ const here = "github.com/verygoodsoftwarenotvirus/platform/v2/"
 func init() {
 	location, err := time.LoadLocation("America/Chicago")
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "WARNING: failed to load America/Chicago timezone, falling back to UTC: %v\n", err)
+		location = time.UTC
 	}
 
 	zerolog.CallerSkipFrameCount += 2

@@ -3,6 +3,7 @@ package zap
 import (
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/keys"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
@@ -28,7 +29,8 @@ func NewZapLogger(lvl logging.Level) logging.Logger {
 		atomicLevel.SetLevel(zap.DebugLevel)
 		l, err := zap.NewDevelopment(zap.AddCallerSkip(1))
 		if err != nil {
-			panic(err)
+			fmt.Fprintf(os.Stderr, "WARNING: failed to create development zap logger, falling back to noop: %v\n", err)
+			return logging.NewNoopLogger()
 		}
 
 		return &zapLogger{logger: l, atomicLevel: atomicLevel}
@@ -36,7 +38,8 @@ func NewZapLogger(lvl logging.Level) logging.Logger {
 		atomicLevel.SetLevel(zap.InfoLevel)
 		l, err := zap.NewProduction(zap.AddCallerSkip(1))
 		if err != nil {
-			panic(err)
+			fmt.Fprintf(os.Stderr, "WARNING: failed to create production zap logger, falling back to noop: %v\n", err)
+			return logging.NewNoopLogger()
 		}
 
 		return &zapLogger{logger: l, atomicLevel: atomicLevel}

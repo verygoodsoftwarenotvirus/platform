@@ -1,10 +1,10 @@
 package internalerrors
 
 import (
-	"fmt"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 )
 
 // NilConfigError returns a nil config error.
 func NilConfigError(name string) error {
-	return fmt.Errorf("nil config provided for %s", name)
+	return errors.Newf("nil config provided for %s", name)
 }

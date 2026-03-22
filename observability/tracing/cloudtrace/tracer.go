@@ -2,8 +2,8 @@ package cloudtrace
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 	o11yutils "github.com/verygoodsoftwarenotvirus/platform/v2/observability/utils"
@@ -29,7 +29,7 @@ func init() {
 func SetupCloudTrace(ctx context.Context, serviceName string, spanCollectionProbability float64, cfg *Config) (tracing.TracerProvider, error) {
 	exporter, err := texporter.New(texporter.WithProjectID(cfg.ProjectID))
 	if err != nil {
-		return nil, fmt.Errorf("setting up trace exporter: %w", err)
+		return nil, errors.Wrap(err, "setting up trace exporter")
 	}
 
 	tp := sdktrace.NewTracerProvider(

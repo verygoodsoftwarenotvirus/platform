@@ -2,11 +2,11 @@ package sse
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"sync"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/eventstream"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 )
@@ -76,12 +76,12 @@ func (s *sseStream) Send(ctx context.Context, event *eventstream.Event) error {
 
 	if event.Type != "" {
 		if _, err := fmt.Fprintf(s.w, "event: %s\n", event.Type); err != nil {
-			return fmt.Errorf("writing event type: %w", err)
+			return errors.Wrap(err, "writing event type")
 		}
 	}
 
 	if _, err := fmt.Fprintf(s.w, "data: %s\n\n", event.Payload); err != nil {
-		return fmt.Errorf("writing event data: %w", err)
+		return errors.Wrap(err, "writing event data")
 	}
 
 	s.flusher.Flush()

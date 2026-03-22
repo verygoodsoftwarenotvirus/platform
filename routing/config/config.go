@@ -2,8 +2,8 @@ package routingcfg
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/metrics"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
@@ -41,7 +41,7 @@ func ProvideRouter(cfg *Config, logger logging.Logger, tracerProvider tracing.Tr
 	case ProviderChi:
 		return chi.NewRouter(logger, tracerProvider, metricProvider, cfg.Chi), nil
 	default:
-		return nil, fmt.Errorf("unknown provider: %s", cfg.Provider)
+		return nil, errors.Newf("unknown provider: %s", cfg.Provider)
 	}
 }
 
@@ -51,7 +51,7 @@ func (cfg *Config) ProvideRouter(logger logging.Logger, tracerProvider tracing.T
 	case ProviderChi:
 		return chi.NewRouter(logger, tracerProvider, metricProvider, cfg.Chi), nil
 	default:
-		return nil, fmt.Errorf("unknown provider: %s", cfg.Provider)
+		return nil, errors.Newf("unknown provider: %s", cfg.Provider)
 	}
 }
 
@@ -61,6 +61,6 @@ func ProvideRouteParamManager(cfg *Config) (routing.RouteParamManager, error) {
 	case ProviderChi:
 		return chi.NewRouteParamManager(), nil
 	default:
-		return nil, fmt.Errorf("unknown provider: %s", cfg.Provider)
+		return nil, errors.Newf("unknown provider: %s", cfg.Provider)
 	}
 }

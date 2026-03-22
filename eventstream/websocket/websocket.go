@@ -3,12 +3,11 @@ package websocket
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"net/http"
 	"sync"
 	"time"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/eventstream"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
@@ -68,7 +67,7 @@ func NewUpgrader(tracerProvider tracing.TracerProvider, cfg *Config) *Upgrader {
 func (u *Upgrader) UpgradeToEventStream(w http.ResponseWriter, r *http.Request) (eventstream.EventStream, error) {
 	conn, err := u.wsUpgrader.Upgrade(w, r, nil)
 	if err != nil {
-		return nil, fmt.Errorf("upgrading to websocket: %w", err)
+		return nil, errors.Wrap(err, "upgrading to websocket")
 	}
 
 	return newWSStream(conn, u.heartbeatInterval, u.tracer), nil
@@ -78,7 +77,7 @@ func (u *Upgrader) UpgradeToEventStream(w http.ResponseWriter, r *http.Request) 
 func (u *Upgrader) UpgradeToBidirectionalStream(w http.ResponseWriter, r *http.Request) (eventstream.BidirectionalEventStream, error) {
 	conn, err := u.wsUpgrader.Upgrade(w, r, nil)
 	if err != nil {
-		return nil, fmt.Errorf("upgrading to websocket: %w", err)
+		return nil, errors.Wrap(err, "upgrading to websocket")
 	}
 
 	return newBidirectionalWSStream(conn, u.heartbeatInterval, u.tracer), nil

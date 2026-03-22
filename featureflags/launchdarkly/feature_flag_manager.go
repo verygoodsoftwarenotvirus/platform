@@ -2,7 +2,6 @@ package launchdarkly
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -76,7 +75,7 @@ func NewFeatureFlagManager(cfg *Config, logger logging.Logger, tracerProvider tr
 		cfg.InitTimeout,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("error initializing LaunchDarkly client: %w", err)
+		return nil, platformerrors.Wrap(err, "error initializing LaunchDarkly client")
 	}
 
 	provider := ofld.NewProvider(client)
@@ -84,7 +83,7 @@ func NewFeatureFlagManager(cfg *Config, logger logging.Logger, tracerProvider tr
 		if closeErr := client.Close(); closeErr != nil {
 			logger.Error("error closing OpenFeatureFlag client", closeErr)
 		}
-		return nil, fmt.Errorf("failed to set OpenFeature provider: %w", err)
+		return nil, platformerrors.Wrap(err, "failed to set OpenFeature provider")
 	}
 
 	ofClient := openfeature.NewClient(clientDomain)

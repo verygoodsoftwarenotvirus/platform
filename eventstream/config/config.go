@@ -2,10 +2,9 @@ package config
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"strings"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/eventstream"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/eventstream/sse"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/eventstream/websocket"
@@ -47,7 +46,7 @@ func ProvideEventStreamUpgrader(tracerProvider tracing.TracerProvider, cfg *Conf
 	case ProviderWebSocket:
 		return websocket.NewUpgrader(tracerProvider, cfg.WebSocket), nil
 	default:
-		return nil, fmt.Errorf("invalid eventstream provider: %q", cfg.Provider)
+		return nil, errors.Newf("invalid eventstream provider: %q", cfg.Provider)
 	}
 }
 
@@ -59,6 +58,6 @@ func ProvideBidirectionalEventStreamUpgrader(tracerProvider tracing.TracerProvid
 	case ProviderWebSocket:
 		return websocket.NewUpgrader(tracerProvider, cfg.WebSocket), nil
 	default:
-		return nil, fmt.Errorf("invalid eventstream provider: %q", cfg.Provider)
+		return nil, errors.Newf("invalid eventstream provider: %q", cfg.Provider)
 	}
 }

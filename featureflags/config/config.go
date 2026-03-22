@@ -34,6 +34,11 @@ type (
 
 var _ validation.ValidatableWithContext = (*Config)(nil)
 
+// EnsureDefaults sets sensible defaults for zero-valued fields.
+func (cfg *Config) EnsureDefaults() {
+	cfg.CircuitBreaker.EnsureDefaults()
+}
+
 // ValidateWithContext validates the config.
 func (c *Config) ValidateWithContext(ctx context.Context) error {
 	return validation.ValidateStructWithContext(ctx, c,

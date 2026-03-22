@@ -23,7 +23,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		}
 
 		err := cfg.ValidateWithContext(t.Context())
-		assert.NoError(T, err)
+		assert.NoError(t, err)
 	})
 
 	T.Run("missing collector endpoint", func(t *testing.T) {
@@ -34,8 +34,8 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		}
 
 		err := cfg.ValidateWithContext(t.Context())
-		assert.Error(T, err)
-		assert.Contains(T, err.Error(), "metricsCollectorEndpoint")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "metricsCollectorEndpoint")
 	})
 
 	T.Run("missing collection interval", func(t *testing.T) {
@@ -46,8 +46,8 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		}
 
 		err := cfg.ValidateWithContext(t.Context())
-		assert.Error(T, err)
-		assert.Contains(T, err.Error(), "collectionInterval")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "collectionInterval")
 	})
 
 	T.Run("empty collector endpoint", func(t *testing.T) {
@@ -59,8 +59,8 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		}
 
 		err := cfg.ValidateWithContext(t.Context())
-		assert.Error(T, err)
-		assert.Contains(T, err.Error(), "metricsCollectorEndpoint")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "metricsCollectorEndpoint")
 	})
 }
 
@@ -70,20 +70,20 @@ func TestSetupMetricsProvider(T *testing.T) {
 	T.Run("nil config", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := T.Context()
+		ctx := t.Context()
 		logger := logging.NewNoopLogger()
 
 		provider, shutdown, err := setupMetricsProvider(ctx, logger, "test-service", nil)
-		assert.Nil(T, provider)
-		assert.Nil(T, shutdown)
-		assert.Error(T, err)
-		assert.Equal(T, ErrNilConfig, err)
+		assert.Nil(t, provider)
+		assert.Nil(t, shutdown)
+		assert.Error(t, err)
+		assert.Equal(t, ErrNilConfig, err)
 	})
 
 	T.Run("valid config", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := T.Context()
+		ctx := t.Context()
 		logger := logging.NewNoopLogger()
 		cfg := &Config{
 			CollectorEndpoint:    "localhost:4317",
@@ -94,15 +94,15 @@ func TestSetupMetricsProvider(T *testing.T) {
 		}
 
 		provider, shutdown, err := setupMetricsProvider(ctx, logger, "test-service", cfg)
-		assert.NoError(T, err)
-		assert.NotNil(T, provider)
-		assert.NotNil(T, shutdown)
+		assert.NoError(t, err)
+		assert.NotNil(t, provider)
+		assert.NotNil(t, shutdown)
 	})
 
 	T.Run("with runtime metrics enabled", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := T.Context()
+		ctx := t.Context()
 		logger := logging.NewNoopLogger()
 		cfg := &Config{
 			CollectorEndpoint:    "localhost:4317",
@@ -113,15 +113,15 @@ func TestSetupMetricsProvider(T *testing.T) {
 		}
 
 		provider, shutdown, err := setupMetricsProvider(ctx, logger, "test-service", cfg)
-		assert.NoError(T, err)
-		assert.NotNil(T, provider)
-		assert.NotNil(T, shutdown)
+		assert.NoError(t, err)
+		assert.NotNil(t, provider)
+		assert.NotNil(t, shutdown)
 	})
 
 	T.Run("with host metrics enabled", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := T.Context()
+		ctx := t.Context()
 		logger := logging.NewNoopLogger()
 		cfg := &Config{
 			CollectorEndpoint:    "localhost:4317",
@@ -132,9 +132,9 @@ func TestSetupMetricsProvider(T *testing.T) {
 		}
 
 		provider, shutdown, err := setupMetricsProvider(ctx, logger, "test-service", cfg)
-		assert.NoError(T, err)
-		assert.NotNil(T, provider)
-		assert.NotNil(T, shutdown)
+		assert.NoError(t, err)
+		assert.NotNil(t, provider)
+		assert.NotNil(t, shutdown)
 	})
 }
 
@@ -144,19 +144,19 @@ func TestProvideMetricsProvider(T *testing.T) {
 	T.Run("nil config", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := T.Context()
+		ctx := t.Context()
 		logger := logging.NewNoopLogger()
 
 		provider, err := ProvideMetricsProvider(ctx, logger, "test-service", nil)
-		assert.Nil(T, provider)
-		assert.Error(T, err)
-		assert.Equal(T, ErrNilConfig, err)
+		assert.Nil(t, provider)
+		assert.Error(t, err)
+		assert.Equal(t, ErrNilConfig, err)
 	})
 
 	T.Run("valid config", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := T.Context()
+		ctx := t.Context()
 		logger := logging.NewNoopLogger()
 		cfg := &Config{
 			CollectorEndpoint:    "localhost:4317",
@@ -167,9 +167,9 @@ func TestProvideMetricsProvider(T *testing.T) {
 		}
 
 		provider, err := ProvideMetricsProvider(ctx, logger, "test-service", cfg)
-		assert.NoError(T, err)
-		assert.NotNil(T, provider)
-		assert.Implements(T, (*metrics.Provider)(nil), provider)
+		assert.NoError(t, err)
+		assert.NotNil(t, provider)
+		assert.Implements(t, (*metrics.Provider)(nil), provider)
 	})
 }
 

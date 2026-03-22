@@ -2,13 +2,13 @@ package tracingcfg
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing/cloudtrace"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing/oteltrace"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing/cloudtrace"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing/oteltrace"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
@@ -44,7 +44,7 @@ func (c *Config) ProvideTracerProvider(ctx context.Context, l logging.Logger) (t
 		logger.WithValue("otel", c.Otel).Info("configuring otelgrpc provider")
 		tp, err := oteltrace.SetupOtelGRPC(ctx, c.ServiceName, c.SpanCollectionProbability, c.Otel)
 		if err != nil {
-			return nil, fmt.Errorf("configuring otelgrpc provider: %w", err)
+			return nil, errors.Wrap(err, "configuring otelgrpc provider")
 		}
 
 		return tp, nil
@@ -52,7 +52,7 @@ func (c *Config) ProvideTracerProvider(ctx context.Context, l logging.Logger) (t
 		logger.Info("configuring cloud trace provider")
 		tp, err := cloudtrace.SetupCloudTrace(ctx, c.ServiceName, c.SpanCollectionProbability, c.CloudTrace)
 		if err != nil {
-			return nil, fmt.Errorf("configuring cloud trace provider: %w", err)
+			return nil, errors.Wrap(err, "configuring cloud trace provider")
 		}
 
 		return tp, nil
@@ -66,7 +66,7 @@ func (c *Config) ProvideTracerProvider(ctx context.Context, l logging.Logger) (t
 func (c *Config) ProvideTracer(ctx context.Context, l logging.Logger, name string) (tracing.Tracer, error) {
 	tp, err := c.ProvideTracerProvider(ctx, l)
 	if err != nil {
-		return nil, fmt.Errorf("configuring tracing provider: %w", err)
+		return nil, errors.Wrap(err, "configuring tracing provider")
 	}
 
 	return tracing.NewTracer(tp.Tracer(name)), nil

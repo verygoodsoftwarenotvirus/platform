@@ -3,11 +3,11 @@ package algolia
 import (
 	"fmt"
 
-	"github.com/verygoodsoftwarenotvirus/platform/circuitbreaking"
-	platformerrors "github.com/verygoodsoftwarenotvirus/platform/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
-	textsearch "github.com/verygoodsoftwarenotvirus/platform/search/text"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/circuitbreaking"
+	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
+	textsearch "github.com/verygoodsoftwarenotvirus/platform/v2/search/text"
 
 	algolia "github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 )

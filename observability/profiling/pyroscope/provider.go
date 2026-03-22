@@ -2,12 +2,12 @@ package pyroscope
 
 import (
 	"context"
-	"fmt"
 	"maps"
 	"runtime"
 
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/profiling"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/profiling"
 
 	"github.com/grafana/pyroscope-go"
 )
@@ -49,7 +49,7 @@ func ProvideProfilingProvider(ctx context.Context, logger logging.Logger, servic
 
 	profiler, err := pyroscope.Start(pyroCfg)
 	if err != nil {
-		return nil, fmt.Errorf("starting pyroscope profiler: %w", err)
+		return nil, errors.Wrap(err, "starting pyroscope profiler")
 	}
 
 	logger.WithValue("server_address", cfg.ServerAddress).

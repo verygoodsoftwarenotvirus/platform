@@ -3,7 +3,7 @@ package llmcfg
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/llm"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/llm"
 
 	"github.com/google/wire"
 )

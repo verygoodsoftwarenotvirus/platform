@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/gob"
-	"fmt"
 	"strings"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/cache"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/cache"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 
 	"github.com/go-redis/redis/v8"
 )
@@ -42,7 +42,7 @@ func (i *redisCacheImpl[T]) Get(ctx context.Context, key string) (*T, error) {
 
 	var x *T
 	if err = gob.NewDecoder(b).Decode(&x); err != nil {
-		return nil, fmt.Errorf("decoding from cache: %w", err)
+		return nil, errors.Wrap(err, "decoding from cache")
 	}
 
 	if x == nil {
@@ -55,7 +55,7 @@ func (i *redisCacheImpl[T]) Get(ctx context.Context, key string) (*T, error) {
 func (i *redisCacheImpl[T]) Set(ctx context.Context, key string, value *T) error {
 	var b bytes.Buffer
 	if err := gob.NewEncoder(&b).Encode(value); err != nil {
-		return fmt.Errorf("encoding for cache: %w", err)
+		return errors.Wrap(err, "encoding for cache")
 	}
 
 	if setErr := i.client.Set(ctx, key, b.String(), i.expiration).Err(); setErr != nil {

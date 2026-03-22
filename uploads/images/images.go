@@ -14,10 +14,10 @@ import (
 	"strconv"
 	"strings"
 
-	platformerrors "github.com/verygoodsoftwarenotvirus/platform/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	"github.com/hashicorp/go-multierror"
 )
@@ -32,7 +32,7 @@ const (
 
 var (
 	// ErrInvalidImageContentType is what we return to indicate the provided image was of the wrong type.
-	ErrInvalidImageContentType = platformerrors.New("invalid image content type")
+	ErrInvalidImageContentType = errors.New("invalid image content type")
 )
 
 type (
@@ -67,7 +67,7 @@ func (i *Upload) Write(w http.ResponseWriter) error {
 	w.Header().Set("RawHTML-Length", strconv.Itoa(i.Size))
 
 	if _, err := w.Write(i.Data); err != nil {
-		return fmt.Errorf("writing image to HTTP response: %w", err)
+		return errors.Wrap(err, "writing image to HTTP response")
 	}
 
 	return nil
@@ -183,7 +183,7 @@ func (p *uploadProcessor) ProcessFiles(ctx context.Context, req *http.Request, f
 
 	if req.MultipartForm == nil {
 		if err := req.ParseMultipartForm(defaultMaxMemory); err != nil {
-			return nil, fmt.Errorf("parsing multipart form: %w", err)
+			return nil, errors.Wrap(err, "parsing multipart form")
 		}
 	}
 

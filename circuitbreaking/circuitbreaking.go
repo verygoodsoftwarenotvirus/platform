@@ -3,12 +3,12 @@ package circuitbreaking
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 
-	"github.com/verygoodsoftwarenotvirus/platform/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/internalerrors"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/internalerrors"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/metrics"
 
 	circuit "github.com/rubyist/circuitbreaker"
 )
@@ -46,7 +46,7 @@ func (b *baseImplementation) CannotProceed() bool {
 // EnsureCircuitBreaker ensures a valid CircuitBreaker is made available.
 func EnsureCircuitBreaker(breaker CircuitBreaker) CircuitBreaker {
 	if breaker == nil {
-		log.Println("NOOP CircuitBreaker implementation in use.")
+		slog.Info("NOOP CircuitBreaker implementation in use.")
 		return NewNoopCircuitBreaker()
 	}
 
@@ -91,8 +91,7 @@ func (cfg *Config) ProvideCircuitBreaker(ctx context.Context, logger logging.Log
 		WindowBuckets: circuit.DefaultWindowBuckets,
 	})
 
-	//nolint:contextcheck // I actually want to use a whatever context here.
-	go handleCircuitBreakerEvents(logger, cb, failureCounter, resetCounter, brokenCounter)
+	go handleCircuitBreakerEvents(ctx, logger, cb, failureCounter, resetCounter, brokenCounter)
 
 	return &baseImplementation{
 		circuitBreaker: cb,
@@ -100,13 +99,13 @@ func (cfg *Config) ProvideCircuitBreaker(ctx context.Context, logger logging.Log
 }
 
 func handleCircuitBreakerEvents(
+	ctx context.Context,
 	logger logging.Logger,
 	cb *circuit.Breaker,
 	failureCounter,
 	resetCounter,
 	brokenCounter metrics.Int64Counter,
 ) {
-	ctx := context.Background()
 	for be := range <-cb.Subscribe() {
 		switch be {
 		case circuit.BreakerTripped:

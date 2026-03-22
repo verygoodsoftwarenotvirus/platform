@@ -2,17 +2,17 @@ package analyticscfg
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/analytics"
-	"github.com/verygoodsoftwarenotvirus/platform/analytics/posthog"
-	"github.com/verygoodsoftwarenotvirus/platform/analytics/rudderstack"
-	"github.com/verygoodsoftwarenotvirus/platform/analytics/segment"
-	"github.com/verygoodsoftwarenotvirus/platform/circuitbreaking"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/analytics"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/analytics/posthog"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/analytics/rudderstack"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/analytics/segment"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/circuitbreaking"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
@@ -51,6 +51,22 @@ type (
 
 var _ validation.ValidatableWithContext = (*Config)(nil)
 
+// EnsureDefaults sets sensible defaults for zero-valued fields.
+func (cfg *SourceConfig) EnsureDefaults() {
+	cfg.CircuitBreaker.EnsureDefaults()
+}
+
+// EnsureDefaults sets sensible defaults for zero-valued fields.
+func (cfg *Config) EnsureDefaults() {
+	cfg.SourceConfig.EnsureDefaults()
+	if cfg.ProxySources.IOS != nil {
+		cfg.ProxySources.IOS.EnsureDefaults()
+	}
+	if cfg.ProxySources.Web != nil {
+		cfg.ProxySources.Web.EnsureDefaults()
+	}
+}
+
 // ToMap returns a map of source name to config for use by the multisource reporter. Skips nil entries.
 func (p ProxySourcesConfig) ToMap() map[string]*SourceConfig {
 	m := make(map[string]*SourceConfig)
@@ -82,23 +98,23 @@ func (cfg *SourceConfig) ProvideCollector(
 ) (analytics.EventReporter, error) {
 	cb, err := cfg.CircuitBreaker.ProvideCircuitBreaker(ctx, logger, metricsProvider)
 	if err != nil {
-		return nil, fmt.Errorf("could not create analytics circuit breaker: %w", err)
+		return nil, errors.Wrap(err, "could not create analytics circuit breaker")
 	}
 
 	switch strings.ToLower(strings.TrimSpace(cfg.Provider)) {
 	case ProviderSegment:
 		if cfg.Segment == nil {
-			return nil, fmt.Errorf("segment provider configured but segment config is nil")
+			return nil, errors.New("segment provider configured but segment config is nil")
 		}
 		return segment.NewSegmentEventReporter(logger, tracerProvider, cfg.Segment.APIToken, cb)
 	case ProviderRudderstack:
 		if cfg.Rudderstack == nil {
-			return nil, fmt.Errorf("rudderstack provider configured but rudderstack config is nil")
+			return nil, errors.New("rudderstack provider configured but rudderstack config is nil")
 		}
 		return rudderstack.NewRudderstackEventReporter(logger, tracerProvider, cfg.Rudderstack, cb)
 	case ProviderPostHog:
 		if cfg.Posthog == nil {
-			return nil, fmt.Errorf("posthog provider configured but posthog config is nil")
+			return nil, errors.New("posthog provider configured but posthog config is nil")
 		}
 		return posthog.NewPostHogEventReporter(logger, tracerProvider, cfg.Posthog.APIKey, cb)
 	default:

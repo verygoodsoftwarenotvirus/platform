@@ -2,15 +2,14 @@ package notifications
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/notifications/apns"
-	"github.com/verygoodsoftwarenotvirus/platform/notifications/fcm"
-	"github.com/verygoodsoftwarenotvirus/platform/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/notifications/apns"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/notifications/fcm"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 )
 
 // ErrPlatformNotSupported is returned when attempting to send to a platform
@@ -66,6 +65,6 @@ func (s *MultiPlatformPushSender) SendPush(ctx context.Context, platform, token 
 		}
 		return s.fcmSender.Send(ctx, token, msg.Title, msg.Body)
 	default:
-		return observability.PrepareAndLogError(fmt.Errorf("unknown platform %q", platform), logger, span, "sending apns notification")
+		return observability.PrepareAndLogError(errors.Newf("unknown platform %q", platform), logger, span, "sending apns notification")
 	}
 }

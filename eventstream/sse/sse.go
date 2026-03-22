@@ -2,12 +2,13 @@ package sse
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"sync"
 
-	"github.com/verygoodsoftwarenotvirus/platform/eventstream"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/eventstream"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 )
 
 var (
@@ -16,11 +17,15 @@ var (
 )
 
 // Upgrader upgrades HTTP connections to SSE event streams.
-type Upgrader struct{}
+type Upgrader struct {
+	tracer tracing.Tracer
+}
 
 // NewUpgrader creates a new SSE Upgrader.
-func NewUpgrader() *Upgrader {
-	return &Upgrader{}
+func NewUpgrader(tracerProvider tracing.TracerProvider) *Upgrader {
+	return &Upgrader{
+		tracer: tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer("sse_stream")),
+	}
 }
 
 // UpgradeToEventStream upgrades an HTTP connection to a unidirectional SSE event stream.
@@ -42,10 +47,12 @@ func (u *Upgrader) UpgradeToEventStream(w http.ResponseWriter, r *http.Request) 
 		flusher: flusher,
 		cancel:  cancel,
 		done:    ctx.Done(),
+		tracer:  u.tracer,
 	}, nil
 }
 
 type sseStream struct {
+	tracer  tracing.Tracer
 	w       http.ResponseWriter
 	flusher http.Flusher
 	cancel  context.CancelFunc
@@ -54,7 +61,10 @@ type sseStream struct {
 }
 
 // Send writes an event to the SSE stream in standard SSE format.
-func (s *sseStream) Send(_ context.Context, event *eventstream.Event) error {
+func (s *sseStream) Send(ctx context.Context, event *eventstream.Event) error {
+	_, span := s.tracer.StartCustomSpan(ctx, "sse_send")
+	defer span.End()
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -66,12 +76,12 @@ func (s *sseStream) Send(_ context.Context, event *eventstream.Event) error {
 
 	if event.Type != "" {
 		if _, err := fmt.Fprintf(s.w, "event: %s\n", event.Type); err != nil {
-			return fmt.Errorf("writing event type: %w", err)
+			return errors.Wrap(err, "writing event type")
 		}
 	}
 
 	if _, err := fmt.Fprintf(s.w, "data: %s\n\n", event.Payload); err != nil {
-		return fmt.Errorf("writing event data: %w", err)
+		return errors.Wrap(err, "writing event data")
 	}
 
 	s.flusher.Flush()

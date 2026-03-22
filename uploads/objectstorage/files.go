@@ -2,8 +2,9 @@ package objectstorage
 
 import (
 	"context"
-	"fmt"
 	"io"
+
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 )
 
 // SaveFile saves a file to the blob.
@@ -12,7 +13,7 @@ func (u *Uploader) SaveFile(ctx context.Context, path string, content []byte) er
 	defer span.End()
 
 	if err := u.bucket.WriteAll(ctx, path, content, nil); err != nil {
-		return fmt.Errorf("writing file content: %w", err)
+		return errors.Wrap(err, "writing file content")
 	}
 
 	return nil
@@ -25,7 +26,7 @@ func (u *Uploader) ReadFile(ctx context.Context, path string) ([]byte, error) {
 
 	r, err := u.bucket.NewReader(ctx, path, nil)
 	if err != nil {
-		return nil, fmt.Errorf("fetching file: %w", err)
+		return nil, errors.Wrap(err, "fetching file")
 	}
 
 	defer func() {
@@ -36,7 +37,7 @@ func (u *Uploader) ReadFile(ctx context.Context, path string) ([]byte, error) {
 
 	fileBytes, err := io.ReadAll(r)
 	if err != nil {
-		return nil, fmt.Errorf("reading file: %w", err)
+		return nil, errors.Wrap(err, "reading file")
 	}
 
 	return fileBytes, nil

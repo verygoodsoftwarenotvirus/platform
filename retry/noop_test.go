@@ -9,10 +9,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNoopPolicy_Execute(t *testing.T) {
-	t.Parallel()
+func TestNoopPolicy_Execute(T *testing.T) {
+	T.Parallel()
 
-	t.Run("executes exactly once on success", func(t *testing.T) {
+	T.Run("executes exactly once on success", func(t *testing.T) {
 		t.Parallel()
 
 		policy := NewNoopPolicy()
@@ -28,7 +28,7 @@ func TestNoopPolicy_Execute(t *testing.T) {
 		assert.Equal(t, 1, attempts)
 	})
 
-	t.Run("executes exactly once on failure", func(t *testing.T) {
+	T.Run("executes exactly once on failure", func(t *testing.T) {
 		t.Parallel()
 
 		policy := NewNoopPolicy()

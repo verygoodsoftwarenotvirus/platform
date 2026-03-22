@@ -5,18 +5,18 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/xml"
-	"fmt"
 	"io"
 	"net/http"
 
-	"github.com/verygoodsoftwarenotvirus/platform/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/keys"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/panicking"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/keys"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/panicking"
 
 	"github.com/BurntSushi/toml"
-	"github.com/go-yaml/yaml"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -42,7 +42,6 @@ type (
 		EncodeResponseWithStatus(ctx context.Context, res http.ResponseWriter, val any, statusCode int)
 		DecodeRequest(ctx context.Context, req *http.Request, dest any) error
 		DecodeBytes(ctx context.Context, payload []byte, dest any) error
-		// TODO: add DecodeContentType and EncodeContentType that take content type as arguments.
 		MustEncode(ctx context.Context, v any) []byte
 		MustEncodeJSON(ctx context.Context, v any) []byte
 	}
@@ -184,7 +183,7 @@ func (e *serverEncoderDecoder) MustEncodeJSON(ctx context.Context, v any) []byte
 
 	var b bytes.Buffer
 	if err := json.NewEncoder(&b).Encode(v); err != nil {
-		e.panicker.Panic(fmt.Errorf("encoding JSON content: %w", err))
+		e.panicker.Panic(errors.Wrap(err, "encoding JSON content"))
 	}
 
 	return b.Bytes()
@@ -214,7 +213,7 @@ func (e *serverEncoderDecoder) MustEncode(ctx context.Context, v any) []byte {
 	}
 
 	if err := enc.Encode(v); err != nil {
-		e.panicker.Panic(fmt.Errorf("encoding %s content: %w", ContentTypeToString(e.contentType), err))
+		e.panicker.Panic(errors.Wrapf(err, "encoding %s content", ContentTypeToString(e.contentType)))
 	}
 
 	return b.Bytes()

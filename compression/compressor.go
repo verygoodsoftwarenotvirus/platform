@@ -2,9 +2,9 @@ package compression
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
 	"io"
+
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 
 	"github.com/klauspost/compress/s2"
 	"github.com/klauspost/compress/zstd"
@@ -74,7 +74,7 @@ func (c *compressor) CompressBytes(in []byte) ([]byte, error) {
 
 		return b.Bytes(), nil
 	default:
-		return nil, fmt.Errorf("unsupported compression algorithm: %s", c.algo)
+		return nil, errors.Newf("unsupported compression algorithm: %s", c.algo)
 	}
 }
 
@@ -103,6 +103,6 @@ func (c *compressor) DecompressBytes(in []byte) ([]byte, error) {
 
 		return b.Bytes(), nil
 	default:
-		return nil, fmt.Errorf("unsupported compression algorithm: %s", c.algo)
+		return nil, errors.Newf("unsupported compression algorithm: %s", c.algo)
 	}
 }

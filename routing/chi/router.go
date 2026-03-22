@@ -1,7 +1,6 @@
 package chi
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -10,10 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/routing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/routing"
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
@@ -226,7 +226,7 @@ func (r *router) AddRoute(method, path string, handler http.HandlerFunc, middlew
 	case http.MethodTrace:
 		r.router.With(convertMiddleware(middleware...)...).Trace(path, handler)
 	default:
-		return fmt.Errorf("%s: %w", method, errInvalidMethod)
+		return errors.Wrapf(errInvalidMethod, "%s", method)
 	}
 
 	return nil

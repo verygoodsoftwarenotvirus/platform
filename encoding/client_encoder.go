@@ -6,16 +6,16 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"encoding/xml"
-	"fmt"
 	"io"
 
-	"github.com/verygoodsoftwarenotvirus/platform/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	"github.com/BurntSushi/toml"
-	"github.com/go-yaml/yaml"
 	"github.com/keith-turner/ecoji/v2"
+	"gopkg.in/yaml.v3"
 )
 
 type (
@@ -98,7 +98,7 @@ func (e *clientEncoder) Encode(ctx context.Context, dest io.Writer, data any) er
 func marshalEmoji(v any) ([]byte, error) {
 	var gobWriter bytes.Buffer
 	if err := gob.NewEncoder(&gobWriter).Encode(v); err != nil {
-		return nil, fmt.Errorf("encoding to gob: %w", err)
+		return nil, errors.Wrap(err, "encoding to gob")
 	}
 
 	r := bytes.NewBuffer(gobWriter.Bytes())
@@ -106,7 +106,7 @@ func marshalEmoji(v any) ([]byte, error) {
 
 	// lord help me, I don't know why it's 76 here
 	if err := ecoji.EncodeV2(r, w, 76); err != nil {
-		return nil, fmt.Errorf("encoding to emoji: %w", err)
+		return nil, errors.Wrap(err, "encoding to emoji")
 	}
 
 	return w.Bytes(), nil
@@ -116,7 +116,7 @@ func unmarshalEmoji(data []byte, v any) error {
 	w := bytes.NewBuffer([]byte{})
 
 	if err := ecoji.Decode(bytes.NewReader(data), w); err != nil {
-		return fmt.Errorf("decoding emoji: %w", err)
+		return errors.Wrap(err, "decoding emoji")
 	}
 
 	return gob.NewDecoder(w).Decode(v)

@@ -1,7 +1,7 @@
 package routingcfg
 
 import (
-	"github.com/verygoodsoftwarenotvirus/platform/routing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/routing"
 
 	"github.com/samber/do/v2"
 )

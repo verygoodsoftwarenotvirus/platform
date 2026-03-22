@@ -6,7 +6,7 @@ import (
 	"io"
 	"time"
 
-	platformerrors "github.com/verygoodsoftwarenotvirus/platform/errors"
+	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 )
 
 var (

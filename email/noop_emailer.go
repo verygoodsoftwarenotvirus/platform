@@ -3,7 +3,7 @@ package email
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
 )
 
 var _ Emailer = (*NoopEmailer)(nil)

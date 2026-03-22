@@ -7,16 +7,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestConfig_ValidateWithContext(t *testing.T) {
-	t.Parallel()
+func TestConfig_ValidateWithContext(T *testing.T) {
+	T.Parallel()
 
-	t.Run("valid", func(t *testing.T) {
+	T.Run("valid", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{ProjectID: "my-project"}
 		require.NoError(t, cfg.ValidateWithContext(context.Background()))
 	})
 
-	t.Run("invalid missing ProjectID", func(t *testing.T) {
+	T.Run("invalid missing ProjectID", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{ProjectID: ""}
 		require.Error(t, cfg.ValidateWithContext(context.Background()))

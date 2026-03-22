@@ -2,15 +2,14 @@ package posthog
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/verygoodsoftwarenotvirus/platform/circuitbreaking"
-	platformerrors "github.com/verygoodsoftwarenotvirus/platform/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/featureflags"
-	"github.com/verygoodsoftwarenotvirus/platform/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/keys"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/circuitbreaking"
+	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/featureflags"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/keys"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	openfeatureposthog "github.com/dhaus67/openfeature-posthog-go"
 	"github.com/open-feature/go-sdk/openfeature"
@@ -47,11 +46,11 @@ func NewFeatureFlagManager(cfg *Config, logger logging.Logger, tracerProvider tr
 	cfg.CircuitBreakerConfig.EnsureDefaults()
 
 	if cfg.ProjectAPIKey == "" {
-		return nil, fmt.Errorf("missing credential 'ProjectAPIKey': %w", ErrMissingCredentials)
+		return nil, platformerrors.Wrap(ErrMissingCredentials, "missing credential 'ProjectAPIKey'")
 	}
 
 	if cfg.PersonalAPIKey == "" {
-		return nil, fmt.Errorf("missing credential 'PersonalAPIKey': %w", ErrMissingCredentials)
+		return nil, platformerrors.Wrap(ErrMissingCredentials, "missing credential 'PersonalAPIKey'")
 	}
 
 	phc := posthog.Config{
@@ -67,7 +66,7 @@ func NewFeatureFlagManager(cfg *Config, logger logging.Logger, tracerProvider tr
 		phc,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create posthog client: %w", err)
+		return nil, platformerrors.Wrap(err, "failed to create posthog client")
 	}
 
 	provider := openfeatureposthog.NewProvider(client)
@@ -75,7 +74,7 @@ func NewFeatureFlagManager(cfg *Config, logger logging.Logger, tracerProvider tr
 		if closeErr := client.Close(); closeErr != nil {
 			logger.Error("error closing OpenFeatureFlag client", closeErr)
 		}
-		return nil, fmt.Errorf("failed to set OpenFeature provider: %w", err)
+		return nil, platformerrors.Wrap(err, "failed to set OpenFeature provider")
 	}
 
 	ofClient := openfeature.NewClient(clientDomain)

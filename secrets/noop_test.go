@@ -8,21 +8,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNoopSecretSource_GetSecret(t *testing.T) {
-	t.Parallel()
+func TestNoopSecretSource_GetSecret(T *testing.T) {
+	T.Parallel()
 
-	source := NewNoopSecretSource()
-	ctx := context.Background()
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
 
-	got, err := source.GetSecret(ctx, "any-key")
-	require.NoError(t, err)
-	assert.Empty(t, got)
+		source := NewNoopSecretSource()
+		ctx := context.Background()
+
+		got, err := source.GetSecret(ctx, "any-key")
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
 }
 
-func TestNoopSecretSource_Close(t *testing.T) {
-	t.Parallel()
+func TestNoopSecretSource_Close(T *testing.T) {
+	T.Parallel()
 
-	source := NewNoopSecretSource()
-	err := source.Close()
-	require.NoError(t, err)
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		source := NewNoopSecretSource()
+		err := source.Close()
+		require.NoError(t, err)
+	})
 }

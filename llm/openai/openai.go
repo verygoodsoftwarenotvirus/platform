@@ -2,10 +2,10 @@ package openai
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/verygoodsoftwarenotvirus/platform/llm"
-	"github.com/verygoodsoftwarenotvirus/platform/pointer"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/llm"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/pointer"
 
 	anyllm "github.com/mozilla-ai/any-llm-go"
 	anyllmopenai "github.com/mozilla-ai/any-llm-go/providers/openai"
@@ -14,7 +14,7 @@ import (
 // NewProvider creates a new OpenAI-backed LLM provider.
 func NewProvider(cfg *Config) (llm.Provider, error) {
 	if cfg == nil {
-		return nil, fmt.Errorf("openai config is required")
+		return nil, errors.New("openai config is required")
 	}
 
 	opts := []anyllm.Option{
@@ -29,7 +29,7 @@ func NewProvider(cfg *Config) (llm.Provider, error) {
 
 	provider, err := anyllmopenai.New(opts...)
 	if err != nil {
-		return nil, fmt.Errorf("create openai provider: %w", err)
+		return nil, errors.Wrap(err, "create openai provider")
 	}
 
 	return &openaiProvider{

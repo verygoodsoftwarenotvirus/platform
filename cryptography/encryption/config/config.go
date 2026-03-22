@@ -4,11 +4,11 @@ import (
 	"context"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/cryptography/encryption"
-	"github.com/verygoodsoftwarenotvirus/platform/cryptography/encryption/aes"
-	"github.com/verygoodsoftwarenotvirus/platform/cryptography/encryption/salsa20"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/cryptography/encryption"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/cryptography/encryption/aes"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/cryptography/encryption/salsa20"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )

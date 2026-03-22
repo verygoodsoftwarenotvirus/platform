@@ -3,18 +3,19 @@ package indexing
 import (
 	"context"
 	"database/sql"
-	"errors"
+	stderrors "errors"
 	"fmt"
 	"sync"
 
-	"github.com/verygoodsoftwarenotvirus/platform/messagequeue"
-	msgconfig "github.com/verygoodsoftwarenotvirus/platform/messagequeue/config"
-	"github.com/verygoodsoftwarenotvirus/platform/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/random"
-	textsearch "github.com/verygoodsoftwarenotvirus/platform/search/text"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/messagequeue"
+	msgconfig "github.com/verygoodsoftwarenotvirus/platform/v2/messagequeue/config"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/random"
+	textsearch "github.com/verygoodsoftwarenotvirus/platform/v2/search/text"
 
 	"github.com/hashicorp/go-multierror"
 	"go.opentelemetry.io/otel/attribute"
@@ -94,13 +95,13 @@ func (i *IndexScheduler) IndexTypes(ctx context.Context) error {
 	i.indexManagementHat.RLock()
 	actionFunc, ok := i.indexFunctions[chosenIndex]
 	if !ok {
-		return fmt.Errorf("unknown index type %s", chosenIndex)
+		return errors.Newf("unknown index type %s", chosenIndex)
 	}
 	i.indexManagementHat.RUnlock()
 
 	ids, err := actionFunc(ctx)
 	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
+		if !stderrors.Is(err, sql.ErrNoRows) {
 			observability.AcknowledgeError(err, logger, span, "getting %s IDs that need search indexing", chosenIndex)
 			return err
 		}

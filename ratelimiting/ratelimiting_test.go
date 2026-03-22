@@ -8,10 +8,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestInMemoryRateLimiter_Allow(t *testing.T) {
-	t.Parallel()
+func TestInMemoryRateLimiter_Allow(T *testing.T) {
+	T.Parallel()
 
-	t.Run("allows within burst", func(t *testing.T) {
+	T.Run("allows within burst", func(t *testing.T) {
 		t.Parallel()
 
 		limiter := NewInMemoryRateLimiter(10, 3)
@@ -36,7 +36,7 @@ func TestInMemoryRateLimiter_Allow(t *testing.T) {
 		assert.False(t, allowed)
 	})
 
-	t.Run("different keys have independent limits", func(t *testing.T) {
+	T.Run("different keys have independent limits", func(t *testing.T) {
 		t.Parallel()
 
 		limiter := NewInMemoryRateLimiter(10, 1)
@@ -61,7 +61,7 @@ func TestInMemoryRateLimiter_Allow(t *testing.T) {
 		assert.False(t, allowed)
 	})
 
-	t.Run("Close is safe", func(t *testing.T) {
+	T.Run("Close is safe", func(t *testing.T) {
 		t.Parallel()
 
 		limiter := NewInMemoryRateLimiter(10, 1)

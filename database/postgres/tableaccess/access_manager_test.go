@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/pointer"
-	"github.com/verygoodsoftwarenotvirus/platform/retry"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/pointer"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/retry"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/stretchr/testify/assert"
@@ -106,8 +106,8 @@ func buildDatabaseConnectionForTest(t *testing.T, ctx context.Context) (*sql.DB,
 	return db, container
 }
 
-func TestQuoteIdent(t *testing.T) {
-	t.Parallel()
+func TestQuoteIdent(T *testing.T) {
+	T.Parallel()
 
 	tests := []struct {
 		name     string
@@ -147,7 +147,7 @@ func TestQuoteIdent(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		T.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result := quoteIdent(tt.input)
 			assert.Equal(t, tt.expected, result)
@@ -155,8 +155,8 @@ func TestQuoteIdent(t *testing.T) {
 	}
 }
 
-func TestQuoteLiteral(t *testing.T) {
-	t.Parallel()
+func TestQuoteLiteral(T *testing.T) {
+	T.Parallel()
 
 	tests := []struct {
 		name     string
@@ -197,7 +197,7 @@ word'`,
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		T.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result := quoteLiteral(tt.input)
 			assert.Equal(t, tt.expected, result)
@@ -205,8 +205,8 @@ word'`,
 	}
 }
 
-func TestIsValidPrivilege(t *testing.T) {
-	t.Parallel()
+func TestIsValidPrivilege(T *testing.T) {
+	T.Parallel()
 
 	tests := []struct {
 		name      string
@@ -271,7 +271,7 @@ func TestIsValidPrivilege(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		T.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result := isValidPrivilege(tt.privilege)
 			assert.Equal(t, tt.expected, result)

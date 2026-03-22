@@ -25,10 +25,10 @@ func (m *mockChecker) Check(ctx context.Context) error {
 	return nil
 }
 
-func TestRegistry_CheckAll(t *testing.T) {
-	t.Parallel()
+func TestRegistry_CheckAll(T *testing.T) {
+	T.Parallel()
 
-	t.Run("empty registry returns up", func(t *testing.T) {
+	T.Run("empty registry returns up", func(t *testing.T) {
 		t.Parallel()
 
 		reg := NewRegistry()
@@ -41,7 +41,7 @@ func TestRegistry_CheckAll(t *testing.T) {
 		assert.Empty(t, result.Components)
 	})
 
-	t.Run("all checkers up", func(t *testing.T) {
+	T.Run("all checkers up", func(t *testing.T) {
 		t.Parallel()
 
 		reg := NewRegistry()
@@ -58,7 +58,7 @@ func TestRegistry_CheckAll(t *testing.T) {
 		assert.Equal(t, ComponentResult{Status: StatusUp}, result.Components["b"])
 	})
 
-	t.Run("one checker down", func(t *testing.T) {
+	T.Run("one checker down", func(t *testing.T) {
 		t.Parallel()
 
 		reg := NewRegistry()
@@ -80,7 +80,7 @@ func TestRegistry_CheckAll(t *testing.T) {
 		assert.Equal(t, ComponentResult{Status: StatusDown, Message: "connection refused"}, result.Components["down"])
 	})
 
-	t.Run("ignores nil checker", func(t *testing.T) {
+	T.Run("ignores nil checker", func(t *testing.T) {
 		t.Parallel()
 
 		reg := NewRegistry()

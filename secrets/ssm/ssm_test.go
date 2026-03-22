@@ -12,10 +12,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewSSMSecretSource(t *testing.T) {
-	t.Parallel()
+func TestNewSSMSecretSource(T *testing.T) {
+	T.Parallel()
 
-	t.Run("nil config returns error", func(t *testing.T) {
+	T.Run("nil config returns error", func(t *testing.T) {
 		t.Parallel()
 		source, err := NewSSMSecretSource(context.Background(), nil, nil)
 		require.Error(t, err)
@@ -23,7 +23,7 @@ func TestNewSSMSecretSource(t *testing.T) {
 		assert.Contains(t, err.Error(), "config is required")
 	})
 
-	t.Run("missing Region returns error", func(t *testing.T) {
+	T.Run("missing Region returns error", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Region: ""}
 		source, err := NewSSMSecretSource(context.Background(), cfg, nil)
@@ -31,7 +31,7 @@ func TestNewSSMSecretSource(t *testing.T) {
 		assert.Nil(t, source)
 	})
 
-	t.Run("with mock client succeeds", func(t *testing.T) {
+	T.Run("with mock client succeeds", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Region: "us-east-1"}
 		mock := &mockSSMClient{value: "param-value"}
@@ -41,10 +41,10 @@ func TestNewSSMSecretSource(t *testing.T) {
 	})
 }
 
-func TestSSMSecretSource_GetSecret(t *testing.T) {
-	t.Parallel()
+func TestSSMSecretSource_GetSecret(T *testing.T) {
+	T.Parallel()
 
-	t.Run("success", func(t *testing.T) {
+	T.Run("success", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Region: "us-east-1"}
 		mock := &mockSSMClient{value: "my-param-value"}
@@ -56,7 +56,7 @@ func TestSSMSecretSource_GetSecret(t *testing.T) {
 		assert.Equal(t, "my-param-value", got)
 	})
 
-	t.Run("error from client", func(t *testing.T) {
+	T.Run("error from client", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Region: "us-east-1"}
 		mock := &mockSSMClient{err: errors.New("ssm error")}
@@ -68,7 +68,7 @@ func TestSSMSecretSource_GetSecret(t *testing.T) {
 		assert.Contains(t, err.Error(), "ssm error")
 	})
 
-	t.Run("name with prefix", func(t *testing.T) {
+	T.Run("name with prefix", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Region: "us-east-1", Prefix: "/myapp/"}
 		mock := &mockSSMClient{value: "prefixed-value"}
@@ -81,7 +81,7 @@ func TestSSMSecretSource_GetSecret(t *testing.T) {
 		assert.Equal(t, "/myapp/MY_PARAM", mock.lastName)
 	})
 
-	t.Run("name already path", func(t *testing.T) {
+	T.Run("name already path", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Region: "us-east-1", Prefix: "/myapp/"}
 		mock := &mockSSMClient{value: "path-value"}
@@ -95,16 +95,20 @@ func TestSSMSecretSource_GetSecret(t *testing.T) {
 	})
 }
 
-func TestSSMSecretSource_Close(t *testing.T) {
-	t.Parallel()
+func TestSSMSecretSource_Close(T *testing.T) {
+	T.Parallel()
 
-	cfg := &Config{Region: "us-east-1"}
-	mock := &mockSSMClient{}
-	source, err := NewSSMSecretSource(context.Background(), cfg, mock)
-	require.NoError(t, err)
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
 
-	err = source.Close()
-	require.NoError(t, err)
+		cfg := &Config{Region: "us-east-1"}
+		mock := &mockSSMClient{}
+		source, err := NewSSMSecretSource(context.Background(), cfg, mock)
+		require.NoError(t, err)
+
+		err = source.Close()
+		require.NoError(t, err)
+	})
 }
 
 type mockSSMClient struct {

@@ -7,10 +7,11 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"io"
+	"log"
 
-	"github.com/verygoodsoftwarenotvirus/platform/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 )
 
 const (
@@ -25,7 +26,7 @@ var (
 
 func init() {
 	if _, err := rand.Read(make([]byte, arbitrarySize)); err != nil {
-		panic(err)
+		log.Fatalf("crypto/rand is unavailable: %v", err)
 	}
 }
 

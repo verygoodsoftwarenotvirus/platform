@@ -5,15 +5,14 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"os"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/internalerrors"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/internalerrors"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
@@ -114,11 +113,12 @@ func (s *Server) Shutdown(ctx context.Context) {
 }
 
 // Serve serves GRPC traffic.
-func (s *Server) Serve() {
+func (s *Server) Serve(ctx context.Context) {
 	var lc net.ListenConfig
-	lis, err := lc.Listen(context.Background(), "tcp", fmt.Sprintf(":%d", s.config.Port))
+	lis, err := lc.Listen(ctx, "tcp", fmt.Sprintf(":%d", s.config.Port))
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		s.logger.Error("failed to listen", err)
+		os.Exit(1)
 	}
 
 	s.logger.WithValue("port", s.config.Port).Info("Listening for GRPC requests")

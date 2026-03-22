@@ -3,11 +3,11 @@ package posthog
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/analytics"
-	"github.com/verygoodsoftwarenotvirus/platform/circuitbreaking"
-	platformerrors "github.com/verygoodsoftwarenotvirus/platform/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/analytics"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/circuitbreaking"
+	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	"github.com/posthog/posthog-go"
 )

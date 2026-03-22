@@ -2,17 +2,16 @@ package launchdarkly
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/circuitbreaking"
-	platformerrors "github.com/verygoodsoftwarenotvirus/platform/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/featureflags"
-	"github.com/verygoodsoftwarenotvirus/platform/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/keys"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/circuitbreaking"
+	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/featureflags"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/keys"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	ld "github.com/launchdarkly/go-server-sdk/v6"
 	"github.com/launchdarkly/go-server-sdk/v6/ldcomponents"
@@ -76,7 +75,7 @@ func NewFeatureFlagManager(cfg *Config, logger logging.Logger, tracerProvider tr
 		cfg.InitTimeout,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("error initializing LaunchDarkly client: %w", err)
+		return nil, platformerrors.Wrap(err, "error initializing LaunchDarkly client")
 	}
 
 	provider := ofld.NewProvider(client)
@@ -84,7 +83,7 @@ func NewFeatureFlagManager(cfg *Config, logger logging.Logger, tracerProvider tr
 		if closeErr := client.Close(); closeErr != nil {
 			logger.Error("error closing OpenFeatureFlag client", closeErr)
 		}
-		return nil, fmt.Errorf("failed to set OpenFeature provider: %w", err)
+		return nil, platformerrors.Wrap(err, "failed to set OpenFeature provider")
 	}
 
 	ofClient := openfeature.NewClient(clientDomain)

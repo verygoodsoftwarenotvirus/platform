@@ -4,9 +4,9 @@ import (
 	"context"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/llm"
-	"github.com/verygoodsoftwarenotvirus/platform/llm/anthropic"
-	"github.com/verygoodsoftwarenotvirus/platform/llm/openai"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/llm"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/llm/anthropic"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/llm/openai"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )

@@ -3,14 +3,14 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/database"
-	"github.com/verygoodsoftwarenotvirus/platform/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/database"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	"github.com/XSAM/otelsql"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -54,7 +54,7 @@ func ProvideDatabaseClient(ctx context.Context, logger logging.Logger, tracerPro
 
 	db, err := otelsql.Open("pgx", cfg.GetReadConnectionString(), opts...)
 	if err != nil {
-		return nil, fmt.Errorf("connecting to postgres database: %w", err)
+		return nil, errors.Wrap(err, "connecting to postgres database")
 	}
 
 	db.SetMaxIdleConns(cfg.GetMaxIdleConns())
@@ -65,7 +65,7 @@ func ProvideDatabaseClient(ctx context.Context, logger logging.Logger, tracerPro
 		if _, err = otelsql.RegisterDBStatsMetrics(db, otelsql.WithAttributes(
 			semconv.DBSystemPostgreSQL,
 		)); err != nil {
-			return nil, fmt.Errorf("registering db stats metrics: %w", err)
+			return nil, errors.Wrap(err, "registering db stats metrics")
 		}
 	}
 

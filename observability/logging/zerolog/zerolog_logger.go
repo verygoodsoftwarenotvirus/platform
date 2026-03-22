@@ -8,19 +8,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/observability/keys"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/keys"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
 
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel/trace"
 )
 
-const here = "github.com/verygoodsoftwarenotvirus/platform/"
+const here = "github.com/verygoodsoftwarenotvirus/platform/v2/"
 
 func init() {
 	location, err := time.LoadLocation("America/Chicago")
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "WARNING: failed to load America/Chicago timezone, falling back to UTC: %v\n", err)
+		location = time.UTC
 	}
 
 	zerolog.CallerSkipFrameCount += 2
@@ -132,38 +133,34 @@ func (l *zerologLogger) WithError(err error) logging.Logger {
 
 // WithSpan satisfies our contract for the logging.Logger WithSpan method.
 func (l *zerologLogger) WithSpan(span trace.Span) logging.Logger {
-	spanCtx := span.SpanContext()
-	spanID := spanCtx.SpanID().String()
-	traceID := spanCtx.TraceID().String()
+	si := logging.ExtractSpanInfo(span)
 
-	l2 := l.logger.With().Str(keys.SpanIDKey, spanID).Str(keys.TraceIDKey, traceID).Logger()
+	l2 := l.logger.With().Str(keys.SpanIDKey, si.SpanID).Str(keys.TraceIDKey, si.TraceID).Logger()
 
 	return &zerologLogger{logger: l2}
 }
 
 func (l *zerologLogger) attachRequestToLog(req *http.Request) zerolog.Logger {
-	if req != nil {
-		l2 := l.logger.With().
-			Str("method", req.Method).
-			Logger()
-
-		if req.URL != nil {
-			l2 = l2.With().Str("path", req.URL.Path).Logger()
-			if req.URL.RawQuery != "" {
-				l2 = l2.With().Str(keys.URLQueryKey, req.URL.RawQuery).Logger()
-			}
-		}
-
-		if l.requestIDFunc != nil {
-			if reqID := l.requestIDFunc(req); reqID != "" {
-				l2 = l2.With().Str("request.id", reqID).Logger()
-			}
-		}
-
-		return l2
+	ri := logging.ExtractRequestInfo(req, l.requestIDFunc)
+	if req == nil {
+		return l.logger
 	}
 
-	return l.logger
+	l2 := l.logger.With().
+		Str(keys.RequestMethodKey, ri.Method).
+		Logger()
+
+	if ri.Path != "" {
+		l2 = l2.With().Str("path", ri.Path).Logger()
+	}
+	if ri.Query != "" {
+		l2 = l2.With().Str(keys.URLQueryKey, ri.Query).Logger()
+	}
+	if ri.RequestID != "" {
+		l2 = l2.With().Str(keys.RequestIDKey, ri.RequestID).Logger()
+	}
+
+	return l2
 }
 
 // WithRequest satisfies our contract for the logging.Logger WithRequest method.

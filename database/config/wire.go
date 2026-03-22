@@ -1,7 +1,7 @@
 package databasecfg
 
 import (
-	"github.com/verygoodsoftwarenotvirus/platform/database"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/database"
 
 	"github.com/google/wire"
 )

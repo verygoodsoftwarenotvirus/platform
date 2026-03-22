@@ -2,10 +2,10 @@ package ssm
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/secrets"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/secrets"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -26,10 +26,10 @@ type ssmSecretSource struct {
 // If client is nil, a new client is created using the default credential chain.
 func NewSSMSecretSource(ctx context.Context, cfg *Config, client GetParameterAPI) (secrets.SecretSource, error) {
 	if cfg == nil {
-		return nil, fmt.Errorf("ssm secret source: config is required")
+		return nil, errors.New("ssm secret source: config is required")
 	}
 	if err := cfg.ValidateWithContext(ctx); err != nil {
-		return nil, fmt.Errorf("ssm secret source: %w", err)
+		return nil, errors.Wrap(err, "ssm secret source")
 	}
 
 	if client != nil {
@@ -41,7 +41,7 @@ func NewSSMSecretSource(ctx context.Context, cfg *Config, client GetParameterAPI
 
 	awsCfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(cfg.Region))
 	if err != nil {
-		return nil, fmt.Errorf("ssm secret source: loading aws config: %w", err)
+		return nil, errors.Wrap(err, "ssm secret source: loading aws config")
 	}
 
 	return &ssmSecretSource{
@@ -59,7 +59,7 @@ func (s *ssmSecretSource) GetSecret(ctx context.Context, name string) (string, e
 
 	output, err := s.client.GetParameter(ctx, input)
 	if err != nil {
-		return "", fmt.Errorf("getting parameter %q: %w", name, err)
+		return "", errors.Wrapf(err, "getting parameter %q", name)
 	}
 	if output.Parameter == nil {
 		return "", nil

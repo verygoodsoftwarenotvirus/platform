@@ -3,9 +3,9 @@ package msgconfig
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/messagequeue"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/messagequeue"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	"github.com/samber/do/v2"
 )
@@ -17,6 +17,7 @@ func RegisterMessageQueue(i do.Injector) {
 		return ProvideConsumerProvider(
 			do.MustInvoke[context.Context](i),
 			do.MustInvoke[logging.Logger](i),
+			do.MustInvoke[tracing.TracerProvider](i),
 			do.MustInvoke[*Config](i),
 		)
 	})

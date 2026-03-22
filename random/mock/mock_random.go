@@ -3,7 +3,7 @@ package randommock
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/random"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/random"
 
 	"github.com/stretchr/testify/mock"
 )

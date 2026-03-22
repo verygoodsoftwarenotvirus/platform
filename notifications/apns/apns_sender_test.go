@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -37,13 +37,13 @@ func createTestP8File(t *testing.T) string {
 	return path
 }
 
-func TestNewSender(t *testing.T) {
-	t.Parallel()
+func TestNewSender(T *testing.T) {
+	T.Parallel()
 
 	logger := logging.NewNoopLogger()
 	tracingProvider := tracing.NewNoopTracerProvider()
 
-	t.Run("with nil config", func(t *testing.T) {
+	T.Run("with nil config", func(t *testing.T) {
 		t.Parallel()
 
 		sender, err := NewSender(nil, tracingProvider, logger)
@@ -52,7 +52,7 @@ func TestNewSender(t *testing.T) {
 		assert.Contains(t, err.Error(), "missing required config")
 	})
 
-	t.Run("with empty auth key path", func(t *testing.T) {
+	T.Run("with empty auth key path", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{
@@ -67,7 +67,7 @@ func TestNewSender(t *testing.T) {
 		assert.Contains(t, err.Error(), "missing required config")
 	})
 
-	t.Run("with empty key ID", func(t *testing.T) {
+	T.Run("with empty key ID", func(t *testing.T) {
 		t.Parallel()
 
 		p8Path := createTestP8File(t)
@@ -83,7 +83,7 @@ func TestNewSender(t *testing.T) {
 		assert.Contains(t, err.Error(), "missing required config")
 	})
 
-	t.Run("with non-existent auth key file", func(t *testing.T) {
+	T.Run("with non-existent auth key file", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{
@@ -99,7 +99,7 @@ func TestNewSender(t *testing.T) {
 		assert.Contains(t, err.Error(), "loading auth key")
 	})
 
-	t.Run("with valid config", func(t *testing.T) {
+	T.Run("with valid config", func(t *testing.T) {
 		t.Parallel()
 
 		p8Path := createTestP8File(t)
@@ -117,10 +117,10 @@ func TestNewSender(t *testing.T) {
 	})
 }
 
-func TestSender_Send_rejectsInvalidDeviceToken(t *testing.T) {
-	t.Parallel()
+func TestSender_Send_rejectsInvalidDeviceToken(T *testing.T) {
+	T.Parallel()
 
-	p8Path := createTestP8File(t)
+	p8Path := createTestP8File(T)
 	cfg := &Config{
 		AuthKeyPath: p8Path,
 		KeyID:       "KEY123",
@@ -129,11 +129,11 @@ func TestSender_Send_rejectsInvalidDeviceToken(t *testing.T) {
 		Production:  false,
 	}
 	sender, err := NewSender(cfg, tracing.NewNoopTracerProvider(), logging.NewNoopLogger())
-	require.NoError(t, err)
+	require.NoError(T, err)
 
-	ctx := t.Context()
+	ctx := T.Context()
 
-	t.Run("rejects binary/garbage token", func(t *testing.T) {
+	T.Run("rejects binary/garbage token", func(t *testing.T) {
 		t.Parallel()
 		// Simulates decrypted garbage (e.g. wrong key or corrupted data)
 		invalidToken := "x\x89\xbf\x1f\xa0\x93\x12\xf5"
@@ -142,7 +142,7 @@ func TestSender_Send_rejectsInvalidDeviceToken(t *testing.T) {
 		assert.Contains(t, sendErr.Error(), "invalid device token format")
 	})
 
-	t.Run("rejects token with control characters", func(t *testing.T) {
+	T.Run("rejects token with control characters", func(t *testing.T) {
 		t.Parallel()
 		invalidToken := "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef12345\t"
 		sendErr := sender.Send(ctx, invalidToken, "title", "body", nil)
@@ -150,7 +150,7 @@ func TestSender_Send_rejectsInvalidDeviceToken(t *testing.T) {
 		assert.Contains(t, sendErr.Error(), "invalid device token format")
 	})
 
-	t.Run("rejects too short token", func(t *testing.T) {
+	T.Run("rejects too short token", func(t *testing.T) {
 		t.Parallel()
 		sendErr := sender.Send(ctx, "abc123", "title", "body", nil)
 		require.Error(t, sendErr)

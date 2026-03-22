@@ -5,21 +5,21 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewSender(t *testing.T) {
-	t.Parallel()
+func TestNewSender(T *testing.T) {
+	T.Parallel()
 
-	ctx := t.Context()
+	ctx := T.Context()
 	logger := logging.NewNoopLogger()
 	tracingProvider := tracing.NewNoopTracerProvider()
 
-	t.Run("with nil config", func(t *testing.T) {
+	T.Run("with nil config", func(t *testing.T) {
 		t.Parallel()
 
 		sender, err := NewSender(ctx, nil, tracingProvider, logger)
@@ -28,7 +28,7 @@ func TestNewSender(t *testing.T) {
 		assert.Contains(t, err.Error(), "config is required")
 	})
 
-	t.Run("with non-existent credentials path", func(t *testing.T) {
+	T.Run("with non-existent credentials path", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{
@@ -40,7 +40,7 @@ func TestNewSender(t *testing.T) {
 		assert.Contains(t, err.Error(), "credentials file not found")
 	})
 
-	t.Run("with empty credentials path uses ADC", func(t *testing.T) {
+	T.Run("with empty credentials path uses ADC", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{CredentialsPath: ""}
@@ -55,7 +55,7 @@ func TestNewSender(t *testing.T) {
 		require.NotNil(t, sender)
 	})
 
-	t.Run("with invalid JSON credentials file", func(t *testing.T) {
+	T.Run("with invalid JSON credentials file", func(t *testing.T) {
 		t.Parallel()
 
 		dir := t.TempDir()

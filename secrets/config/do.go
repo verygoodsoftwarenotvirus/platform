@@ -3,7 +3,7 @@ package secretscfg
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/secrets"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/secrets"
 
 	"github.com/samber/do/v2"
 )

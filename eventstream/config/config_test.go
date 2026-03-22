@@ -3,6 +3,8 @@ package config
 import (
 	"testing"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -50,7 +52,7 @@ func TestProvideEventStreamUpgrader(T *testing.T) {
 	T.Run("SSE", func(t *testing.T) {
 		t.Parallel()
 
-		upgrader, err := ProvideEventStreamUpgrader(&Config{
+		upgrader, err := ProvideEventStreamUpgrader(tracing.NewNoopTracerProvider(), &Config{
 			Provider: ProviderSSE,
 		})
 
@@ -61,7 +63,7 @@ func TestProvideEventStreamUpgrader(T *testing.T) {
 	T.Run("WebSocket", func(t *testing.T) {
 		t.Parallel()
 
-		upgrader, err := ProvideEventStreamUpgrader(&Config{
+		upgrader, err := ProvideEventStreamUpgrader(tracing.NewNoopTracerProvider(), &Config{
 			Provider: ProviderWebSocket,
 		})
 
@@ -72,7 +74,7 @@ func TestProvideEventStreamUpgrader(T *testing.T) {
 	T.Run("invalid provider", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := ProvideEventStreamUpgrader(&Config{})
+		_, err := ProvideEventStreamUpgrader(tracing.NewNoopTracerProvider(), &Config{})
 
 		assert.Error(t, err)
 	})
@@ -84,7 +86,7 @@ func TestProvideBidirectionalEventStreamUpgrader(T *testing.T) {
 	T.Run("SSE returns error", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := ProvideBidirectionalEventStreamUpgrader(&Config{
+		_, err := ProvideBidirectionalEventStreamUpgrader(tracing.NewNoopTracerProvider(), &Config{
 			Provider: ProviderSSE,
 		})
 
@@ -95,7 +97,7 @@ func TestProvideBidirectionalEventStreamUpgrader(T *testing.T) {
 	T.Run("WebSocket", func(t *testing.T) {
 		t.Parallel()
 
-		upgrader, err := ProvideBidirectionalEventStreamUpgrader(&Config{
+		upgrader, err := ProvideBidirectionalEventStreamUpgrader(tracing.NewNoopTracerProvider(), &Config{
 			Provider: ProviderWebSocket,
 		})
 
@@ -106,7 +108,7 @@ func TestProvideBidirectionalEventStreamUpgrader(T *testing.T) {
 	T.Run("invalid provider", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := ProvideBidirectionalEventStreamUpgrader(&Config{})
+		_, err := ProvideBidirectionalEventStreamUpgrader(tracing.NewNoopTracerProvider(), &Config{})
 
 		assert.Error(t, err)
 	})

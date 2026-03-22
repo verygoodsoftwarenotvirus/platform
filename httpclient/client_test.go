@@ -9,10 +9,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestConfig_BuildClient(t *testing.T) {
-	t.Parallel()
+func TestConfig_BuildClient(T *testing.T) {
+	T.Parallel()
 
-	t.Run("with tracing enabled", func(t *testing.T) {
+	T.Run("with tracing enabled", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{
@@ -27,7 +27,7 @@ func TestConfig_BuildClient(t *testing.T) {
 		assert.NotNil(t, client.Transport)
 	})
 
-	t.Run("with tracing disabled", func(t *testing.T) {
+	T.Run("with tracing disabled", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{
@@ -42,7 +42,7 @@ func TestConfig_BuildClient(t *testing.T) {
 		assert.NotNil(t, client.Transport)
 	})
 
-	t.Run("applies MaxIdleConns and MaxIdleConnsPerHost", func(t *testing.T) {
+	T.Run("applies MaxIdleConns and MaxIdleConnsPerHost", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{
@@ -63,10 +63,10 @@ func TestConfig_BuildClient(t *testing.T) {
 	})
 }
 
-func TestProvideHTTPClient(t *testing.T) {
-	t.Parallel()
+func TestProvideHTTPClient(T *testing.T) {
+	T.Parallel()
 
-	t.Run("with nil config uses defaults", func(t *testing.T) {
+	T.Run("with nil config uses defaults", func(t *testing.T) {
 		t.Parallel()
 
 		client := ProvideHTTPClient(nil)
@@ -74,7 +74,7 @@ func TestProvideHTTPClient(t *testing.T) {
 		assert.Equal(t, defaultTimeout, client.Timeout)
 	})
 
-	t.Run("with config uses config values", func(t *testing.T) {
+	T.Run("with config uses config values", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{

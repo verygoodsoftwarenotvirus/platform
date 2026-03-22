@@ -8,15 +8,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/circuitbreaking"
-	"github.com/verygoodsoftwarenotvirus/platform/email"
-	"github.com/verygoodsoftwarenotvirus/platform/email/mailgun"
-	"github.com/verygoodsoftwarenotvirus/platform/email/mailjet"
-	"github.com/verygoodsoftwarenotvirus/platform/email/postmark"
-	"github.com/verygoodsoftwarenotvirus/platform/email/resend"
-	"github.com/verygoodsoftwarenotvirus/platform/email/sendgrid"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/circuitbreaking"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/email"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/email/mailgun"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/email/mailjet"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/email/postmark"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/email/resend"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/email/sendgrid"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/matcornic/hermes/v2"
@@ -71,6 +71,11 @@ func (cfg *Config) BuildHermes(branding *email.EmailBranding) *hermes.Hermes {
 }
 
 var _ validation.ValidatableWithContext = (*Config)(nil)
+
+// EnsureDefaults sets sensible defaults for zero-valued fields.
+func (cfg *Config) EnsureDefaults() {
+	cfg.CircuitBreaker.EnsureDefaults()
+}
 
 // ValidateWithContext validates a Config.
 func (cfg *Config) ValidateWithContext(ctx context.Context) error {

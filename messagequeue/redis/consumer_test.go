@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/messagequeue"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/messagequeue"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,6 +20,7 @@ func buildRedisBackedConsumer(t *testing.T, cfg *Config, topic string, handlerFu
 
 	provider := ProvideRedisConsumerProvider(
 		logging.NewNoopLogger(),
+		tracing.NewNoopTracerProvider(),
 		*cfg,
 	)
 
@@ -55,7 +57,7 @@ func Test_redisConsumer_Consume(T *testing.T) {
 
 		stopChan := make(chan bool)
 		errorsChan := make(chan error)
-		go consumer.Consume(stopChan, errorsChan)
+		go consumer.Consume(ctx, stopChan, errorsChan)
 
 		publisher := buildRedisBackedPublisher(t, cfg, t.Name())
 		require.NoError(t, publisher.Publish(ctx, []byte("blah")))
@@ -89,7 +91,7 @@ func Test_redisConsumer_Consume(T *testing.T) {
 
 		stopChan := make(chan bool)
 		errorsChan := make(chan error)
-		go consumer.Consume(stopChan, errorsChan)
+		go consumer.Consume(ctx, stopChan, errorsChan)
 
 		publisher := buildRedisBackedPublisher(t, cfg, t.Name())
 		require.NoError(t, publisher.Publish(ctx, []byte("blah")))
@@ -113,7 +115,7 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 			QueueAddresses: []string{t.Name()},
 		}
 
-		conPro := ProvideRedisConsumerProvider(logger, cfg)
+		conPro := ProvideRedisConsumerProvider(logger, tracing.NewNoopTracerProvider(), cfg)
 		require.NotNil(t, conPro)
 
 		ctx := t.Context()
@@ -131,7 +133,7 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 			QueueAddresses: []string{t.Name()},
 		}
 
-		conPro := ProvideRedisConsumerProvider(logger, cfg)
+		conPro := ProvideRedisConsumerProvider(logger, tracing.NewNoopTracerProvider(), cfg)
 		require.NotNil(t, conPro)
 
 		ctx := t.Context()

@@ -38,4 +38,4 @@ var _ Consumer = (*NoopConsumer)(nil)
 
 type NoopConsumer struct{}
 
-func (n *NoopConsumer) Consume(chan bool, chan error) {}
+func (n *NoopConsumer) Consume(context.Context, chan bool, chan error) {}

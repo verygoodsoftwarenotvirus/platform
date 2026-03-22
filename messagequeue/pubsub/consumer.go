@@ -6,8 +6,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/verygoodsoftwarenotvirus/platform/messagequeue"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/messagequeue"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	"cloud.google.com/go/pubsub/v2"
 	"cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
@@ -15,6 +17,7 @@ import (
 
 type (
 	pubSubConsumer struct {
+		tracer      tracing.Tracer
 		logger      logging.Logger
 		consumer    *pubsub.Client
 		handlerFunc func(context.Context, []byte) error
@@ -25,6 +28,7 @@ type (
 // buildPubSubConsumer provides a Pub/Sub-backed pubSubConsumer.
 func buildPubSubConsumer(
 	logger logging.Logger,
+	tracerProvider tracing.TracerProvider,
 	pubsubClient *pubsub.Client,
 	topic string,
 	handlerFunc func(context.Context, []byte) error,
@@ -34,6 +38,7 @@ func buildPubSubConsumer(
 		logger:      logging.EnsureLogger(logger),
 		consumer:    pubsubClient,
 		handlerFunc: handlerFunc,
+		tracer:      tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(fmt.Sprintf("%s_consumer", topic))),
 	}
 }
 
@@ -41,12 +46,12 @@ func subscriptionNameForTopic(topic string) string {
 	return strings.Replace(topic, "/topics/", "/subscriptions/", 1)
 }
 
-func (c *pubSubConsumer) Consume(stopChan chan bool, errors chan error) {
+func (c *pubSubConsumer) Consume(ctx context.Context, stopChan chan bool, errors chan error) {
 	if stopChan == nil {
 		stopChan = make(chan bool, 1)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	subscriptionName := subscriptionNameForTopic(c.topic)
@@ -68,29 +73,34 @@ func (c *pubSubConsumer) Consume(stopChan chan bool, errors chan error) {
 	}()
 
 	if err = subscriber.Receive(ctx, func(receivedContext context.Context, m *pubsub.Message) {
-		if handleErr := c.handlerFunc(receivedContext, m.Data); handleErr != nil {
+		msgCtx, span := c.tracer.StartCustomSpan(receivedContext, "consume_message")
+		if handleErr := c.handlerFunc(msgCtx, m.Data); handleErr != nil {
+			observability.AcknowledgeError(handleErr, c.logger, span, "handling pubsub message")
 			errors <- handleErr
 		} else {
 			m.Ack()
 		}
+		span.End()
 	}); err != nil && ctx.Err() == nil {
 		c.logger.Error(fmt.Sprintf("receiving %s pub/sub data", c.topic), err)
 	}
 }
 
 type pubsubConsumerProvider struct {
-	logger           logging.Logger
-	consumerCache    map[string]messagequeue.Consumer
-	pubsubClient     *pubsub.Client
-	consumerCacheHat sync.RWMutex
+	logger          logging.Logger
+	tracerProvider  tracing.TracerProvider
+	consumerCache   map[string]messagequeue.Consumer
+	pubsubClient    *pubsub.Client
+	consumerCacheMu sync.RWMutex
 }
 
 // ProvidePubSubConsumerProvider returns a ConsumerProvider for a given address.
-func ProvidePubSubConsumerProvider(logger logging.Logger, client *pubsub.Client) messagequeue.ConsumerProvider {
+func ProvidePubSubConsumerProvider(logger logging.Logger, tracerProvider tracing.TracerProvider, client *pubsub.Client) messagequeue.ConsumerProvider {
 	return &pubsubConsumerProvider{
-		logger:        logging.EnsureLogger(logger),
-		pubsubClient:  client,
-		consumerCache: map[string]messagequeue.Consumer{},
+		logger:         logging.EnsureLogger(logger),
+		tracerProvider: tracerProvider,
+		pubsubClient:   client,
+		consumerCache:  map[string]messagequeue.Consumer{},
 	}
 }
 
@@ -109,13 +119,13 @@ func (p *pubsubConsumerProvider) ProvideConsumer(_ context.Context, topic string
 
 	logger := logging.EnsureLogger(p.logger.Clone())
 
-	p.consumerCacheHat.Lock()
-	defer p.consumerCacheHat.Unlock()
+	p.consumerCacheMu.Lock()
+	defer p.consumerCacheMu.Unlock()
 	if cachedPub, ok := p.consumerCache[topic]; ok {
 		return cachedPub, nil
 	}
 
-	pub := buildPubSubConsumer(logger, p.pubsubClient, topic, handlerFunc)
+	pub := buildPubSubConsumer(logger, p.tracerProvider, p.pubsubClient, topic, handlerFunc)
 	p.consumerCache[topic] = pub
 
 	return pub, nil

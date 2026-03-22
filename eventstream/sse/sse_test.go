@@ -8,7 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/eventstream"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/eventstream"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,7 +21,7 @@ func TestNewUpgrader(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		u := NewUpgrader()
+		u := NewUpgrader(tracing.NewNoopTracerProvider())
 		assert.NotNil(t, u)
 	})
 }
@@ -33,7 +34,7 @@ func TestUpgrader_UpgradeToEventStream(T *testing.T) {
 
 		streamReady := make(chan eventstream.EventStream, 1)
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			u := NewUpgrader()
+			u := NewUpgrader(tracing.NewNoopTracerProvider())
 			stream, err := u.UpgradeToEventStream(w, r)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -63,7 +64,7 @@ func TestUpgrader_UpgradeToEventStream(T *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		u := NewUpgrader()
+		u := NewUpgrader(tracing.NewNoopTracerProvider())
 		w := &nonFlushableResponseWriter{header: http.Header{}}
 		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", http.NoBody)
 
@@ -82,7 +83,7 @@ func TestSSEStream_Send(T *testing.T) {
 
 		streamReady := make(chan eventstream.EventStream, 1)
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			u := NewUpgrader()
+			u := NewUpgrader(tracing.NewNoopTracerProvider())
 			stream, err := u.UpgradeToEventStream(w, r)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -129,7 +130,7 @@ func TestSSEStream_Send(T *testing.T) {
 
 		streamReady := make(chan eventstream.EventStream, 1)
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			u := NewUpgrader()
+			u := NewUpgrader(tracing.NewNoopTracerProvider())
 			stream, err := u.UpgradeToEventStream(w, r)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -171,7 +172,7 @@ func TestSSEStream_Send(T *testing.T) {
 
 		streamReady := make(chan eventstream.EventStream, 1)
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			u := NewUpgrader()
+			u := NewUpgrader(tracing.NewNoopTracerProvider())
 			stream, err := u.UpgradeToEventStream(w, r)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -218,7 +219,7 @@ func TestSSEStream_Send(T *testing.T) {
 
 		streamReady := make(chan eventstream.EventStream, 1)
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			u := NewUpgrader()
+			u := NewUpgrader(tracing.NewNoopTracerProvider())
 			stream, err := u.UpgradeToEventStream(w, r)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -257,7 +258,7 @@ func TestSSEStream_Done(T *testing.T) {
 
 		streamReady := make(chan eventstream.EventStream, 1)
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			u := NewUpgrader()
+			u := NewUpgrader(tracing.NewNoopTracerProvider())
 			stream, err := u.UpgradeToEventStream(w, r)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -293,7 +294,7 @@ func TestSSEStream_Done(T *testing.T) {
 
 		streamReady := make(chan eventstream.EventStream, 1)
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			u := NewUpgrader()
+			u := NewUpgrader(tracing.NewNoopTracerProvider())
 			stream, err := u.UpgradeToEventStream(w, r)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -333,7 +334,7 @@ func TestSSEStream_Close(T *testing.T) {
 
 		streamReady := make(chan eventstream.EventStream, 1)
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			u := NewUpgrader()
+			u := NewUpgrader(tracing.NewNoopTracerProvider())
 			stream, err := u.UpgradeToEventStream(w, r)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -376,7 +377,7 @@ func TestSSEStream_Send_verifies_SSE_format(T *testing.T) {
 
 		streamReady := make(chan eventstream.EventStream, 1)
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			u := NewUpgrader()
+			u := NewUpgrader(tracing.NewNoopTracerProvider())
 			stream, err := u.UpgradeToEventStream(w, r)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)

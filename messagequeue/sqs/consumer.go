@@ -2,10 +2,13 @@ package sqs
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
-	"github.com/verygoodsoftwarenotvirus/platform/messagequeue"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/messagequeue"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -24,6 +27,7 @@ type (
 	}
 
 	sqsConsumer struct {
+		tracer      tracing.Tracer
 		logger      logging.Logger
 		receiver    messageReceiver
 		handlerFunc func(context.Context, []byte) error
@@ -33,6 +37,7 @@ type (
 
 func provideSQSConsumer(
 	logger logging.Logger,
+	tracerProvider tracing.TracerProvider,
 	receiver messageReceiver,
 	queueURL string,
 	handlerFunc func(context.Context, []byte) error,
@@ -42,18 +47,19 @@ func provideSQSConsumer(
 		receiver:    receiver,
 		queueURL:    queueURL,
 		handlerFunc: handlerFunc,
+		tracer:      tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(fmt.Sprintf("%s_consumer", queueURL))),
 	}
 }
 
 // Consume polls the SQS queue and processes messages until stopChan is signaled.
 // On handler success, the message is deleted from the queue.
 // On handler failure, the message is not deleted (it returns after visibility timeout).
-func (c *sqsConsumer) Consume(stopChan chan bool, errs chan error) {
+func (c *sqsConsumer) Consume(ctx context.Context, stopChan chan bool, errs chan error) {
 	if stopChan == nil {
 		stopChan = make(chan bool, 1)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	go func() {
@@ -84,36 +90,41 @@ func (c *sqsConsumer) Consume(stopChan chan bool, errs chan error) {
 				continue
 			}
 			body := []byte(aws.ToString(msg.Body))
-			if err = c.handlerFunc(ctx, body); err != nil {
-				c.logger.Error("handling SQS message", err)
+
+			msgCtx, span := c.tracer.StartCustomSpan(ctx, "consume_message")
+			if err = c.handlerFunc(msgCtx, body); err != nil {
+				observability.AcknowledgeError(err, c.logger, span, "handling SQS message")
 				if errs != nil {
 					errs <- err
 				}
+				span.End()
 				continue
 			}
 
-			if _, err = c.receiver.DeleteMessage(ctx, &sqs.DeleteMessageInput{
+			if _, err = c.receiver.DeleteMessage(msgCtx, &sqs.DeleteMessageInput{
 				QueueUrl:      aws.String(c.queueURL),
 				ReceiptHandle: msg.ReceiptHandle,
 			}); err != nil {
-				c.logger.Error("deleting SQS message", err)
+				observability.AcknowledgeError(err, c.logger, span, "deleting SQS message")
 				if errs != nil {
 					errs <- err
 				}
 			}
+			span.End()
 		}
 	}
 }
 
 type consumerProvider struct {
-	logger           logging.Logger
-	consumerCache    map[string]messagequeue.Consumer
-	sqsClient        messageReceiver
-	consumerCacheHat sync.RWMutex
+	logger          logging.Logger
+	tracerProvider  tracing.TracerProvider
+	consumerCache   map[string]messagequeue.Consumer
+	sqsClient       messageReceiver
+	consumerCacheMu sync.RWMutex
 }
 
 // ProvideSQSConsumerProvider returns a ConsumerProvider for SQS.
-func ProvideSQSConsumerProvider(ctx context.Context, logger logging.Logger, _ Config) messagequeue.ConsumerProvider {
+func ProvideSQSConsumerProvider(ctx context.Context, logger logging.Logger, tracerProvider tracing.TracerProvider, _ Config) messagequeue.ConsumerProvider {
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		panic("sqs consumer provider: load default config: " + err.Error())
@@ -121,9 +132,10 @@ func ProvideSQSConsumerProvider(ctx context.Context, logger logging.Logger, _ Co
 	svc := sqs.NewFromConfig(cfg)
 
 	return &consumerProvider{
-		logger:        logging.EnsureLogger(logger),
-		sqsClient:     svc,
-		consumerCache: map[string]messagequeue.Consumer{},
+		logger:         logging.EnsureLogger(logger),
+		tracerProvider: tracerProvider,
+		sqsClient:      svc,
+		consumerCache:  map[string]messagequeue.Consumer{},
 	}
 }
 
@@ -133,13 +145,13 @@ func (p *consumerProvider) ProvideConsumer(_ context.Context, topic string, hand
 		return nil, messagequeue.ErrEmptyTopicName
 	}
 
-	p.consumerCacheHat.Lock()
-	defer p.consumerCacheHat.Unlock()
+	p.consumerCacheMu.Lock()
+	defer p.consumerCacheMu.Unlock()
 	if cached, ok := p.consumerCache[topic]; ok {
 		return cached, nil
 	}
 
-	c := provideSQSConsumer(p.logger.WithValue("queue_url", topic), p.sqsClient, topic, handlerFunc)
+	c := provideSQSConsumer(p.logger.WithValue("queue_url", topic), p.tracerProvider, p.sqsClient, topic, handlerFunc)
 	p.consumerCache[topic] = c
 
 	return c, nil

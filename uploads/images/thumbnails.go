@@ -9,6 +9,8 @@ import (
 	"image/png"
 	"strings"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+
 	"github.com/nfnt/resize"
 )
 
@@ -30,14 +32,14 @@ func newThumbnailer(contentType string) (thumbnailer, error) {
 	case imageGIF:
 		return &gifThumbnailer{}, nil
 	default:
-		return nil, fmt.Errorf("%w: %s", ErrInvalidImageContentType, contentType)
+		return nil, errors.Wrapf(ErrInvalidImageContentType, "%s", contentType)
 	}
 }
 
 func preprocess(i *Upload, width, height uint) (image.Image, error) {
 	img, _, err := image.Decode(bytes.NewReader(i.Data))
 	if err != nil {
-		return nil, fmt.Errorf("decoding image: %w", err)
+		return nil, errors.Wrap(err, "decoding image")
 	}
 
 	thumbnail := resize.Thumbnail(width, height, img, resize.Lanczos3)
@@ -56,7 +58,7 @@ func (t *jpegThumbnailer) Thumbnail(img *Upload, width, height uint, filename st
 
 	var b bytes.Buffer
 	if err = jpeg.Encode(&b, thumbnail, &jpeg.Options{Quality: jpeg.DefaultQuality}); err != nil {
-		return nil, fmt.Errorf("encoding JPEG: %w", err)
+		return nil, errors.Wrap(err, "encoding JPEG")
 	}
 
 	bs := b.Bytes()
@@ -82,7 +84,7 @@ func (t *gifThumbnailer) Thumbnail(img *Upload, width, height uint, filename str
 
 	var b bytes.Buffer
 	if err = gif.Encode(&b, thumbnail, &gif.Options{NumColors: allSupportedColors}); err != nil {
-		return nil, fmt.Errorf("encoding JPEG: %w", err)
+		return nil, errors.Wrap(err, "encoding JPEG")
 	}
 
 	bs := b.Bytes()
@@ -108,7 +110,7 @@ func (t *pngThumbnailer) Thumbnail(img *Upload, width, height uint, filename str
 
 	var b bytes.Buffer
 	if err = png.Encode(&b, thumbnail); err != nil {
-		return nil, fmt.Errorf("encoding PNG: %w", err)
+		return nil, errors.Wrap(err, "encoding PNG")
 	}
 
 	bs := b.Bytes()

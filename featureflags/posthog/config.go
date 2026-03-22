@@ -1,7 +1,7 @@
 package posthog
 
 import (
-	"github.com/verygoodsoftwarenotvirus/platform/circuitbreaking"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/circuitbreaking"
 )
 
 type (

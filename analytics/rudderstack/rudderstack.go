@@ -3,11 +3,11 @@ package rudderstack
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/analytics"
-	"github.com/verygoodsoftwarenotvirus/platform/circuitbreaking"
-	platformerrors "github.com/verygoodsoftwarenotvirus/platform/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/analytics"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/circuitbreaking"
+	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
 	rudderstack "github.com/rudderlabs/analytics-go/v4"
 )
@@ -98,37 +98,16 @@ func (c *EventReporter) AddUser(ctx context.Context, userID string, properties m
 
 // EventOccurred associates events with a user.
 func (c *EventReporter) EventOccurred(ctx context.Context, event, userID string, properties map[string]any) error {
-	_, span := c.tracer.StartSpan(ctx)
-	defer span.End()
-
-	if c.circuitBreaker.CannotProceed() {
-		return circuitbreaking.ErrCircuitBroken
-	}
-
-	p := rudderstack.NewProperties()
-	for k, v := range properties {
-		p.Set(k, v)
-	}
-
-	i := rudderstack.NewIntegrations().EnableAll()
-
-	err := c.client.Enqueue(rudderstack.Track{
-		Event:        event,
-		UserId:       userID,
-		Properties:   p,
-		Integrations: i,
-	})
-	if err != nil {
-		c.circuitBreaker.Failed()
-		return err
-	}
-
-	c.circuitBreaker.Succeeded()
-	return nil
+	return c.eventOccurred(ctx, event, userID, false, properties)
 }
 
 // EventOccurredAnonymous records an event for an anonymous user.
 func (c *EventReporter) EventOccurredAnonymous(ctx context.Context, event, anonymousID string, properties map[string]any) error {
+	return c.eventOccurred(ctx, event, anonymousID, true, properties)
+}
+
+// EventOccurred associates events with a user.
+func (c *EventReporter) eventOccurred(ctx context.Context, event, userID string, anonymous bool, properties map[string]any) error {
 	_, span := c.tracer.StartSpan(ctx)
 	defer span.End()
 
@@ -143,13 +122,19 @@ func (c *EventReporter) EventOccurredAnonymous(ctx context.Context, event, anony
 
 	i := rudderstack.NewIntegrations().EnableAll()
 
-	err := c.client.Enqueue(rudderstack.Track{
+	track := rudderstack.Track{
 		Event:        event,
-		AnonymousId:  anonymousID,
 		Properties:   p,
 		Integrations: i,
-	})
-	if err != nil {
+	}
+
+	if anonymous {
+		track.AnonymousId = userID
+	} else {
+		track.UserId = userID
+	}
+
+	if err := c.client.Enqueue(track); err != nil {
 		c.circuitBreaker.Failed()
 		return err
 	}

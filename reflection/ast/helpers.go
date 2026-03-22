@@ -7,13 +7,15 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 )
 
 // GetModulePath reads the module path from the go.mod file in the given directory.
 func GetModulePath(dir string) (string, error) {
 	f, err := os.Open(filepath.Join(dir, "go.mod"))
 	if err != nil {
-		return "", fmt.Errorf("opening go.mod: %w", err)
+		return "", errors.Wrap(err, "opening go.mod")
 	}
 
 	scanner := bufio.NewScanner(f)
@@ -25,10 +27,10 @@ func GetModulePath(dir string) (string, error) {
 	}
 
 	if err = f.Close(); err != nil {
-		return "", fmt.Errorf("closing go.mod file: %w", err)
+		return "", errors.Wrap(err, "closing go.mod file")
 	}
 
-	return "", fmt.Errorf("no module directive found in go.mod")
+	return "", errors.New("no module directive found in go.mod")
 }
 
 // BuildImportMap returns a map from each import's local name (explicit alias or

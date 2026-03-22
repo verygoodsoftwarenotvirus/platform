@@ -2,13 +2,13 @@ package config
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/cache"
-	"github.com/verygoodsoftwarenotvirus/platform/cache/memory"
-	"github.com/verygoodsoftwarenotvirus/platform/cache/redis"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/cache"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/cache/memory"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/cache/redis"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
@@ -46,6 +46,6 @@ func ProvideCache[T any](cfg *Config) (cache.Cache[T], error) {
 	case ProviderRedis:
 		return redis.NewRedisCache[T](cfg.Redis, time.Hour), nil
 	default:
-		return nil, fmt.Errorf("invalid cache provider: %q", cfg.Provider)
+		return nil, errors.Newf("invalid cache provider: %q", cfg.Provider)
 	}
 }

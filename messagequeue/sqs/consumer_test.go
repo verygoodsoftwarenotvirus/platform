@@ -5,9 +5,10 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/messagequeue"
-	"github.com/verygoodsoftwarenotvirus/platform/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/testutils"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/messagequeue"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/testutils"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
@@ -90,11 +91,11 @@ func Test_sqsConsumer_Consume(T *testing.T) {
 			return nil
 		}
 
-		consumer := provideSQSConsumer(logging.NewNoopLogger(), mmr, queueURL, handler)
+		consumer := provideSQSConsumer(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mmr, queueURL, handler)
 		stopChan := make(chan bool, 1)
 		errs := make(chan error, 4)
 
-		go consumer.Consume(stopChan, errs)
+		go consumer.Consume(t.Context(), stopChan, errs)
 
 		receivedBody := <-handlerDone
 		<-deleteCalled // wait for DeleteMessage before stopping
@@ -134,11 +135,11 @@ func Test_sqsConsumer_Consume(T *testing.T) {
 			return anticipatedErr
 		}
 
-		consumer := provideSQSConsumer(logging.NewNoopLogger(), mmr, queueURL, handler)
+		consumer := provideSQSConsumer(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mmr, queueURL, handler)
 		stopChan := make(chan bool, 1)
 		errs := make(chan error, 4)
 
-		go consumer.Consume(stopChan, errs)
+		go consumer.Consume(t.Context(), stopChan, errs)
 
 		receivedErr := <-errs
 		assert.Error(t, receivedErr)
@@ -161,7 +162,7 @@ func TestProvideSQSConsumerProvider(T *testing.T) {
 		logger := logging.NewNoopLogger()
 		cfg := Config{}
 
-		actual := ProvideSQSConsumerProvider(ctx, logger, cfg)
+		actual := ProvideSQSConsumerProvider(ctx, logger, tracing.NewNoopTracerProvider(), cfg)
 		assert.NotNil(t, actual)
 	})
 }
@@ -176,7 +177,7 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 		logger := logging.NewNoopLogger()
 		cfg := Config{}
 
-		provider := ProvideSQSConsumerProvider(ctx, logger, cfg)
+		provider := ProvideSQSConsumerProvider(ctx, logger, tracing.NewNoopTracerProvider(), cfg)
 		require.NotNil(t, provider)
 
 		actual, err := provider.ProvideConsumer(ctx, "https://sqs.us-east-1.amazonaws.com/123/test", nil)
@@ -192,7 +193,7 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 		cfg := Config{}
 		topic := "https://sqs.us-east-1.amazonaws.com/123/cached-queue"
 
-		provider := ProvideSQSConsumerProvider(ctx, logger, cfg)
+		provider := ProvideSQSConsumerProvider(ctx, logger, tracing.NewNoopTracerProvider(), cfg)
 		require.NotNil(t, provider)
 
 		actual, err := provider.ProvideConsumer(ctx, topic, nil)
@@ -212,7 +213,7 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 		logger := logging.NewNoopLogger()
 		cfg := Config{}
 
-		provider := ProvideSQSConsumerProvider(ctx, logger, cfg)
+		provider := ProvideSQSConsumerProvider(ctx, logger, tracing.NewNoopTracerProvider(), cfg)
 		require.NotNil(t, provider)
 
 		actual, err := provider.ProvideConsumer(ctx, "", nil)

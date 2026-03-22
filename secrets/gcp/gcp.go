@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/secrets"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/secrets"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
@@ -31,10 +32,10 @@ type gcpSecretSource struct {
 // If client is nil, a new client is created using Application Default Credentials.
 func NewGCPSecretSource(ctx context.Context, cfg *Config, client SecretVersionAccessor) (secrets.SecretSource, error) {
 	if cfg == nil {
-		return nil, fmt.Errorf("gcp secret source: config is required")
+		return nil, errors.New("gcp secret source: config is required")
 	}
 	if err := cfg.ValidateWithContext(ctx); err != nil {
-		return nil, fmt.Errorf("gcp secret source: %w", err)
+		return nil, errors.Wrap(err, "gcp secret source")
 	}
 
 	if client != nil {
@@ -46,7 +47,7 @@ func NewGCPSecretSource(ctx context.Context, cfg *Config, client SecretVersionAc
 
 	smClient, err := secretmanager.NewClient(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("gcp secret source: creating client: %w", err)
+		return nil, errors.Wrap(err, "gcp secret source: creating client")
 	}
 
 	return &gcpSecretSource{
@@ -72,7 +73,7 @@ func (g *gcpSecretSource) GetSecret(ctx context.Context, name string) (string, e
 
 	resp, err := g.client.AccessSecretVersion(ctx, req)
 	if err != nil {
-		return "", fmt.Errorf("accessing secret %q: %w", name, err)
+		return "", errors.Wrapf(err, "accessing secret %q", name)
 	}
 	if resp.Payload == nil || resp.Payload.Data == nil {
 		return "", nil

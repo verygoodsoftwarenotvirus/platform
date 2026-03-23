@@ -16,6 +16,7 @@ import (
 // ErrCircuitBroken is returned when a circuit breaker has tripped.
 var ErrCircuitBroken = errors.New("service circuit broken")
 
+// CircuitBreaker tracks failures and successes to determine whether an operation should proceed.
 type CircuitBreaker interface {
 	Failed()
 	Succeeded()
@@ -91,7 +92,9 @@ func (cfg *Config) ProvideCircuitBreaker(ctx context.Context, logger logging.Log
 		WindowBuckets: circuit.DefaultWindowBuckets,
 	})
 
-	go handleCircuitBreakerEvents(ctx, logger, cb, failureCounter, resetCounter, brokenCounter)
+	events := cb.Subscribe()
+
+	go handleCircuitBreakerEvents(ctx, logger, events, failureCounter, resetCounter, brokenCounter)
 
 	return &baseImplementation{
 		circuitBreaker: cb,
@@ -101,12 +104,12 @@ func (cfg *Config) ProvideCircuitBreaker(ctx context.Context, logger logging.Log
 func handleCircuitBreakerEvents(
 	ctx context.Context,
 	logger logging.Logger,
-	cb *circuit.Breaker,
+	events <-chan circuit.BreakerEvent,
 	failureCounter,
 	resetCounter,
 	brokenCounter metrics.Int64Counter,
 ) {
-	for be := range <-cb.Subscribe() {
+	for be := range events {
 		switch be {
 		case circuit.BreakerTripped:
 			brokenCounter.Add(ctx, 1)

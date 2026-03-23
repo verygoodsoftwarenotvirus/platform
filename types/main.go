@@ -36,6 +36,7 @@ type (
 		Code    ErrorCode `json:"code"`
 	}
 
+	// NamedID pairs an identifier with a human-readable name.
 	NamedID struct {
 		_ struct{} `json:"-"`
 
@@ -43,16 +44,19 @@ type (
 		Name string `json:"name,omitempty"`
 	}
 
+	// RangeWithOptionalUpperBound represents a range with a required minimum and optional maximum.
 	RangeWithOptionalUpperBound[T comparable] struct {
 		Min T  `json:"min"`
 		Max *T `json:"max,omitempty"`
 	}
 
+	// OptionalRange represents a range where both minimum and maximum are optional.
 	OptionalRange[T comparable] struct {
 		Min *T `json:"min,omitempty"`
 		Max *T `json:"max,omitempty"`
 	}
 
+	// OptionalRangeUpdateRequestInput represents an update request for an optional range.
 	OptionalRangeUpdateRequestInput[T comparable] struct {
 		Min *T `json:"min,omitempty"`
 		Max *T `json:"max,omitempty"`

@@ -86,8 +86,109 @@ func TestProvideCircuitBreaker(T *testing.T) {
 
 //nolint:paralleltest // race condition in the core circuit breaker library, I think?
 func TestEnsureCircuitBreaker(T *testing.T) {
-	T.Run("standard", func(t *testing.T) {
-		assert.NotNil(t, EnsureCircuitBreaker(nil))
+	T.Run("with nil breaker", func(t *testing.T) {
+		actual := EnsureCircuitBreaker(nil)
+		assert.NotNil(t, actual)
+		assert.IsType(t, &NoopCircuitBreaker{}, actual)
+	})
+
+	T.Run("with non-nil breaker", func(t *testing.T) {
+		input := NewNoopCircuitBreaker()
+		actual := EnsureCircuitBreaker(input)
+		assert.Equal(t, input, actual)
+	})
+}
+
+//nolint:paralleltest // race condition in the core circuit breaker library, I think?
+func TestConfig_ProvideCircuitBreaker(T *testing.T) {
+	T.Run("with nil config", func(t *testing.T) {
+		ctx := t.Context()
+
+		var cfg *Config
+		cb, err := cfg.ProvideCircuitBreaker(ctx, logging.NewNoopLogger(), metrics.NewNoopMetricsProvider())
+		assert.Nil(t, cb)
+		assert.Error(t, err)
+	})
+
+	T.Run("with invalid config", func(t *testing.T) {
+		ctx := t.Context()
+
+		cfg := &Config{
+			Name:      "",
+			ErrorRate: 200,
+		}
+
+		cb, err := cfg.ProvideCircuitBreaker(ctx, logging.NewNoopLogger(), metrics.NewNoopMetricsProvider())
+		assert.NotNil(t, cb)
+		assert.NoError(t, err)
+		assert.IsType(t, &NoopCircuitBreaker{}, cb)
+	})
+}
+
+//nolint:paralleltest // race condition in the core circuit breaker library, I think?
+func TestBaseImplementation(T *testing.T) {
+	T.Run("Failed", func(t *testing.T) {
+		ctx := t.Context()
+
+		cfg := &Config{
+			Name:                   t.Name(),
+			ErrorRate:              99,
+			MinimumSampleThreshold: 1000,
+		}
+
+		cb, err := cfg.ProvideCircuitBreaker(ctx, logging.NewNoopLogger(), metrics.NewNoopMetricsProvider())
+		assert.NotNil(t, cb)
+		assert.NoError(t, err)
+
+		cb.Failed()
+	})
+
+	T.Run("Succeeded", func(t *testing.T) {
+		ctx := t.Context()
+
+		cfg := &Config{
+			Name:                   t.Name(),
+			ErrorRate:              99,
+			MinimumSampleThreshold: 1000,
+		}
+
+		cb, err := cfg.ProvideCircuitBreaker(ctx, logging.NewNoopLogger(), metrics.NewNoopMetricsProvider())
+		assert.NotNil(t, cb)
+		assert.NoError(t, err)
+
+		cb.Succeeded()
+	})
+
+	T.Run("CanProceed", func(t *testing.T) {
+		ctx := t.Context()
+
+		cfg := &Config{
+			Name:                   t.Name(),
+			ErrorRate:              99,
+			MinimumSampleThreshold: 1000,
+		}
+
+		cb, err := cfg.ProvideCircuitBreaker(ctx, logging.NewNoopLogger(), metrics.NewNoopMetricsProvider())
+		assert.NotNil(t, cb)
+		assert.NoError(t, err)
+
+		assert.True(t, cb.CanProceed())
+	})
+
+	T.Run("CannotProceed", func(t *testing.T) {
+		ctx := t.Context()
+
+		cfg := &Config{
+			Name:                   t.Name(),
+			ErrorRate:              99,
+			MinimumSampleThreshold: 1000,
+		}
+
+		cb, err := cfg.ProvideCircuitBreaker(ctx, logging.NewNoopLogger(), metrics.NewNoopMetricsProvider())
+		assert.NotNil(t, cb)
+		assert.NoError(t, err)
+
+		assert.False(t, cb.CannotProceed())
 	})
 }
 

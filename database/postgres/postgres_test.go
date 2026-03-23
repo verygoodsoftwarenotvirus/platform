@@ -68,7 +68,8 @@ func buildTestClient(t *testing.T) (*Client, *sqlmockExpecterWrapper) {
 	require.NoError(t, err)
 
 	c := &Client{
-		db: fakeDB,
+		readDB:  fakeDB,
+		writeDB: fakeDB,
 		config: &testClientConfig{
 			maxPingAttempts: 1,
 			pingWaitPeriod:  time.Second,
@@ -93,19 +94,45 @@ func TestQuerier_IsReady(T *testing.T) {
 		c, db := buildTestClient(t)
 		c.config = &testClientConfig{pingWaitPeriod: time.Second, maxPingAttempts: 1}
 
+		// same DB for read/write, so only one ping
 		db.ExpectPing().WillDelayFor(0)
 
 		assert.True(t, c.IsReady(ctx))
 	})
 
-	T.Run("with error pinging database", func(t *testing.T) {
+	T.Run("with read DB ping error", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
 		c, db := buildTestClient(t)
-		c.config = &testClientConfig{pingWaitPeriod: time.Second, maxPingAttempts: 1}
+		c.config = &testClientConfig{pingWaitPeriod: time.Millisecond, maxPingAttempts: 1}
 
 		db.ExpectPing().WillReturnError(errors.New("blah"))
+
+		assert.False(t, c.IsReady(ctx))
+	})
+
+	T.Run("with write DB ping error", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+
+		readDB, readMock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+		require.NoError(t, err)
+
+		writeDB, writeMock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+		require.NoError(t, err)
+
+		c := &Client{
+			readDB:  readDB,
+			writeDB: writeDB,
+			config:  &testClientConfig{pingWaitPeriod: time.Millisecond, maxPingAttempts: 1},
+			logger:  logging.NewNoopLogger(),
+			tracer:  tracing.NewTracerForTest("test"),
+		}
+
+		readMock.ExpectPing().WillDelayFor(0)
+		writeMock.ExpectPing().WillReturnError(errors.New("blah"))
 
 		assert.False(t, c.IsReady(ctx))
 	})
@@ -117,7 +144,7 @@ func TestQuerier_IsReady(T *testing.T) {
 		defer cancel()
 
 		c, db := buildTestClient(t)
-		c.config = &testClientConfig{pingWaitPeriod: time.Second, maxPingAttempts: 1}
+		c.config = &testClientConfig{pingWaitPeriod: time.Millisecond, maxPingAttempts: 1}
 
 		db.ExpectPing().WillReturnError(errors.New("blah"))
 
@@ -186,7 +213,7 @@ func TestQuerier_rollbackTransaction(T *testing.T) {
 		db.ExpectBegin()
 		db.ExpectRollback().WillReturnError(errors.New("blah"))
 
-		tx, err := c.db.BeginTx(ctx, nil)
+		tx, err := c.writeDB.BeginTx(ctx, nil)
 		require.NoError(t, err)
 
 		c.RollbackTransaction(ctx, tx)

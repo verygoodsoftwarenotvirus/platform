@@ -104,4 +104,62 @@ func TestToAPIError(T *testing.T) {
 		assert.Equal(t, types.ErrDataNotFound, code)
 		assert.Equal(t, "data not found", msg)
 	})
+
+	T.Run("unknown error returns fallback", func(t *testing.T) {
+		t.Parallel()
+		code, msg := ToAPIError(errors.New("totally unknown error that no mapper handles"))
+		assert.Equal(t, types.ErrTalkingToDatabase, code)
+		assert.Equal(t, "an error occurred", msg)
+	})
+
+	T.Run("circuit broken error", func(t *testing.T) {
+		t.Parallel()
+		code, msg := ToAPIError(circuitbreaking.ErrCircuitBroken)
+		assert.Equal(t, types.ErrCircuitBroken, code)
+		assert.Equal(t, "service temporarily unavailable", msg)
+	})
+
+	T.Run("ErrNilInputParameter", func(t *testing.T) {
+		t.Parallel()
+		code, msg := ToAPIError(platformerrors.ErrNilInputParameter)
+		assert.Equal(t, types.ErrValidatingRequestInput, code)
+		assert.Equal(t, "invalid input", msg)
+	})
+
+	T.Run("ErrUserAlreadyExists", func(t *testing.T) {
+		t.Parallel()
+		code, msg := ToAPIError(database.ErrUserAlreadyExists)
+		assert.Equal(t, types.ErrValidatingRequestInput, code)
+		assert.Equal(t, "user already exists", msg)
+	})
+}
+
+type testHTTPMapper struct {
+	err  error
+	code types.ErrorCode
+	msg  string
+}
+
+func (m testHTTPMapper) Map(err error) (types.ErrorCode, string, bool) {
+	if errors.Is(err, m.err) {
+		return m.code, m.msg, true
+	}
+	return "", "", false
+}
+
+func TestRegisterHTTPErrorMapper(T *testing.T) {
+	T.Parallel()
+
+	T.Run("registers a mapper that is consulted by ToAPIError", func(t *testing.T) {
+		t.Parallel()
+
+		customErr := errors.New("http-register-test-error")
+		mapper := testHTTPMapper{err: customErr, code: "E_CUSTOM", msg: "custom message"}
+
+		RegisterHTTPErrorMapper(mapper)
+
+		code, msg := ToAPIError(customErr)
+		assert.Equal(t, types.ErrorCode("E_CUSTOM"), code)
+		assert.Equal(t, "custom message", msg)
+	})
 }

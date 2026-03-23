@@ -22,10 +22,12 @@ const (
 )
 
 type (
+	// Builder generates QR codes for TOTP two-factor authentication.
 	Builder interface {
 		BuildQRCode(ctx context.Context, username, twoFactorSecret string) string
 	}
 
+	// Issuer identifies the service that issued the TOTP secret.
 	Issuer string
 
 	builder struct {
@@ -35,6 +37,7 @@ type (
 	}
 )
 
+// NewBuilder returns a new QR code Builder.
 func NewBuilder(tracerProvider tracing.TracerProvider, logger logging.Logger) Builder {
 	return &builder{
 		tracer:     tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(o11yName)),

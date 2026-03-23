@@ -16,12 +16,14 @@ const (
 )
 
 var (
+	// ErrInvalidAlgorithm is returned when an unsupported compression algorithm is requested.
 	ErrInvalidAlgorithm = errors.New("invalid compression algorithm")
 )
 
 type (
 	algo string
 
+	// Compressor compresses and decompresses byte slices.
 	Compressor interface {
 		CompressBytes(in []byte) ([]byte, error)
 		DecompressBytes(in []byte) ([]byte, error)

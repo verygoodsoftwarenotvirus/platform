@@ -20,6 +20,7 @@ var (
 )
 
 type (
+	// ErrorCode is a string code identifying specific error conditions in API responses.
 	ErrorCode string
 )
 

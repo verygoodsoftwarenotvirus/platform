@@ -25,6 +25,7 @@ type (
 	Config struct {
 		Redis    *redis.Config `env:"init"     envPrefix:"REDIS_" json:"redis"`
 		Provider string        `env:"PROVIDER" json:"provider"`
+		Expiry   time.Duration `env:"EXPIRY"   envDefault:"1h"    json:"expiry"`
 	}
 )
 

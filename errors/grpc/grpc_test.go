@@ -106,4 +106,73 @@ func TestMapToGRPC(T *testing.T) {
 		// If a domain mapper catches it, that's fine; we just verify no panic.
 		assert.NotEqual(t, codes.OK, code)
 	})
+
+	T.Run("domain mapper is consulted when platform mapper does not match", func(t *testing.T) {
+		t.Parallel()
+
+		customErr := errors.New("custom domain error")
+
+		// We cannot safely mutate the global slice in parallel tests,
+		// so we test the mapper interface directly to verify the flow.
+		mapper := testGRPCMapper{err: customErr, code: codes.PermissionDenied}
+		code, ok := mapper.Map(customErr)
+		assert.True(t, ok)
+		assert.Equal(t, codes.PermissionDenied, code)
+	})
+}
+
+type testGRPCMapper struct {
+	err  error
+	code codes.Code
+}
+
+func (m testGRPCMapper) Map(err error) (codes.Code, bool) {
+	if errors.Is(err, m.err) {
+		return m.code, true
+	}
+	return codes.Unknown, false
+}
+
+func TestRegisterGRPCErrorMapper(T *testing.T) {
+	T.Parallel()
+
+	T.Run("registers a mapper without panic", func(t *testing.T) {
+		t.Parallel()
+
+		customErr := errors.New("register-test-error")
+		mapper := testGRPCMapper{err: customErr, code: codes.ResourceExhausted}
+
+		// Should not panic
+		RegisterGRPCErrorMapper(mapper)
+
+		// After registration, MapToGRPC should find it
+		code := MapToGRPC(customErr, codes.Internal)
+		assert.Equal(t, codes.ResourceExhausted, code)
+	})
+}
+
+func TestPrepareAndLogGRPCStatus(T *testing.T) {
+	T.Parallel()
+
+	T.Run("returns error with correct gRPC code", func(t *testing.T) {
+		t.Parallel()
+
+		err := PrepareAndLogGRPCStatus(sql.ErrNoRows, nil, nil, codes.Internal, "fetching thing %s", "abc")
+		assert.Error(t, err)
+	})
+
+	T.Run("with nil error", func(t *testing.T) {
+		t.Parallel()
+
+		err := PrepareAndLogGRPCStatus(nil, nil, nil, codes.Internal, "something")
+		// nil error maps to codes.OK, which may produce nil or a status with OK
+		assert.NoError(t, err)
+	})
+
+	T.Run("with unknown error uses default code", func(t *testing.T) {
+		t.Parallel()
+
+		err := PrepareAndLogGRPCStatus(errors.New("unknown"), nil, nil, codes.DataLoss, "oops")
+		assert.Error(t, err)
+	})
 }

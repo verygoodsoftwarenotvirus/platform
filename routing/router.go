@@ -38,6 +38,7 @@ type (
 		BuildRouteParamStringIDFetcher(key string) func(req *http.Request) string
 	}
 
+	// Route represents a registered HTTP route with its method and path.
 	Route struct {
 		Method string
 		Path   string

@@ -1,8 +1,23 @@
 package circuitbreaking
 
-import "testing"
+import (
+	"testing"
 
-func TestNoopCircuitBreaker_Obligatory(T *testing.T) {
+	"github.com/stretchr/testify/assert"
+)
+
+func TestNewNoopCircuitBreaker(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		x := NewNoopCircuitBreaker()
+		assert.NotNil(t, x)
+	})
+}
+
+func TestNoopCircuitBreaker_Failed(T *testing.T) {
 	T.Parallel()
 
 	T.Run("standard", func(t *testing.T) {
@@ -10,8 +25,38 @@ func TestNoopCircuitBreaker_Obligatory(T *testing.T) {
 
 		x := NewNoopCircuitBreaker()
 		x.Failed()
+	})
+}
+
+func TestNoopCircuitBreaker_Succeeded(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		x := NewNoopCircuitBreaker()
 		x.Succeeded()
-		x.CanProceed()
-		x.CannotProceed()
+	})
+}
+
+func TestNoopCircuitBreaker_CanProceed(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		x := NewNoopCircuitBreaker()
+		assert.True(t, x.CanProceed())
+	})
+}
+
+func TestNoopCircuitBreaker_CannotProceed(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		x := NewNoopCircuitBreaker()
+		assert.False(t, x.CannotProceed())
 	})
 }

@@ -28,7 +28,8 @@ type Client struct {
 	logger   logging.Logger
 	timeFunc func() time.Time
 	config   database.ClientConfig
-	db       *sql.DB
+	readDB   *sql.DB
+	writeDB  *sql.DB
 }
 
 // ProvideDatabaseClient provides a new DataManager client.
@@ -52,25 +53,49 @@ func ProvideDatabaseClient(ctx context.Context, logger logging.Logger, tracerPro
 		opts = append(opts, otelsql.WithMeterProvider(metricsProvider.MeterProvider()))
 	}
 
-	db, err := otelsql.Open("pgx", cfg.GetReadConnectionString(), opts...)
-	if err != nil {
-		return nil, errors.Wrap(err, "connecting to postgres database")
+	var readDB, writeDB *sql.DB
+	var err error
+
+	if readConnStr := cfg.GetReadConnectionString(); readConnStr != "" {
+		readDB, err = connect(readConnStr, cfg, opts)
+		if err != nil {
+			return nil, errors.Wrap(err, "connecting to read postgres database")
+		}
 	}
 
-	db.SetMaxIdleConns(cfg.GetMaxIdleConns())
-	db.SetMaxOpenConns(cfg.GetMaxOpenConns())
-	db.SetConnMaxLifetime(cfg.GetConnMaxLifetime())
+	if writeConnStr := cfg.GetWriteConnectionString(); writeConnStr != "" {
+		writeDB, err = connect(writeConnStr, cfg, opts)
+		if err != nil {
+			return nil, errors.Wrap(err, "connecting to write postgres database")
+		}
+	}
+
+	// Fall back: if only one connection is configured, use it for both.
+	if readDB == nil && writeDB == nil {
+		return nil, errors.New("at least one of read or write connection string must be provided")
+	}
+	if readDB == nil {
+		readDB = writeDB
+	}
+	if writeDB == nil {
+		writeDB = readDB
+	}
 
 	if metricsProvider != nil {
-		if _, err = otelsql.RegisterDBStatsMetrics(db, otelsql.WithAttributes(
-			semconv.DBSystemPostgreSQL,
-		)); err != nil {
-			return nil, errors.Wrap(err, "registering db stats metrics")
+		if _, err = otelsql.RegisterDBStatsMetrics(readDB, otelsql.WithAttributes(semconv.DBSystemPostgreSQL)); err != nil {
+			return nil, errors.Wrap(err, "registering readDB stats metrics")
+		}
+
+		if readDB != writeDB {
+			if _, err = otelsql.RegisterDBStatsMetrics(writeDB, otelsql.WithAttributes(semconv.DBSystemPostgreSQL)); err != nil {
+				return nil, errors.Wrap(err, "registering writeDB stats metrics")
+			}
 		}
 	}
 
 	c := &Client{
-		db:       db,
+		readDB:   readDB,
+		writeDB:  writeDB,
 		config:   cfg,
 		tracer:   tracer,
 		timeFunc: defaultTimeFunc,
@@ -80,21 +105,41 @@ func ProvideDatabaseClient(ctx context.Context, logger logging.Logger, tracerPro
 	return c, nil
 }
 
+func connect(connStr string, cfg database.ClientConfig, opts []otelsql.Option) (*sql.DB, error) {
+	db, err := otelsql.Open("pgx", connStr, opts...)
+	if err != nil {
+		return nil, errors.Wrap(err, "connecting to postgres database")
+	}
+
+	db.SetMaxIdleConns(cfg.GetMaxIdleConns())
+	db.SetMaxOpenConns(cfg.GetMaxOpenConns())
+	db.SetConnMaxLifetime(cfg.GetConnMaxLifetime())
+
+	return db, nil
+}
+
 // ReadDB provides the database object.
 func (q *Client) ReadDB() *sql.DB {
-	return q.db
+	return q.readDB
 }
 
 // WriteDB provides the database object.
 func (q *Client) WriteDB() *sql.DB {
-	return q.db
+	return q.writeDB
 }
 
 // Close closes the database connection.
 func (q *Client) Close() error {
-	if err := q.db.Close(); err != nil {
-		q.logger.Error("closing database connection", err)
+	if err := q.readDB.Close(); err != nil {
+		q.logger.Error("closing read database connection", err)
 		return err
+	}
+
+	if q.writeDB != q.readDB {
+		if err := q.writeDB.Close(); err != nil {
+			q.logger.Error("closing write database connection", err)
+			return err
+		}
 	}
 
 	return nil
@@ -105,24 +150,38 @@ func (q *Client) IsReady(ctx context.Context) bool {
 	ctx, span := q.tracer.StartSpan(ctx)
 	defer span.End()
 
-	logger := q.logger.WithValue("connection_url", q.config.GetReadConnectionString())
+	maxAttempts := int(q.config.GetMaxPingAttempts())
+	waitPeriod := q.config.GetPingWaitPeriod()
+
+	readReady := q.waitForPing(ctx, q.readDB, q.config.GetReadConnectionString(), maxAttempts, waitPeriod)
+	if !readReady {
+		return false
+	}
+
+	if q.writeDB != q.readDB {
+		return q.waitForPing(ctx, q.writeDB, q.config.GetWriteConnectionString(), maxAttempts, waitPeriod)
+	}
+
+	return true
+}
+
+func (q *Client) waitForPing(ctx context.Context, db *sql.DB, connectionURL string, maxAttempts int, waitPeriod time.Duration) bool {
+	logger := q.logger.WithValue("connection_url", connectionURL)
 
 	attemptCount := 0
 	for {
-		if err := q.db.PingContext(ctx); err != nil {
+		if err := db.PingContext(ctx); err != nil {
 			logger.WithValue("attempt_count", attemptCount).Info("ping failed, waiting for db")
-			time.Sleep(q.config.GetPingWaitPeriod())
+			time.Sleep(waitPeriod)
 
 			attemptCount++
-			if attemptCount >= int(q.config.GetMaxPingAttempts()) {
-				break
+			if attemptCount >= maxAttempts {
+				return false
 			}
 		} else {
 			return true
 		}
 	}
-
-	return false
 }
 
 func defaultTimeFunc() time.Time {

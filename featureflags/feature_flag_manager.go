@@ -14,6 +14,7 @@ type (
 	}
 )
 
+// NewNoopFeatureFlagManager returns a FeatureFlagManager that always returns zero values.
 func NewNoopFeatureFlagManager() FeatureFlagManager {
 	return &NoopFeatureFlagManager{}
 }

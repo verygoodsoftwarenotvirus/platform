@@ -94,11 +94,6 @@ linters:
     - wrapcheck
     - wsl
   settings:
-    cyclop:
-      max-complexity: 25
-      package-average: 0
-    dupl:
-      threshold: 100
     errcheck:
       check-type-assertions: true
       check-blank: true
@@ -122,22 +117,11 @@ linters:
       settings:
         rangeValCopy:
           sizeThreshold: 32
-    gocyclo:
-      min-complexity: 20
     govet:
       enable-all: true
       settings:
-        printf:
-          funcs:
-            - (github.com/golangci/golangci-lint/pkg/logutils.Log).Infof
-            - (github.com/golangci/golangci-lint/pkg/logutils.Log).Warnf
-            - (github.com/golangci/golangci-lint/pkg/logutils.Log).Errorf
-            - (github.com/golangci/golangci-lint/pkg/logutils.Log).Fatalf
         shadow:
           strict: true
-    lll:
-      line-length: 512
-      tab-width: 1
     misspell:
       locale: US
       ignore-rules:
@@ -145,12 +129,6 @@ linters:
         - cancelling
     nakedret:
       max-func-lines: 4
-    nestif:
-      min-complexity: 8
-    prealloc:
-      simple: true
-      range-loops: true
-      for-loops: false
     unparam:
       check-exported: false
     unused:
@@ -160,27 +138,20 @@ linters:
       parameters-are-used: true
       local-variables-are-used: true
       generated-is-used: true
-    wsl:
-      allow-cuddle-declarations: true
   exclusions:
     generated: lax
     rules:
       - linters:
           - bodyclose
           - errcheck
-          - exhaustruct
           - forcetypeassert
           - goconst
           - gosec
           - nilnil
           - unparam
           - unused
-          - cyclop
           - contextcheck
         path: (.+)_test\.go
-      - linters:
-          - ireturn
-        path: wire\.go
       - linters:
           - errcheck
           - forcetypeassert
@@ -197,20 +168,7 @@ linters:
         path: routing/mock
       - linters:
           - forcetypeassert
-        path: search/mock
-      - linters:
-          - forcetypeassert
         path: uploads/mock
-      - linters:
-          - gocritic
-        path: cmd/tools/codegen
-        text: 'rangeValCopy: each iteration copies'
-      - linters:
-          - paralleltest
-        path: email/sendgrid
-      - linters:
-          - paralleltest
-        path: featureflags/posthog
       - linters:
           - forcetypeassert
         path: uploads/images/mock.go
@@ -234,8 +192,6 @@ linters:
           - gocheckcompilerdirectives
         text: '//go:fix'
     paths:
-      - cmd/playground
-      - tests/integration
       - third_party$
       - builtin$
       - examples$
@@ -257,6 +213,3 @@ formatters:
       custom-order: true
     gofmt:
       simplify: true
-    goimports:
-      local-prefixes:
-        - github.com/verygoodsoftwarenotvirus/platform

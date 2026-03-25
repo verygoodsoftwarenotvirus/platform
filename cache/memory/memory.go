@@ -47,3 +47,7 @@ func (i *inMemoryCacheImpl[T]) Delete(_ context.Context, key string) error {
 
 	return nil
 }
+
+func (i *inMemoryCacheImpl[T]) Ping(_ context.Context) error {
+	return nil
+}

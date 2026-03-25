@@ -20,6 +20,7 @@ type (
 	// PublisherProvider is a function that provides a Publisher for a given topic.
 	PublisherProvider interface {
 		Close()
+		Ping(ctx context.Context) error
 		ProvidePublisher(ctx context.Context, topic string) (Publisher, error)
 	}
 )
@@ -54,6 +55,9 @@ func (n *noopPublisherProvider) ProvidePublisher(_ context.Context, _ string) (P
 
 // Close does nothing.
 func (n *noopPublisherProvider) Close() {}
+
+// Ping does nothing.
+func (n *noopPublisherProvider) Ping(context.Context) error { return nil }
 
 // NewNoopPublisherProvider is a noop PublisherProvider.
 func NewNoopPublisherProvider() PublisherProvider {

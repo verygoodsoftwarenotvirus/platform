@@ -139,5 +139,8 @@ func (p *publisherProvider) ProvidePublisher(ctx context.Context, topic string) 
 	return pub, nil
 }
 
+// Ping is a no-op for SQS (SQS is a managed service).
+func (p *publisherProvider) Ping(context.Context) error { return nil }
+
 // Close returns a Publisher for a given topic.
 func (p *publisherProvider) Close() {}

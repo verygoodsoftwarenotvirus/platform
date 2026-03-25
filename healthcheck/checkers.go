@@ -35,3 +35,55 @@ func (d *databaseChecker) Check(ctx context.Context) error {
 	}
 	return nil
 }
+
+// CacheReadyChecker checks if a cache client is ready.
+type CacheReadyChecker interface {
+	Ping(ctx context.Context) error
+}
+
+// NewCacheChecker returns a Checker that pings the given cache client.
+func NewCacheChecker(name string, client CacheReadyChecker) Checker {
+	return &cacheChecker{name: name, client: client}
+}
+
+type cacheChecker struct {
+	client CacheReadyChecker
+	name   string
+}
+
+func (c *cacheChecker) Name() string {
+	return c.name
+}
+
+func (c *cacheChecker) Check(ctx context.Context) error {
+	if c.client == nil {
+		return errors.New("cache client is nil")
+	}
+	return c.client.Ping(ctx)
+}
+
+// MessageQueueReadyChecker checks if a message queue client is ready.
+type MessageQueueReadyChecker interface {
+	Ping(ctx context.Context) error
+}
+
+// NewMessageQueueChecker returns a Checker that pings the given message queue client.
+func NewMessageQueueChecker(name string, client MessageQueueReadyChecker) Checker {
+	return &messageQueueChecker{name: name, client: client}
+}
+
+type messageQueueChecker struct {
+	client MessageQueueReadyChecker
+	name   string
+}
+
+func (m *messageQueueChecker) Name() string {
+	return m.name
+}
+
+func (m *messageQueueChecker) Check(ctx context.Context) error {
+	if m.client == nil {
+		return errors.New("message queue client is nil")
+	}
+	return m.client.Ping(ctx)
+}

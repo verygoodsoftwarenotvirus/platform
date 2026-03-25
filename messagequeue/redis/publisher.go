@@ -27,8 +27,13 @@ var (
 var _ messagePublisher = (*redis.ClusterClient)(nil)
 
 type (
+	messagePinger interface {
+		Ping(ctx context.Context) *redis.StatusCmd
+	}
+
 	messagePublisher interface {
 		io.Closer
+		messagePinger
 		Publish(ctx context.Context, channel string, message any) *redis.IntCmd
 	}
 
@@ -145,6 +150,11 @@ func (p *publisherProvider) ProvidePublisher(ctx context.Context, topic string) 
 	p.publisherCache[topic] = pub
 
 	return pub, nil
+}
+
+// Ping pings the underlying Redis client.
+func (p *publisherProvider) Ping(ctx context.Context) error {
+	return p.redisClient.Ping(ctx).Err()
 }
 
 // Close closes the publisher.

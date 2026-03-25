@@ -11,6 +11,8 @@ type NoopPublisherProvider struct{}
 
 func (n *NoopPublisherProvider) Close() {}
 
+func (n *NoopPublisherProvider) Ping(context.Context) error { return nil }
+
 func (n *NoopPublisherProvider) ProvidePublisher(context.Context, string) (Publisher, error) {
 	return &NoopPublisher{}, nil
 }

@@ -65,6 +65,9 @@ func ProvidePubSubPublisherProvider(logger logging.Logger, tracerProvider tracin
 	}
 }
 
+// Ping is a no-op for GCP Pub/Sub (managed service).
+func (p *publisherProvider) Ping(context.Context) error { return nil }
+
 // Close closes the connection topic.
 func (p *publisherProvider) Close() {
 	if err := p.pubsubClient.Close(); err != nil {

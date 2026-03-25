@@ -74,3 +74,14 @@ func Test_inMemoryCacheImpl_Delete(T *testing.T) {
 		assert.Len(t, c.(*inMemoryCacheImpl[example]).cache, 0)
 	})
 }
+
+func Test_inMemoryCacheImpl_Ping(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		c := NewInMemoryCache[example]()
+		assert.NoError(t, c.Ping(t.Context()))
+	})
+}

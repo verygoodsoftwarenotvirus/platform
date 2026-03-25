@@ -46,3 +46,8 @@ func (m *PublisherProvider) ProvidePublisher(ctx context.Context, topic string) 
 func (m *PublisherProvider) Close() {
 	m.Called()
 }
+
+// Ping implements our interface.
+func (m *PublisherProvider) Ping(ctx context.Context) error {
+	return m.Called(ctx).Error(0)
+}

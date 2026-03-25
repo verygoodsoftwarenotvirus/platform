@@ -17,6 +17,7 @@ type redisClient interface {
 	Get(ctx context.Context, key string) *redis.StringCmd
 	Set(ctx context.Context, key string, value any, expiration time.Duration) *redis.StatusCmd
 	Del(ctx context.Context, keys ...string) *redis.IntCmd
+	Ping(ctx context.Context) *redis.StatusCmd
 }
 
 type redisCacheImpl[T any] struct {
@@ -67,6 +68,10 @@ func (i *redisCacheImpl[T]) Set(ctx context.Context, key string, value *T) error
 
 func (i *redisCacheImpl[T]) Delete(ctx context.Context, key string) error {
 	return i.client.Del(ctx, key).Err()
+}
+
+func (i *redisCacheImpl[T]) Ping(ctx context.Context) error {
+	return i.client.Ping(ctx).Err()
 }
 
 // buildRedisClient returns a PublisherProvider for a given address.

@@ -31,6 +31,11 @@ func (m *mockMessagePublisher) Close() error {
 	return m.Called().Error(0)
 }
 
+// Ping implements the interface.
+func (m *mockMessagePublisher) Ping(ctx context.Context) *redis.StatusCmd {
+	return m.Called(ctx).Get(0).(*redis.StatusCmd)
+}
+
 func buildRedisBackedPublisher(t *testing.T, cfg *Config, topic string) messagequeue.Publisher {
 	t.Helper()
 

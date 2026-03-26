@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"hash/adler32"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/cryptography/hashing"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/cryptography/hashing"
 )
 
 var _ hashing.Hasher = (*adler32Hasher)(nil)

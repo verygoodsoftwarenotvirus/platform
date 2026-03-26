@@ -6,10 +6,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/circuitbreaking"
-	mockCircuitBreaker "github.com/verygoodsoftwarenotvirus/platform/v2/circuitbreaking/mock"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/circuitbreaking"
+	mockCircuitBreaker "github.com/verygoodsoftwarenotvirus/platform/v3/circuitbreaking/mock"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
 
 	"github.com/posthog/posthog-go"
 	"github.com/stretchr/testify/assert"

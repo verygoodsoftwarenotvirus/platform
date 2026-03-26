@@ -4,14 +4,14 @@ import (
 	"context"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/asyncnotifications"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/asyncnotifications/ably"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/asyncnotifications/pusher"
-	asyncsse "github.com/verygoodsoftwarenotvirus/platform/v2/asyncnotifications/sse"
-	asyncws "github.com/verygoodsoftwarenotvirus/platform/v2/asyncnotifications/websocket"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/asyncnotifications"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/asyncnotifications/ably"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/asyncnotifications/pusher"
+	asyncsse "github.com/verygoodsoftwarenotvirus/platform/v3/asyncnotifications/sse"
+	asyncws "github.com/verygoodsoftwarenotvirus/platform/v3/asyncnotifications/websocket"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )

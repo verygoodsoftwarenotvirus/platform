@@ -1,4 +1,4 @@
-module github.com/verygoodsoftwarenotvirus/platform/v2
+module github.com/verygoodsoftwarenotvirus/platform/v3
 
 go 1.26
 
@@ -104,7 +104,7 @@ require (
 	cloud.google.com/go/firestore v1.21.0 // indirect
 	cloud.google.com/go/iam v1.5.3 // indirect
 	cloud.google.com/go/longrunning v0.8.0 // indirect
-	cloud.google.com/go/monitoring v1.24.3 // indirect
+	cloud.google.com/go/monitoring v1.24.3 // ind	irect
 	cloud.google.com/go/storage v1.61.3 // indirect
 	cloud.google.com/go/trace v1.11.7 // indirect
 	dario.cat/mergo v1.0.2 // indirect

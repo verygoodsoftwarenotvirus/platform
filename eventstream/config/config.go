@@ -4,11 +4,11 @@ import (
 	"context"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/eventstream"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/eventstream/sse"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/eventstream/websocket"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/eventstream"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/eventstream/sse"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/eventstream/websocket"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )

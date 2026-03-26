@@ -1,7 +1,7 @@
 package objectstorage
 
 import (
-	"github.com/verygoodsoftwarenotvirus/platform/v2/uploads"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/uploads"
 
 	"github.com/google/wire"
 )

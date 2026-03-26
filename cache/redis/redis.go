@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/cache"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/cache"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/errors"
 
 	"github.com/go-redis/redis/v8"
 )

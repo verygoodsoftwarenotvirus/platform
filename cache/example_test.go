@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/cache"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/cache/memory"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/cache"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/cache/memory"
 )
 
 func ExampleCache_setAndGet() {

@@ -6,7 +6,7 @@ import (
 	"errors"
 	"testing"
 
-	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v3/errors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/errors"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )

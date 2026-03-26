@@ -1,7 +1,7 @@
 package ratelimiting
 
 import (
-	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/errors"
 
 	"github.com/google/wire"
 )

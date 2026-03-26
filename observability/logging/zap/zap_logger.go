@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/keys"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/keys"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
 
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"

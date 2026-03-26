@@ -3,8 +3,8 @@ package healthcheck
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/database"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/database"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/errors"
 )
 
 // DatabaseReadyChecker checks if a database client is ready.

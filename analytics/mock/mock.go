@@ -3,7 +3,7 @@ package analyticsmock
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/analytics"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/analytics"
 
 	"github.com/stretchr/testify/mock"
 )

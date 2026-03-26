@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/asyncnotifications"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/asyncnotifications"
 )
 
 func ExampleNewNoopAsyncNotifier() {

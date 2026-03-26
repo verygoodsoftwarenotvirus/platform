@@ -3,9 +3,9 @@ package oteltrace
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
-	o11yutils "github.com/verygoodsoftwarenotvirus/platform/v2/observability/utils"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
+	o11yutils "github.com/verygoodsoftwarenotvirus/platform/v3/observability/utils"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"

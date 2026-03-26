@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/analytics"
-	analyticsmock "github.com/verygoodsoftwarenotvirus/platform/v2/analytics/mock"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/analytics"
+	analyticsmock "github.com/verygoodsoftwarenotvirus/platform/v3/analytics/mock"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

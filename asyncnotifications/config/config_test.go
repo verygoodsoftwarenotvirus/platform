@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/asyncnotifications/ably"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/asyncnotifications/pusher"
-	asyncws "github.com/verygoodsoftwarenotvirus/platform/v2/asyncnotifications/websocket"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/asyncnotifications/ably"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/asyncnotifications/pusher"
+	asyncws "github.com/verygoodsoftwarenotvirus/platform/v3/asyncnotifications/websocket"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

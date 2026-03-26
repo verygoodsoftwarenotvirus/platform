@@ -1,10 +1,10 @@
 package observability
 
 import (
-	loggingcfg "github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging/config"
-	metricscfg "github.com/verygoodsoftwarenotvirus/platform/v2/observability/metrics/config"
-	profilingcfg "github.com/verygoodsoftwarenotvirus/platform/v2/observability/profiling/config"
-	tracingcfg "github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing/config"
+	loggingcfg "github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging/config"
+	metricscfg "github.com/verygoodsoftwarenotvirus/platform/v3/observability/metrics/config"
+	profilingcfg "github.com/verygoodsoftwarenotvirus/platform/v3/observability/profiling/config"
+	tracingcfg "github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing/config"
 
 	"github.com/samber/do/v2"
 )

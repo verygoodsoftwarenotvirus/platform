@@ -4,11 +4,11 @@ import (
 	"context"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/secrets"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/secrets/env"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/secrets/gcp"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/secrets/ssm"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/secrets"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/secrets/env"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/secrets/gcp"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/secrets/ssm"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )

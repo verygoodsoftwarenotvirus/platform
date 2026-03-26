@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/secrets/env"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/secrets/env"
 )
 
 func Example_envSecretSource() {

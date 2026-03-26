@@ -12,7 +12,7 @@ const (
 )
 
 var (
-	PackagePrefix = "github.com/verygoodsoftwarenotvirus/platform/v2/"
+	PackagePrefix = "github.com/verygoodsoftwarenotvirus/platform/v3/"
 )
 
 // GetCallerName is largely (and respectfully) inspired by/copied from https://stackoverflow.com/a/35213181

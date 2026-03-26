@@ -5,17 +5,9 @@ import (
 
 	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
-
-	"github.com/google/wire"
 )
 
-var (
-	// TracingConfigProviders is a Wire provider set that provides a tracing.TracerProvider.
-	TracingConfigProviders = wire.NewSet(
-		ProvideTracerProvider,
-	)
-)
-
+// ProvideTracerProvider provides a TracerProvider from config.
 func ProvideTracerProvider(ctx context.Context, c *Config, l logging.Logger) (traceProvider tracing.TracerProvider, err error) {
 	return c.ProvideTracerProvider(ctx, l)
 }

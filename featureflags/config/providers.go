@@ -9,16 +9,9 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/metrics"
 	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
-
-	"github.com/google/wire"
 )
 
-var (
-	ProvidersFeatureFlags = wire.NewSet(
-		ProvideFeatureFlagManager,
-	)
-)
-
+// ProvideFeatureFlagManager provides a FeatureFlagManager from config.
 func ProvideFeatureFlagManager(ctx context.Context, c *Config, logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider, httpClient *http.Client) (featureflags.FeatureFlagManager, error) {
 	circuitBreaker, err := c.CircuitBreaker.ProvideCircuitBreaker(ctx, logger, metricsProvider)
 	if err != nil {

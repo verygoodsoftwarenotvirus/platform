@@ -4,15 +4,6 @@ import (
 	"context"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v3/llm"
-
-	"github.com/google/wire"
-)
-
-var (
-	// ProvidersLLM provides the LLM provider for Wire dependency injection.
-	ProvidersLLM = wire.NewSet(
-		ProvideLLMProvider,
-	)
 )
 
 // ProvideLLMProvider provides an LLM provider from config.

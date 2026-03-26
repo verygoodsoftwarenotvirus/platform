@@ -12,6 +12,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/keys"
 	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
 	o11yutils "github.com/verygoodsoftwarenotvirus/platform/v3/observability/utils"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/version"
 
 	slogmulti "github.com/samber/slog-multi"
 	"go.opentelemetry.io/contrib/bridges/otelslog"
@@ -88,7 +89,7 @@ func NewOtelSlogLogger(ctx context.Context, lvl logging.Level, serviceName strin
 		logHandlers = append(logHandlers, otelslog.NewHandler(
 			serviceName,
 			otelslog.WithLoggerProvider(lp),
-			otelslog.WithVersion("TODO_version"),
+			otelslog.WithVersion(version.Get().Version),
 			otelslog.WithSource(true),
 		))
 	}

@@ -2,15 +2,6 @@ package ratelimiting
 
 import (
 	"github.com/verygoodsoftwarenotvirus/platform/v3/errors"
-
-	"github.com/google/wire"
-)
-
-var (
-	// Providers provides rate limiter construction for dependency injection.
-	Providers = wire.NewSet(
-		ProvideRateLimiterFromConfig,
-	)
 )
 
 // ProvideRateLimiterFromConfig provides a RateLimiter from config.

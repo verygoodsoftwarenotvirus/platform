@@ -7,15 +7,6 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/metrics"
 	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
-
-	"github.com/google/wire"
-)
-
-var (
-	// Providers are what we provide to dependency injection.
-	Providers = wire.NewSet(
-		ProvideEventReporter,
-	)
 )
 
 // ProvideEventReporter provides an analytics.EventReporter from a config.

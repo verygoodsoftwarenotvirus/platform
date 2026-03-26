@@ -47,8 +47,6 @@ The Makefile `THIS` variable must be the full module path (`github.com/verygoods
 
 **Config structs:** Each major package has a `config` subpackage using `env:` struct tags, `ValidateWithContext()` via `go-ozzo/ozzo-validation`, and `EnsureDefaults()`.
 
-**Wire DI:** Packages expose `wire.go` files with `Providers = wire.NewSet(...)` for Google Wire dependency injection.
-
 **OpenTelemetry throughout:** Database, HTTP, gRPC, and messaging all instrument with OTel for traces, metrics, and logs.
 
 **Error handling:** Uses `cockroachdb/errors` for rich error context. Platform-level sentinels defined in `internalerrors/`.

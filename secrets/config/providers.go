@@ -6,15 +6,6 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v3/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v3/secrets"
 	"github.com/verygoodsoftwarenotvirus/platform/v3/secrets/env"
-
-	"github.com/google/wire"
-)
-
-var (
-	// Providers provides secret source construction for dependency injection.
-	Providers = wire.NewSet(
-		ProvideSecretSourceFromConfig,
-	)
 )
 
 // ProvideSecretSourceFromConfig provides a SecretSource from config.

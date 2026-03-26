@@ -10,7 +10,7 @@ import (
 )
 
 // RegisterO11yConfigs registers sub-configs extracted from *Config with the injector.
-// This mirrors the wire.FieldsOf pattern in wire.go.
+// This extracts sub-configs from the parent *Config and registers them with the injector.
 // Prerequisite: *Config must be registered in the injector before calling this.
 func RegisterO11yConfigs(i do.Injector) {
 	do.Provide[*loggingcfg.Config](i, func(i do.Injector) (*loggingcfg.Config, error) {

@@ -28,7 +28,6 @@ require (
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/gogo/protobuf v1.3.2
-	github.com/google/wire v0.7.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/grafana/pyroscope-go v1.2.7
 	github.com/hashicorp/go-multierror v1.1.1
@@ -95,6 +94,8 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
+require github.com/google/wire v0.7.0 // indirect
+
 require (
 	cel.dev/expr v0.25.1 // indirect
 	cloud.google.com/go v0.123.0 // indirect
@@ -104,7 +105,7 @@ require (
 	cloud.google.com/go/firestore v1.21.0 // indirect
 	cloud.google.com/go/iam v1.5.3 // indirect
 	cloud.google.com/go/longrunning v0.8.0 // indirect
-	cloud.google.com/go/monitoring v1.24.3 // ind	irect
+	cloud.google.com/go/monitoring v1.24.3 // indirect; ind	irect
 	cloud.google.com/go/storage v1.61.3 // indirect
 	cloud.google.com/go/trace v1.11.7 // indirect
 	dario.cat/mergo v1.0.2 // indirect

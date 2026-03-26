@@ -5,18 +5,9 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/metrics"
 	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
 	"github.com/verygoodsoftwarenotvirus/platform/v3/routing"
-
-	"github.com/google/wire"
 )
 
-var (
-	// RoutingConfigProviders are what we provide to the dependency injector.
-	RoutingConfigProviders = wire.NewSet(
-		// ProvideRouterViaConfig,
-		ProvideRouteParamManager,
-	)
-)
-
+// ProvideRouterViaConfig provides a Router from config.
 func ProvideRouterViaConfig(
 	cfg *Config,
 	logger logging.Logger,

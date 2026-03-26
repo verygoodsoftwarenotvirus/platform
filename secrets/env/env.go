@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/secrets"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/secrets"
 )
 
 type envSecretSource struct{}

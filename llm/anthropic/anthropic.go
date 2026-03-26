@@ -3,9 +3,9 @@ package anthropic
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/llm"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/pointer"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/llm"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/pointer"
 
 	anyllm "github.com/mozilla-ai/any-llm-go"
 	anyllmanthropic "github.com/mozilla-ai/any-llm-go/providers/anthropic"

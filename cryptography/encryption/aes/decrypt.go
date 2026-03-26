@@ -6,7 +6,7 @@ import (
 	"crypto/cipher"
 	"encoding/base64"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability"
 )
 
 func (e *aesImpl) Decrypt(ctx context.Context, content string) (string, error) {

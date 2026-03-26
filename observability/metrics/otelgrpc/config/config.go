@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/metrics/otelgrpc"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/metrics/otelgrpc"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )

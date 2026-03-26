@@ -4,12 +4,12 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/asyncnotifications"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/eventstream"
-	essse "github.com/verygoodsoftwarenotvirus/platform/v2/eventstream/sse"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/asyncnotifications"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/eventstream"
+	essse "github.com/verygoodsoftwarenotvirus/platform/v3/eventstream/sse"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
 )
 
 const o11yName = "async_notifications_sse"

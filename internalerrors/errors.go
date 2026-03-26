@@ -1,7 +1,7 @@
 package internalerrors
 
 import (
-	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/errors"
 )
 
 // NilConfigError returns a nil config error.

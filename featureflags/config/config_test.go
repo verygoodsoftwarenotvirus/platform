@@ -4,12 +4,12 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/circuitbreaking"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/featureflags/launchdarkly"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/featureflags/posthog"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/circuitbreaking"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/featureflags/launchdarkly"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/featureflags/posthog"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

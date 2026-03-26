@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/ratelimiting"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/ratelimiting"
 )
 
 func ExampleNewInMemoryRateLimiter() {

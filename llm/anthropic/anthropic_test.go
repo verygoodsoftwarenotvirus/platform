@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/llm"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/llm"
 
 	"github.com/stretchr/testify/require"
 )

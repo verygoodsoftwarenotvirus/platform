@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/mobilenotifications"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/mobilenotifications"
 )
 
 func Example_noopPushNotificationSender() {

@@ -3,18 +3,9 @@ package secretscfg
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/secrets"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/secrets/env"
-
-	"github.com/google/wire"
-)
-
-var (
-	// Providers provides secret source construction for dependency injection.
-	Providers = wire.NewSet(
-		ProvideSecretSourceFromConfig,
-	)
+	"github.com/verygoodsoftwarenotvirus/platform/v3/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/secrets"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/secrets/env"
 )
 
 // ProvideSecretSourceFromConfig provides a SecretSource from config.

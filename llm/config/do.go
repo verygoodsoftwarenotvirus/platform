@@ -1,7 +1,7 @@
 package llmcfg
 
 import (
-	"github.com/verygoodsoftwarenotvirus/platform/v2/llm"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/llm"
 
 	"github.com/samber/do/v2"
 )

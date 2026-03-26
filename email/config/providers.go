@@ -4,20 +4,11 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/email"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
-
-	"github.com/google/wire"
-)
-
-var (
-	// Providers are what we provide to dependency injection.
-	Providers = wire.NewSet(
-		ProvideEmailer,
-	)
+	"github.com/verygoodsoftwarenotvirus/platform/v3/email"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
 )
 
 // ProvideEmailer provides an email.Emailer from a config.

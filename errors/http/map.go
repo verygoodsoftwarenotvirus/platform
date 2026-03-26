@@ -3,7 +3,7 @@ package http
 import (
 	"sync"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/types"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/types"
 )
 
 // HTTPErrorMapper maps domain errors to (ErrorCode, message). ok=false means no match.

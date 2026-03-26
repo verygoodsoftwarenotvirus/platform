@@ -3,7 +3,7 @@ package routing
 import (
 	"net/http"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
 )
 
 // all interfaces HEAVILY inspired by github.com/go-chi/chi.

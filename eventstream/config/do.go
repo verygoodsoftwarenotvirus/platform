@@ -1,8 +1,8 @@
 package config
 
 import (
-	"github.com/verygoodsoftwarenotvirus/platform/v2/eventstream"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/eventstream"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
 
 	"github.com/samber/do/v2"
 )

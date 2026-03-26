@@ -1,16 +1,16 @@
 package observability
 
 import (
-	loggingcfg "github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging/config"
-	metricscfg "github.com/verygoodsoftwarenotvirus/platform/v2/observability/metrics/config"
-	profilingcfg "github.com/verygoodsoftwarenotvirus/platform/v2/observability/profiling/config"
-	tracingcfg "github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing/config"
+	loggingcfg "github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging/config"
+	metricscfg "github.com/verygoodsoftwarenotvirus/platform/v3/observability/metrics/config"
+	profilingcfg "github.com/verygoodsoftwarenotvirus/platform/v3/observability/profiling/config"
+	tracingcfg "github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing/config"
 
 	"github.com/samber/do/v2"
 )
 
 // RegisterO11yConfigs registers sub-configs extracted from *Config with the injector.
-// This mirrors the wire.FieldsOf pattern in wire.go.
+// This extracts sub-configs from the parent *Config and registers them with the injector.
 // Prerequisite: *Config must be registered in the injector before calling this.
 func RegisterO11yConfigs(i do.Injector) {
 	do.Provide[*loggingcfg.Config](i, func(i do.Injector) (*loggingcfg.Config, error) {

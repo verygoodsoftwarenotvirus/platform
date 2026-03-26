@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/secrets"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/secrets"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -3,7 +3,7 @@ package mockuploads
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/uploads"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/uploads"
 
 	"github.com/stretchr/testify/mock"
 )

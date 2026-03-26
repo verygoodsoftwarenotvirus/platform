@@ -3,7 +3,7 @@ package circuitbreaking_test
 import (
 	"fmt"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/circuitbreaking"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/circuitbreaking"
 )
 
 func ExampleNewNoopCircuitBreaker() {

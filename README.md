@@ -1,10 +1,10 @@
 # platform
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/verygoodsoftwarenotvirus/platform/v2.svg)](https://pkg.go.dev/github.com/verygoodsoftwarenotvirus/platform/v2)
+[![Go Reference](https://pkg.go.dev/badge/github.com/verygoodsoftwarenotvirus/platform/v3.svg)](https://pkg.go.dev/github.com/verygoodsoftwarenotvirus/platform/v3)
 
-A Go library providing infrastructure abstractions for cloud-native services. Each package defines a stable interface with multiple provider implementations, selected at runtime via config. All packages support Google Wire for dependency injection and instrument with OpenTelemetry where applicable.
+A Go library providing infrastructure abstractions for cloud-native services. Each package defines a stable interface with multiple provider implementations, selected at runtime via config. All packages instrument with OpenTelemetry where applicable.
 
-**Module:** `github.com/verygoodsoftwarenotvirus/platform`
+**Module:** `github.com/verygoodsoftwarenotvirus/platform/v3`
 **Go:** 1.26
 
 ## Design Patterns
@@ -12,8 +12,6 @@ A Go library providing infrastructure abstractions for cloud-native services. Ea
 **Interface + implementations:** Every major concern is defined as an interface in the root package (e.g., `cache.Cache[T]`), with provider implementations in subpackages. Swap implementations via config without changing call sites.
 
 **Config structs:** Each package has a `config` subpackage with `env:`-tagged structs, `ValidateWithContext()` validation, and `EnsureDefaults()`.
-
-**Wire DI:** All packages expose `wire.go` with a `Providers` set for [Google Wire](https://github.com/google/wire).
 
 **OTel throughout:** HTTP, gRPC, database, and messaging layers are instrumented for traces and metrics.
 

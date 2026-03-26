@@ -4,11 +4,11 @@ import (
 	"context"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/mobilenotifications"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/mobilenotifications/apns"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/mobilenotifications/fcm"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/mobilenotifications"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/mobilenotifications/apns"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/mobilenotifications/fcm"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )

@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/cache"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/cache/memory"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/cache/redis"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/cache"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/cache/memory"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/cache/redis"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/errors"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )

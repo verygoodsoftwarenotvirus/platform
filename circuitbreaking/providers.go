@@ -3,18 +3,11 @@ package circuitbreaking
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/metrics"
-
-	"github.com/google/wire"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/metrics"
 )
 
-var (
-	Providers = wire.NewSet(
-		ProvideCircuitBreaker,
-	)
-)
-
+// ProvideCircuitBreaker provides a CircuitBreaker from config.
 func ProvideCircuitBreaker(ctx context.Context, cfg *Config, logger logging.Logger, metricsProvider metrics.Provider) (CircuitBreaker, error) {
 	return cfg.ProvideCircuitBreaker(ctx, logger, metricsProvider)
 }

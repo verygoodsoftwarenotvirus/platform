@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/cache"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/cache"
 )
 
 type inMemoryCacheImpl[T any] struct {

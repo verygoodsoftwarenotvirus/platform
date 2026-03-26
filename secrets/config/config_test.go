@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/secrets/gcp"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/secrets/ssm"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/secrets/gcp"
+	"github.com/verygoodsoftwarenotvirus/platform/v3/secrets/ssm"
 
 	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
 	"github.com/aws/aws-sdk-go-v2/aws"

@@ -2,22 +2,62 @@ package env
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/secrets"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/secrets"
 )
 
-type envSecretSource struct{}
+const name = "env_secret_source"
+
+type envSecretSource struct {
+	logger        logging.Logger
+	tracer        tracing.Tracer
+	lookupCounter metrics.Int64Counter
+	latencyHist   metrics.Float64Histogram
+}
 
 // NewEnvSecretSource returns a SecretSource that reads from environment variables.
-func NewEnvSecretSource() secrets.SecretSource {
-	return &envSecretSource{}
+func NewEnvSecretSource(logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider) (secrets.SecretSource, error) {
+	mp := metrics.EnsureMetricsProvider(metricsProvider)
+
+	lookupCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_lookups", name))
+	if err != nil {
+		return nil, fmt.Errorf("creating lookup counter: %w", err)
+	}
+
+	latencyHist, err := mp.NewFloat64Histogram(fmt.Sprintf("%s_latency_ms", name))
+	if err != nil {
+		return nil, fmt.Errorf("creating latency histogram: %w", err)
+	}
+
+	return &envSecretSource{
+		logger:        logging.EnsureLogger(logger).WithName(name),
+		tracer:        tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(name)),
+		lookupCounter: lookupCounter,
+		latencyHist:   latencyHist,
+	}, nil
 }
 
 func (e *envSecretSource) GetSecret(ctx context.Context, name string) (string, error) {
+	_, span := e.tracer.StartSpan(ctx)
+	defer span.End()
+
+	startTime := time.Now()
+	defer func() {
+		e.latencyHist.Record(ctx, float64(time.Since(startTime).Milliseconds()))
+	}()
+
+	e.lookupCounter.Add(ctx, 1)
+
 	return os.Getenv(name), nil
 }
 
 func (e *envSecretSource) Close() error {
+	e.logger.Debug("closing env secret source")
 	return nil
 }

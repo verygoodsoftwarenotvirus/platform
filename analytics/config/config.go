@@ -4,15 +4,16 @@ import (
 	"context"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/analytics"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/analytics/posthog"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/analytics/rudderstack"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/analytics/segment"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/circuitbreaking"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/analytics"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/analytics/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/analytics/posthog"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/analytics/rudderstack"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/analytics/segment"
+	circuitbreakingcfg "github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/config"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
@@ -29,11 +30,11 @@ const (
 type (
 	// SourceConfig is the per-source analytics config (provider + credentials). Used for proxy sources; no ProxySources to avoid recursion.
 	SourceConfig struct {
-		Segment        *segment.Config        `env:",init"                  envPrefix:"SEGMENT_"     json:"segment"`
-		Posthog        *posthog.Config        `env:",init"                  envPrefix:"POSTHOG_"     json:"posthog"`
-		Rudderstack    *rudderstack.Config    `env:",init"                  envPrefix:"RUDDERSTACK_" json:"rudderstack"`
-		Provider       string                 `env:"PROVIDER"               json:"provider"`
-		CircuitBreaker circuitbreaking.Config `envPrefix:"CIRCUIT_BREAKER_" json:"circuitBreaker"`
+		Segment        *segment.Config           `env:",init"                  envPrefix:"SEGMENT_"     json:"segment"`
+		Posthog        *posthog.Config           `env:",init"                  envPrefix:"POSTHOG_"     json:"posthog"`
+		Rudderstack    *rudderstack.Config       `env:",init"                  envPrefix:"RUDDERSTACK_" json:"rudderstack"`
+		Provider       string                    `env:"PROVIDER"               json:"provider"`
+		CircuitBreaker circuitbreakingcfg.Config `envPrefix:"CIRCUIT_BREAKER_" json:"circuitBreaker"`
 	}
 
 	// ProxySourcesConfig holds per-source analytics config for the analytics proxy gRPC service. Sources are codified: ios and web.
@@ -119,6 +120,6 @@ func (cfg *SourceConfig) ProvideCollector(
 		return posthog.NewPostHogEventReporter(logger, tracerProvider, cfg.Posthog.APIKey, cb)
 	default:
 		logging.EnsureLogger(logger).WithValue("provider", cfg.Provider).Info("no analytics provider configured or unrecognized provider, using noop")
-		return analytics.NewNoopEventReporter(), nil
+		return noop.NewEventReporter(), nil
 	}
 }

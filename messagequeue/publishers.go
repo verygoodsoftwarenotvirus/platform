@@ -3,7 +3,7 @@ package messagequeue
 import (
 	"context"
 
-	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v3/errors"
+	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v4/errors"
 )
 
 type (
@@ -29,37 +29,3 @@ var (
 	// ErrEmptyTopicName is returned when a topic name is empty.
 	ErrEmptyTopicName = platformerrors.New("empty topic name")
 )
-
-type noopPublisher struct{}
-
-// Publish does nothing.
-func (n *noopPublisher) Publish(context.Context, any) error { return nil }
-
-// PublishAsync does nothing.
-func (n *noopPublisher) PublishAsync(context.Context, any) {}
-
-// Stop does nothing.
-func (n *noopPublisher) Stop() {}
-
-// NewNoopPublisher is a noop Publisher.
-func NewNoopPublisher() Publisher {
-	return &noopPublisher{}
-}
-
-type noopPublisherProvider struct{}
-
-// ProvidePublisher does nothing.
-func (n *noopPublisherProvider) ProvidePublisher(_ context.Context, _ string) (Publisher, error) {
-	return NewNoopPublisher(), nil
-}
-
-// Close does nothing.
-func (n *noopPublisherProvider) Close() {}
-
-// Ping does nothing.
-func (n *noopPublisherProvider) Ping(context.Context) error { return nil }
-
-// NewNoopPublisherProvider is a noop PublisherProvider.
-func NewNoopPublisherProvider() PublisherProvider {
-	return &noopPublisherProvider{}
-}

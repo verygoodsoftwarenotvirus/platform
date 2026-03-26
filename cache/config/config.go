@@ -5,10 +5,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/cache"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/cache/memory"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/cache/redis"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/cache"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/cache/memory"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/cache/redis"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
@@ -40,12 +43,12 @@ func (cfg *Config) ValidateWithContext(ctx context.Context) error {
 }
 
 // ProvideCache provides a Cache.
-func ProvideCache[T any](cfg *Config) (cache.Cache[T], error) {
+func ProvideCache[T any](cfg *Config, logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider) (cache.Cache[T], error) {
 	switch strings.TrimSpace(strings.ToLower(cfg.Provider)) {
 	case ProviderMemory:
-		return memory.NewInMemoryCache[T](), nil
+		return memory.NewInMemoryCache[T](logger, tracerProvider, metricsProvider)
 	case ProviderRedis:
-		return redis.NewRedisCache[T](cfg.Redis, time.Hour), nil
+		return redis.NewRedisCache[T](cfg.Redis, time.Hour, logger, tracerProvider, metricsProvider)
 	default:
 		return nil, errors.Newf("invalid cache provider: %q", cfg.Provider)
 	}

@@ -3,7 +3,7 @@ package numbers_test
 import (
 	"fmt"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/numbers"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/numbers"
 )
 
 func ExampleRoundToDecimalPlaces() {

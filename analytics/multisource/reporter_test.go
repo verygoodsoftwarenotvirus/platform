@@ -4,8 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/analytics"
-	analyticsmock "github.com/verygoodsoftwarenotvirus/platform/v3/analytics/mock"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/analytics"
+	analyticsmock "github.com/verygoodsoftwarenotvirus/platform/v4/analytics/mock"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/analytics/noop"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -27,7 +28,7 @@ func TestNewMultiSourceEventReporter(T *testing.T) {
 		t.Parallel()
 
 		reporters := map[string]analytics.EventReporter{
-			"ios": analytics.NewNoopEventReporter(),
+			"ios": noop.NewEventReporter(),
 		}
 		r := NewMultiSourceEventReporter(reporters, nil, nil)
 		require.NotNil(t, r)
@@ -41,7 +42,7 @@ func TestMultiSourceEventReporter_getReporter(T *testing.T) {
 	T.Run("returns reporter for known source", func(t *testing.T) {
 		t.Parallel()
 
-		expected := analytics.NewNoopEventReporter()
+		expected := noop.NewEventReporter()
 		reporters := map[string]analytics.EventReporter{
 			"ios": expected,
 		}

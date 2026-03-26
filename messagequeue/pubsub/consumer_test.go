@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/messagequeue"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/random"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/messagequeue"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/random"
 
 	"cloud.google.com/go/pubsub/v2"
 	"cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
@@ -99,7 +99,7 @@ func TestBuildPubSubConsumer(T *testing.T) {
 		logger := logging.NewNoopLogger()
 		handler := func(_ context.Context, _ []byte) error { return nil }
 
-		consumer := buildPubSubConsumer(logger, tracing.NewNoopTracerProvider(), nil, "test-topic", handler)
+		consumer := buildPubSubConsumer(logger, tracing.NewNoopTracerProvider(), nil, nil, "test-topic", handler)
 		require.NotNil(t, consumer)
 	})
 }
@@ -111,7 +111,7 @@ func TestProvidePubSubConsumerProvider(T *testing.T) {
 		t.Parallel()
 
 		logger := logging.NewNoopLogger()
-		provider := ProvidePubSubConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil)
+		provider := ProvidePubSubConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil, nil)
 		require.NotNil(t, provider)
 	})
 }
@@ -123,7 +123,7 @@ func TestPubSubConsumerProvider_ProvideConsumer(T *testing.T) {
 		t.Parallel()
 
 		logger := logging.NewNoopLogger()
-		provider := ProvidePubSubConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil)
+		provider := ProvidePubSubConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil, nil)
 
 		consumer, err := provider.ProvideConsumer(t.Context(), "", func(_ context.Context, _ []byte) error { return nil })
 		assert.Nil(t, consumer)
@@ -138,7 +138,7 @@ func TestPubSubConsumerProvider_ProvideConsumer(T *testing.T) {
 		t.Cleanup(func() { require.NoError(t, infra.shutdown(context.Background())) })
 
 		logger := logging.NewNoopLogger()
-		provider := ProvidePubSubConsumerProvider(logger, tracing.NewNoopTracerProvider(), infra.client)
+		provider := ProvidePubSubConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil, infra.client)
 
 		handler := func(_ context.Context, _ []byte) error { return nil }
 
@@ -169,7 +169,7 @@ func TestPubSubConsumer_Consume(T *testing.T) {
 		}
 
 		logger := logging.NewNoopLogger()
-		provider := ProvidePubSubConsumerProvider(logger, tracing.NewNoopTracerProvider(), infra.client)
+		provider := ProvidePubSubConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil, infra.client)
 		consumer, err := provider.ProvideConsumer(ctx, infra.topicName, handler)
 		require.NoError(t, err)
 
@@ -209,7 +209,7 @@ func TestPubSubConsumer_Consume(T *testing.T) {
 		}
 
 		logger := logging.NewNoopLogger()
-		provider := ProvidePubSubConsumerProvider(logger, tracing.NewNoopTracerProvider(), infra.client)
+		provider := ProvidePubSubConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil, infra.client)
 		consumer, err := provider.ProvideConsumer(ctx, infra.topicName, handler)
 		require.NoError(t, err)
 
@@ -245,7 +245,7 @@ func TestPubSubConsumer_Consume(T *testing.T) {
 		handler := func(_ context.Context, _ []byte) error { return nil }
 
 		logger := logging.NewNoopLogger()
-		provider := ProvidePubSubConsumerProvider(logger, tracing.NewNoopTracerProvider(), infra.client)
+		provider := ProvidePubSubConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil, infra.client)
 		consumer, err := provider.ProvideConsumer(ctx, infra.topicName, handler)
 		require.NoError(t, err)
 
@@ -282,7 +282,7 @@ func TestPubSubConsumer_Consume(T *testing.T) {
 		}
 
 		logger := logging.NewNoopLogger()
-		provider := ProvidePubSubConsumerProvider(logger, tracing.NewNoopTracerProvider(), infra.client)
+		provider := ProvidePubSubConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil, infra.client)
 		consumer, err := provider.ProvideConsumer(ctx, infra.topicName, handler)
 		require.NoError(t, err)
 

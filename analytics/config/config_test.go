@@ -3,13 +3,13 @@ package analyticscfg
 import (
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/analytics/posthog"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/analytics/rudderstack"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/analytics/segment"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/circuitbreaking"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/analytics/posthog"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/analytics/rudderstack"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/analytics/segment"
+	circuitbreakingcfg "github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/config"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 
 	"github.com/stretchr/testify/require"
 )
@@ -66,7 +66,7 @@ func TestConfig_ProvideCollector(T *testing.T) {
 					Segment:        &segment.Config{APIToken: t.Name()},
 					Rudderstack:    &rudderstack.Config{DataPlaneURL: t.Name(), APIKey: t.Name()},
 					Posthog:        &posthog.Config{APIKey: t.Name()},
-					CircuitBreaker: circuitbreaking.Config{},
+					CircuitBreaker: circuitbreakingcfg.Config{},
 				},
 			}
 

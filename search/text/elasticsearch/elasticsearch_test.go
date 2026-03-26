@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/circuitbreaking"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/identifiers"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
+	cbnoop "github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/identifiers"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -59,7 +59,7 @@ func Test_ensureIndices(T *testing.T) {
 
 		// Create index manager with a unique index name
 		indexName := "ensure_indices_test_" + t.Name()
-		im, err := ProvideIndexManager[example](ctx, nil, nil, cfg, indexName, circuitbreaking.NewNoopCircuitBreaker())
+		im, err := ProvideIndexManager[example](ctx, nil, nil, cfg, indexName, cbnoop.NewCircuitBreaker())
 		require.NoError(t, err)
 		assert.NotNil(t, im)
 
@@ -86,11 +86,11 @@ func Test_ensureIndices(T *testing.T) {
 
 		// Create first index manager
 		indexName := "ensure_indices_existing_test_" + t.Name()
-		im1, err := ProvideIndexManager[example](ctx, nil, nil, cfg, indexName, circuitbreaking.NewNoopCircuitBreaker())
+		im1, err := ProvideIndexManager[example](ctx, nil, nil, cfg, indexName, cbnoop.NewCircuitBreaker())
 		require.NoError(t, err)
 
 		// Create second index manager with same index name
-		im2, err := ProvideIndexManager[example](ctx, nil, nil, cfg, indexName, circuitbreaking.NewNoopCircuitBreaker())
+		im2, err := ProvideIndexManager[example](ctx, nil, nil, cfg, indexName, cbnoop.NewCircuitBreaker())
 		require.NoError(t, err)
 
 		assert.NotNil(t, im1)
@@ -126,7 +126,7 @@ func Test_ProvideIndexManager_Container(T *testing.T) {
 			require.NoError(t, shutdownFunc(ctx))
 		}()
 
-		im, err := ProvideIndexManager[example](ctx, nil, nil, cfg, t.Name(), circuitbreaking.NewNoopCircuitBreaker())
+		im, err := ProvideIndexManager[example](ctx, nil, nil, cfg, t.Name(), cbnoop.NewCircuitBreaker())
 		assert.NoError(t, err)
 		assert.NotNil(t, im)
 	})
@@ -137,7 +137,7 @@ func Test_ProvideIndexManager_Container(T *testing.T) {
 		ctx := t.Context()
 		cfg := &Config{}
 
-		im, err := ProvideIndexManager[example](ctx, nil, nil, cfg, t.Name(), circuitbreaking.NewNoopCircuitBreaker())
+		im, err := ProvideIndexManager[example](ctx, nil, nil, cfg, t.Name(), cbnoop.NewCircuitBreaker())
 		assert.Error(t, err)
 		assert.Nil(t, im)
 	})

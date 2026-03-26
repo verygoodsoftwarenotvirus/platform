@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
 )
 
 // SaveFile saves a file to the blob.

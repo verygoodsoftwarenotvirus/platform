@@ -9,12 +9,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/encoding"
-	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v3/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/messagequeue"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/encoding"
+	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v4/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/messagequeue"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 
 	"github.com/go-redis/redis/v8"
 )
@@ -38,11 +39,14 @@ type (
 	}
 
 	redisPublisher struct {
-		tracer    tracing.Tracer
-		encoder   encoding.ClientEncoder
-		logger    logging.Logger
-		publisher messagePublisher
-		topic     string
+		tracer            tracing.Tracer
+		encoder           encoding.ClientEncoder
+		logger            logging.Logger
+		publisher         messagePublisher
+		publishedCounter  metrics.Int64Counter
+		publishErrCounter metrics.Int64Counter
+		latencyHist       metrics.Float64Histogram
+		topic             string
 	}
 )
 
@@ -58,12 +62,23 @@ func (p *redisPublisher) Publish(ctx context.Context, data any) error {
 	_, span := p.tracer.StartSpan(ctx)
 	defer span.End()
 
+	startTime := time.Now()
+
 	var b bytes.Buffer
 	if err := p.encoder.Encode(ctx, &b, data); err != nil {
+		p.publishErrCounter.Add(ctx, 1)
 		return observability.PrepareAndLogError(err, p.logger, span, "encoding topic message")
 	}
 
-	return p.publisher.Publish(ctx, p.topic, b.Bytes()).Err()
+	if err := p.publisher.Publish(ctx, p.topic, b.Bytes()).Err(); err != nil {
+		p.publishErrCounter.Add(ctx, 1)
+		return err
+	}
+
+	p.publishedCounter.Add(ctx, 1)
+	p.latencyHist.Record(ctx, float64(time.Since(startTime).Milliseconds()))
+
+	return nil
 }
 
 // PublishAsync implements the Publisher interface.
@@ -71,20 +86,47 @@ func (p *redisPublisher) PublishAsync(ctx context.Context, data any) {
 	_, span := p.tracer.StartSpan(ctx)
 	defer span.End()
 
+	startTime := time.Now()
+
 	var b bytes.Buffer
 	if err := p.encoder.Encode(ctx, &b, data); err != nil {
+		p.publishErrCounter.Add(ctx, 1)
 		observability.AcknowledgeError(err, p.logger, span, "encoding topic message")
+		return
 	}
+
+	p.publishedCounter.Add(ctx, 1)
+	p.latencyHist.Record(ctx, float64(time.Since(startTime).Milliseconds()))
 }
 
 // provideRedisPublisher provides a redis-backed Publisher.
-func provideRedisPublisher(logger logging.Logger, tracerProvider tracing.TracerProvider, redisClient messagePublisher, topic string) *redisPublisher {
+func provideRedisPublisher(logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider, redisClient messagePublisher, topic string) *redisPublisher {
+	mp := metrics.EnsureMetricsProvider(metricsProvider)
+
+	publishedCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_published", topic))
+	if err != nil {
+		panic(fmt.Sprintf("creating published counter: %v", err))
+	}
+
+	publishErrCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_publish_errors", topic))
+	if err != nil {
+		panic(fmt.Sprintf("creating publish error counter: %v", err))
+	}
+
+	latencyHist, err := mp.NewFloat64Histogram(fmt.Sprintf("%s_publish_latency_ms", topic))
+	if err != nil {
+		panic(fmt.Sprintf("creating publish latency histogram: %v", err))
+	}
+
 	return &redisPublisher{
-		publisher: redisClient,
-		topic:     topic,
-		encoder:   encoding.ProvideClientEncoder(logger, tracerProvider, encoding.ContentTypeJSON),
-		logger:    logging.EnsureLogger(logger),
-		tracer:    tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(fmt.Sprintf("%s_publisher", topic))),
+		publisher:         redisClient,
+		topic:             topic,
+		encoder:           encoding.ProvideClientEncoder(logger, tracerProvider, encoding.ContentTypeJSON),
+		logger:            logging.EnsureLogger(logger),
+		tracer:            tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(fmt.Sprintf("%s_publisher", topic))),
+		publishedCounter:  publishedCounter,
+		publishErrCounter: publishErrCounter,
+		latencyHist:       latencyHist,
 	}
 }
 
@@ -93,11 +135,12 @@ type publisherProvider struct {
 	publisherCache    map[string]messagequeue.Publisher
 	redisClient       messagePublisher
 	tracerProvider    tracing.TracerProvider
+	metricsProvider   metrics.Provider
 	publisherCacheHat sync.RWMutex
 }
 
 // ProvideRedisPublisherProvider returns a PublisherProvider for a given address.
-func ProvideRedisPublisherProvider(l logging.Logger, tracerProvider tracing.TracerProvider, cfg Config) messagequeue.PublisherProvider {
+func ProvideRedisPublisherProvider(l logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider, cfg Config) messagequeue.PublisherProvider {
 	logger := l.WithValue("queue_addresses", cfg.QueueAddresses).
 		WithValue("username", cfg.Username).
 		WithValue("password", cfg.Password)
@@ -125,10 +168,11 @@ func ProvideRedisPublisherProvider(l logging.Logger, tracerProvider tracing.Trac
 	logger.Info("redis publisher setup complete")
 
 	return &publisherProvider{
-		logger:         logging.EnsureLogger(l),
-		redisClient:    redisClient,
-		publisherCache: map[string]messagequeue.Publisher{},
-		tracerProvider: tracerProvider,
+		logger:          logging.EnsureLogger(l),
+		redisClient:     redisClient,
+		publisherCache:  map[string]messagequeue.Publisher{},
+		tracerProvider:  tracerProvider,
+		metricsProvider: metricsProvider,
 	}
 }
 
@@ -146,7 +190,7 @@ func (p *publisherProvider) ProvidePublisher(ctx context.Context, topic string) 
 		return cachedPub, nil
 	}
 
-	pub := provideRedisPublisher(logger, p.tracerProvider, p.redisClient, topic)
+	pub := provideRedisPublisher(logger, p.tracerProvider, p.metricsProvider, p.redisClient, topic)
 	p.publisherCache[topic] = pub
 
 	return pub, nil

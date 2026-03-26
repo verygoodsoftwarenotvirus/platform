@@ -3,9 +3,9 @@ package algolia
 import (
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/circuitbreaking"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
+	cbnoop "github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -21,7 +21,7 @@ func TestProvideIndexManager(T *testing.T) {
 		logger := logging.NewNoopLogger()
 		tracerProvider := tracing.NewNoopTracerProvider()
 
-		im, err := ProvideIndexManager[example](logger, tracerProvider, &Config{}, "test", circuitbreaking.NewNoopCircuitBreaker())
+		im, err := ProvideIndexManager[example](logger, tracerProvider, &Config{}, "test", cbnoop.NewCircuitBreaker())
 		assert.NoError(t, err)
 		assert.NotNil(t, im)
 	})
@@ -32,7 +32,7 @@ func TestProvideIndexManager(T *testing.T) {
 		logger := logging.NewNoopLogger()
 		tracerProvider := tracing.NewNoopTracerProvider()
 
-		im, err := ProvideIndexManager[example](logger, tracerProvider, nil, "test", circuitbreaking.NewNoopCircuitBreaker())
+		im, err := ProvideIndexManager[example](logger, tracerProvider, nil, "test", cbnoop.NewCircuitBreaker())
 		assert.Error(t, err)
 		assert.Nil(t, im)
 	})

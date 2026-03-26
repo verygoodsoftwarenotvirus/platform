@@ -3,9 +3,9 @@ package msgconfig
 import (
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/messagequeue/sqs"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/messagequeue/sqs"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -34,7 +34,7 @@ func TestProvideConsumerProvider(T *testing.T) {
 			},
 		}
 
-		p, err := ProvideConsumerProvider(ctx, logger, tracing.NewNoopTracerProvider(), cfg)
+		p, err := ProvideConsumerProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil, cfg)
 		assert.NoError(t, err)
 		assert.NotNil(t, p)
 	})
@@ -51,7 +51,7 @@ func TestProvideConsumerProvider(T *testing.T) {
 			},
 		}
 
-		p, err := ProvideConsumerProvider(ctx, logger, tracing.NewNoopTracerProvider(), cfg)
+		p, err := ProvideConsumerProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil, cfg)
 		assert.NoError(t, err)
 		assert.NotNil(t, p)
 	})
@@ -63,7 +63,7 @@ func TestProvideConsumerProvider(T *testing.T) {
 		logger := logging.NewNoopLogger()
 		cfg := &Config{}
 
-		p, err := ProvideConsumerProvider(ctx, logger, tracing.NewNoopTracerProvider(), cfg)
+		p, err := ProvideConsumerProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil, cfg)
 		assert.NoError(t, err)
 		assert.NotNil(t, p)
 	})
@@ -83,7 +83,7 @@ func TestProvidePublisherProvider(T *testing.T) {
 			},
 		}
 
-		p, err := ProvidePublisherProvider(ctx, logger, tracing.NewNoopTracerProvider(), cfg)
+		p, err := ProvidePublisherProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil, cfg)
 		assert.NoError(t, err)
 		assert.NotNil(t, p)
 	})
@@ -95,7 +95,7 @@ func TestProvidePublisherProvider(T *testing.T) {
 		logger := logging.NewNoopLogger()
 		cfg := &Config{}
 
-		p, err := ProvidePublisherProvider(ctx, logger, tracing.NewNoopTracerProvider(), cfg)
+		p, err := ProvidePublisherProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil, cfg)
 		assert.NoError(t, err)
 		assert.NotNil(t, p)
 	})

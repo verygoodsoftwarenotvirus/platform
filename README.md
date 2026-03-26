@@ -1,10 +1,10 @@
 # platform
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/verygoodsoftwarenotvirus/platform/v3.svg)](https://pkg.go.dev/github.com/verygoodsoftwarenotvirus/platform/v3)
+[![Go Reference](https://pkg.go.dev/badge/github.com/verygoodsoftwarenotvirus/platform/v4.svg)](https://pkg.go.dev/github.com/verygoodsoftwarenotvirus/platform/v4)
 
 A Go library providing infrastructure abstractions for cloud-native services. Each package defines a stable interface with multiple provider implementations, selected at runtime via config. All packages instrument with OpenTelemetry where applicable.
 
-**Module:** `github.com/verygoodsoftwarenotvirus/platform/v3`
+**Module:** `github.com/verygoodsoftwarenotvirus/platform/v4`
 **Go:** 1.26
 
 ## Design Patterns

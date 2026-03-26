@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -20,7 +21,8 @@ func Test_newInMemoryCache(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		actual := NewInMemoryCache[example]()
+		actual, err := NewInMemoryCache[example](nil, nil, nil)
+		require.NoError(t, err)
 		assert.NotNil(t, actual)
 	})
 }
@@ -32,7 +34,8 @@ func Test_inMemoryCacheImpl_Get(T *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		c := NewInMemoryCache[example]()
+		c, err := NewInMemoryCache[example](nil, nil, nil)
+		require.NoError(t, err)
 
 		expected := &example{Name: t.Name()}
 		assert.NoError(t, c.Set(ctx, exampleKey, expected))
@@ -50,7 +53,8 @@ func Test_inMemoryCacheImpl_Set(T *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		c := NewInMemoryCache[example]()
+		c, err := NewInMemoryCache[example](nil, nil, nil)
+		require.NoError(t, err)
 
 		assert.Len(t, c.(*inMemoryCacheImpl[example]).cache, 0)
 		assert.NoError(t, c.Set(ctx, exampleKey, &example{Name: t.Name()}))
@@ -65,7 +69,8 @@ func Test_inMemoryCacheImpl_Delete(T *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		c := NewInMemoryCache[example]()
+		c, err := NewInMemoryCache[example](nil, nil, nil)
+		require.NoError(t, err)
 
 		assert.Len(t, c.(*inMemoryCacheImpl[example]).cache, 0)
 		assert.NoError(t, c.Set(ctx, exampleKey, &example{Name: t.Name()}))
@@ -81,7 +86,8 @@ func Test_inMemoryCacheImpl_Ping(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		c := NewInMemoryCache[example]()
+		c, err := NewInMemoryCache[example](nil, nil, nil)
+		require.NoError(t, err)
 		assert.NoError(t, c.Ping(t.Context()))
 	})
 }

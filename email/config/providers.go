@@ -4,11 +4,11 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/email"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/email"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 )
 
 // ProvideEmailer provides an email.Emailer from a config.
@@ -18,5 +18,5 @@ func ProvideEmailer(ctx context.Context, cfg *Config, logger logging.Logger, tra
 		return nil, errors.Wrap(err, "failed to initialize email circuit breaker")
 	}
 
-	return cfg.ProvideEmailer(logger, tracerProvider, client, circuitBreaker)
+	return cfg.ProvideEmailer(logger, tracerProvider, client, circuitBreaker, metricsProvider)
 }

@@ -8,7 +8,7 @@ import (
 	"encoding/base64"
 	"io"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability"
 )
 
 func (e *aesImpl) Encrypt(ctx context.Context, content string) (string, error) {

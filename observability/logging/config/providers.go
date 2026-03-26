@@ -3,7 +3,7 @@ package loggingcfg
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
 )
 
 // ProvideLogger provides a Logger from config.

@@ -4,11 +4,15 @@ import (
 	"context"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/secrets"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/secrets/env"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/secrets/gcp"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/secrets/ssm"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/secrets"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/secrets/env"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/secrets/gcp"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/secrets/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/secrets/ssm"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
@@ -46,27 +50,27 @@ func (cfg *Config) ValidateWithContext(ctx context.Context) error {
 }
 
 // ProvideSecretSource returns a SecretSource from config.
-func (cfg *Config) ProvideSecretSource(ctx context.Context) (secrets.SecretSource, error) {
+func (cfg *Config) ProvideSecretSource(ctx context.Context, logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider) (secrets.SecretSource, error) {
 	if cfg == nil {
-		return env.NewEnvSecretSource(), nil
+		return env.NewEnvSecretSource(logger, tracerProvider, metricsProvider)
 	}
 
 	provider := strings.TrimSpace(strings.ToLower(cfg.Provider))
 	switch provider {
 	case "", ProviderEnv:
-		return env.NewEnvSecretSource(), nil
+		return env.NewEnvSecretSource(logger, tracerProvider, metricsProvider)
 	case ProviderNoop:
-		return secrets.NewNoopSecretSource(), nil
+		return noop.NewSecretSource(), nil
 	case ProviderGCP:
 		if cfg.GCP == nil {
 			return nil, errors.New("gcp provider requires gcp config")
 		}
-		return gcp.NewGCPSecretSource(ctx, cfg.GCP, cfg.GCPClient)
+		return gcp.NewGCPSecretSource(ctx, cfg.GCP, cfg.GCPClient, logger, tracerProvider, metricsProvider)
 	case ProviderSSM:
 		if cfg.SSM == nil {
 			return nil, errors.New("ssm provider requires ssm config")
 		}
-		return ssm.NewSSMSecretSource(ctx, cfg.SSM, cfg.SSMClient)
+		return ssm.NewSSMSecretSource(ctx, cfg.SSM, cfg.SSMClient, logger, tracerProvider, metricsProvider)
 	default:
 		return nil, errors.Newf("unknown secret source provider: %q", cfg.Provider)
 	}

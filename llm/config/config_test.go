@@ -3,7 +3,7 @@ package llmcfg
 import (
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/llm/openai"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/llm/openai"
 
 	"github.com/stretchr/testify/require"
 )
@@ -13,7 +13,7 @@ func TestConfig_ProvideLLMProvider_Empty(T *testing.T) {
 		ctx := t.Context()
 		cfg := &Config{Provider: ""}
 
-		provider, err := cfg.ProvideLLMProvider(ctx)
+		provider, err := cfg.ProvideLLMProvider(ctx, nil, nil, nil)
 		require.NoError(t, err)
 		require.NotNil(t, provider, "expected non-nil provider (noop)")
 	})
@@ -29,7 +29,7 @@ func TestConfig_ProvideLLMProvider_OpenAI(T *testing.T) {
 			},
 		}
 
-		provider, err := cfg.ProvideLLMProvider(ctx)
+		provider, err := cfg.ProvideLLMProvider(ctx, nil, nil, nil)
 		require.NoError(t, err)
 		require.NotNil(t, provider, "expected non-nil provider")
 	})

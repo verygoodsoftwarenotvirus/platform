@@ -8,14 +8,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/keys"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/keys"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
 
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel/trace"
 )
 
-const here = "github.com/verygoodsoftwarenotvirus/platform/v3/"
+const here = "github.com/verygoodsoftwarenotvirus/platform/v4/"
 
 func init() {
 	location, err := time.LoadLocation("America/Chicago")

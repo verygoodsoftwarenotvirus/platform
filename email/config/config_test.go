@@ -5,14 +5,14 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/circuitbreaking"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/email/mailgun"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/email/mailjet"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/email/postmark"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/email/resend"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/email/sendgrid"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
+	cbnoop "github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/email/mailgun"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/email/mailjet"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/email/postmark"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/email/resend"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/email/sendgrid"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -69,7 +69,7 @@ func TestConfig_ProvideEmailer(T *testing.T) {
 				Postmark: &postmark.Config{ServerToken: t.Name()},
 			}
 
-			actual, err := cfg.ProvideEmailer(logger, tracing.NewNoopTracerProvider(), &http.Client{}, circuitbreaking.NewNoopCircuitBreaker())
+			actual, err := cfg.ProvideEmailer(logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
 			assert.NotNil(t, actual)
 			assert.NoError(t, err)
 		})
@@ -83,7 +83,7 @@ func TestConfig_ProvideEmailer(T *testing.T) {
 			Provider: "",
 		}
 
-		actual, err := cfg.ProvideEmailer(logger, tracing.NewNoopTracerProvider(), &http.Client{}, circuitbreaking.NewNoopCircuitBreaker())
+		actual, err := cfg.ProvideEmailer(logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
 		assert.NotNil(t, actual)
 		assert.NoError(t, err)
 	})

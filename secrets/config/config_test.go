@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/secrets/gcp"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/secrets/ssm"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/secrets/gcp"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/secrets/ssm"
 
 	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -93,7 +93,7 @@ func TestConfig_ProvideSecretSource(T *testing.T) {
 		t.Parallel()
 
 		var cfg *Config
-		source, err := cfg.ProvideSecretSource(context.Background())
+		source, err := cfg.ProvideSecretSource(context.Background(), nil, nil, nil)
 		require.NoError(t, err)
 		require.NotNil(t, source)
 
@@ -111,7 +111,7 @@ func TestConfig_ProvideSecretSource(T *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ""}
-		source, err := cfg.ProvideSecretSource(context.Background())
+		source, err := cfg.ProvideSecretSource(context.Background(), nil, nil, nil)
 		require.NoError(t, err)
 		require.NotNil(t, source)
 
@@ -129,7 +129,7 @@ func TestConfig_ProvideSecretSource(T *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ProviderEnv}
-		source, err := cfg.ProvideSecretSource(context.Background())
+		source, err := cfg.ProvideSecretSource(context.Background(), nil, nil, nil)
 		require.NoError(t, err)
 		require.NotNil(t, source)
 
@@ -147,7 +147,7 @@ func TestConfig_ProvideSecretSource(T *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ProviderNoop}
-		source, err := cfg.ProvideSecretSource(context.Background())
+		source, err := cfg.ProvideSecretSource(context.Background(), nil, nil, nil)
 		require.NoError(t, err)
 		require.NotNil(t, source)
 
@@ -164,7 +164,7 @@ func TestConfig_ProvideSecretSource(T *testing.T) {
 			GCP:       &gcp.Config{ProjectID: "test-project"},
 			GCPClient: &mockGCPClient{value: "gcp-secret-value"},
 		}
-		source, err := cfg.ProvideSecretSource(context.Background())
+		source, err := cfg.ProvideSecretSource(context.Background(), nil, nil, nil)
 		require.NoError(t, err)
 		require.NotNil(t, source)
 
@@ -181,7 +181,7 @@ func TestConfig_ProvideSecretSource(T *testing.T) {
 			SSM:       &ssm.Config{Region: "us-east-1"},
 			SSMClient: &mockSSMClient{value: "ssm-param-value"},
 		}
-		source, err := cfg.ProvideSecretSource(context.Background())
+		source, err := cfg.ProvideSecretSource(context.Background(), nil, nil, nil)
 		require.NoError(t, err)
 		require.NotNil(t, source)
 
@@ -194,7 +194,7 @@ func TestConfig_ProvideSecretSource(T *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: "vault"}
-		source, err := cfg.ProvideSecretSource(context.Background())
+		source, err := cfg.ProvideSecretSource(context.Background(), nil, nil, nil)
 		require.Error(t, err)
 		assert.Nil(t, source)
 		assert.Contains(t, err.Error(), "unknown")

@@ -4,11 +4,12 @@ import (
 	"context"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/eventstream"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/eventstream/sse"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/eventstream/websocket"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/eventstream"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/eventstream/sse"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/eventstream/websocket"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
@@ -39,24 +40,24 @@ func (cfg *Config) ValidateWithContext(ctx context.Context) error {
 }
 
 // ProvideEventStreamUpgrader provides an EventStreamUpgrader based on configuration.
-func ProvideEventStreamUpgrader(tracerProvider tracing.TracerProvider, cfg *Config) (eventstream.EventStreamUpgrader, error) {
+func ProvideEventStreamUpgrader(logger logging.Logger, tracerProvider tracing.TracerProvider, cfg *Config) (eventstream.EventStreamUpgrader, error) {
 	switch strings.TrimSpace(strings.ToLower(cfg.Provider)) {
 	case ProviderSSE:
 		return sse.NewUpgrader(tracerProvider), nil
 	case ProviderWebSocket:
-		return websocket.NewUpgrader(tracerProvider, cfg.WebSocket), nil
+		return websocket.NewUpgrader(logger, tracerProvider, cfg.WebSocket), nil
 	default:
 		return nil, errors.Newf("invalid eventstream provider: %q", cfg.Provider)
 	}
 }
 
 // ProvideBidirectionalEventStreamUpgrader provides a BidirectionalEventStreamUpgrader based on configuration.
-func ProvideBidirectionalEventStreamUpgrader(tracerProvider tracing.TracerProvider, cfg *Config) (eventstream.BidirectionalEventStreamUpgrader, error) {
+func ProvideBidirectionalEventStreamUpgrader(logger logging.Logger, tracerProvider tracing.TracerProvider, cfg *Config) (eventstream.BidirectionalEventStreamUpgrader, error) {
 	switch strings.TrimSpace(strings.ToLower(cfg.Provider)) {
 	case ProviderSSE:
 		return nil, errors.New("SSE does not support bidirectional event streams")
 	case ProviderWebSocket:
-		return websocket.NewUpgrader(tracerProvider, cfg.WebSocket), nil
+		return websocket.NewUpgrader(logger, tracerProvider, cfg.WebSocket), nil
 	default:
 		return nil, errors.Newf("invalid eventstream provider: %q", cfg.Provider)
 	}

@@ -3,13 +3,13 @@ package launchdarkly
 import (
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/circuitbreaking"
+	circuitbreakingcfg "github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/config"
 )
 
 type (
 	Config struct {
-		SDKKey               string                 `env:"SDK_KEY"                 json:"sdkKey"`
-		CircuitBreakerConfig circuitbreaking.Config `envPrefix:"CIRCUIT_BREAKING_" json:"circuitBreakerConfig"`
-		InitTimeout          time.Duration          `env:"INIT_TIMEOUT"            json:"initTimeout"`
+		SDKKey               string                    `env:"SDK_KEY"                 json:"sdkKey"`
+		CircuitBreakerConfig circuitbreakingcfg.Config `envPrefix:"CIRCUIT_BREAKING_" json:"circuitBreakerConfig"`
+		InitTimeout          time.Duration             `env:"INIT_TIMEOUT"            json:"initTimeout"`
 	}
 )

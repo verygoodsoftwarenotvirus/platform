@@ -15,7 +15,7 @@ func TestProvideSecretSourceFromConfig(T *testing.T) {
 		t.Parallel()
 
 		var cfg *Config
-		source, err := ProvideSecretSourceFromConfig(context.Background(), cfg)
+		source, err := ProvideSecretSourceFromConfig(context.Background(), cfg, nil, nil, nil)
 		require.NoError(t, err)
 		require.NotNil(t, source)
 
@@ -33,7 +33,7 @@ func TestProvideSecretSourceFromConfig(T *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ""}
-		source, err := ProvideSecretSourceFromConfig(context.Background(), cfg)
+		source, err := ProvideSecretSourceFromConfig(context.Background(), cfg, nil, nil, nil)
 		require.NoError(t, err)
 		require.NotNil(t, source)
 
@@ -51,7 +51,7 @@ func TestProvideSecretSourceFromConfig(T *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ProviderNoop}
-		source, err := ProvideSecretSourceFromConfig(context.Background(), cfg)
+		source, err := ProvideSecretSourceFromConfig(context.Background(), cfg, nil, nil, nil)
 		require.NoError(t, err)
 		require.NotNil(t, source)
 
@@ -64,7 +64,7 @@ func TestProvideSecretSourceFromConfig(T *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ProviderEnv}
-		source, err := ProvideSecretSourceFromConfig(context.Background(), cfg)
+		source, err := ProvideSecretSourceFromConfig(context.Background(), cfg, nil, nil, nil)
 		require.NoError(t, err)
 		require.NotNil(t, source)
 

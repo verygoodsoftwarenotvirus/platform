@@ -2,17 +2,24 @@ package openai
 
 import (
 	"context"
+	"fmt"
+	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/llm"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/pointer"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/llm"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/pointer"
 
 	anyllm "github.com/mozilla-ai/any-llm-go"
 	anyllmopenai "github.com/mozilla-ai/any-llm-go/providers/openai"
 )
 
+const name = "openai_llm"
+
 // NewProvider creates a new OpenAI-backed LLM provider.
-func NewProvider(cfg *Config) (llm.Provider, error) {
+func NewProvider(cfg *Config, logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider) (llm.Provider, error) {
 	if cfg == nil {
 		return nil, errors.New("openai config is required")
 	}
@@ -32,19 +39,54 @@ func NewProvider(cfg *Config) (llm.Provider, error) {
 		return nil, errors.Wrap(err, "create openai provider")
 	}
 
+	mp := metrics.EnsureMetricsProvider(metricsProvider)
+
+	requestCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_requests", name))
+	if err != nil {
+		return nil, fmt.Errorf("creating request counter: %w", err)
+	}
+
+	errorCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_errors", name))
+	if err != nil {
+		return nil, fmt.Errorf("creating error counter: %w", err)
+	}
+
+	latencyHist, err := mp.NewFloat64Histogram(fmt.Sprintf("%s_latency_ms", name))
+	if err != nil {
+		return nil, fmt.Errorf("creating latency histogram: %w", err)
+	}
+
 	return &openaiProvider{
-		provider:     provider,
-		defaultModel: cfg.DefaultModel,
+		logger:         logging.EnsureLogger(logger).WithName(name),
+		tracer:         tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(name)),
+		requestCounter: requestCounter,
+		errorCounter:   errorCounter,
+		latencyHist:    latencyHist,
+		provider:       provider,
+		defaultModel:   cfg.DefaultModel,
 	}, nil
 }
 
 type openaiProvider struct {
-	provider     *anyllmopenai.Provider
-	defaultModel string
+	logger         logging.Logger
+	tracer         tracing.Tracer
+	requestCounter metrics.Int64Counter
+	errorCounter   metrics.Int64Counter
+	latencyHist    metrics.Float64Histogram
+	provider       *anyllmopenai.Provider
+	defaultModel   string
 }
 
 // Completion implements llm.Provider.
 func (p *openaiProvider) Completion(ctx context.Context, params llm.CompletionParams) (*llm.CompletionResult, error) {
+	_, span := p.tracer.StartSpan(ctx)
+	defer span.End()
+
+	startTime := time.Now()
+	defer func() {
+		p.latencyHist.Record(ctx, float64(time.Since(startTime).Milliseconds()))
+	}()
+
 	model := params.Model
 	if model == "" {
 		model = p.defaultModel
@@ -60,8 +102,12 @@ func (p *openaiProvider) Completion(ctx context.Context, params llm.CompletionPa
 
 	resp, err := p.provider.Completion(ctx, anyllmParams)
 	if err != nil {
+		p.errorCounter.Add(ctx, 1)
+		p.logger.Error("completing request", err)
 		return nil, err
 	}
+
+	p.requestCounter.Add(ctx, 1)
 
 	return toCompletionResult(resp), nil
 }

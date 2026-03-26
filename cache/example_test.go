@@ -5,16 +5,19 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/cache"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/cache/memory"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/cache"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/cache/memory"
 )
 
 func ExampleCache_setAndGet() {
 	ctx := context.Background()
-	c := memory.NewInMemoryCache[string]()
+	c, err := memory.NewInMemoryCache[string](nil, nil, nil)
+	if err != nil {
+		panic(err)
+	}
 
 	value := "cached-value"
-	if err := c.Set(ctx, "my-key", &value); err != nil {
+	if err = c.Set(ctx, "my-key", &value); err != nil {
 		panic(err)
 	}
 
@@ -29,7 +32,10 @@ func ExampleCache_setAndGet() {
 
 func ExampleCache_notFound() {
 	ctx := context.Background()
-	c := memory.NewInMemoryCache[string]()
+	c, cacheErr := memory.NewInMemoryCache[string](nil, nil, nil)
+	if cacheErr != nil {
+		panic(cacheErr)
+	}
 
 	_, err := c.Get(ctx, "nonexistent")
 	fmt.Println(err)

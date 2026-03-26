@@ -4,14 +4,15 @@ import (
 	"context"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/circuitbreaking"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
-	textsearch "github.com/verygoodsoftwarenotvirus/platform/v3/search/text"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/search/text/algolia"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/search/text/elasticsearch"
+	circuitbreakingcfg "github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/config"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	textsearch "github.com/verygoodsoftwarenotvirus/platform/v4/search/text"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/search/text/algolia"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/search/text/elasticsearch"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/search/text/noop"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
@@ -25,11 +26,11 @@ const (
 
 // Config contains settings regarding search indices.
 type Config struct {
-	_              struct{}               `json:"-"`
-	Algolia        *algolia.Config        `env:"init"     envPrefix:"ALGOLIA_"         json:"algolia"`
-	Elasticsearch  *elasticsearch.Config  `env:"init"     envPrefix:"ELASTICSEARCH_"   json:"elasticsearch"`
-	Provider       string                 `env:"PROVIDER" json:"provider"`
-	CircuitBreaker circuitbreaking.Config `env:"init"     envPrefix:"CIRCUIT_BREAKER_" json:"circuitBreakerConfig"`
+	_              struct{}                  `json:"-"`
+	Algolia        *algolia.Config           `env:"init"     envPrefix:"ALGOLIA_"         json:"algolia"`
+	Elasticsearch  *elasticsearch.Config     `env:"init"     envPrefix:"ELASTICSEARCH_"   json:"elasticsearch"`
+	Provider       string                    `env:"PROVIDER" json:"provider"`
+	CircuitBreaker circuitbreakingcfg.Config `env:"init"     envPrefix:"CIRCUIT_BREAKER_" json:"circuitBreakerConfig"`
 }
 
 var _ validation.ValidatableWithContext = (*Config)(nil)
@@ -52,7 +53,7 @@ func ProvideIndex[T any](
 	cfg *Config,
 	indexName string,
 ) (textsearch.Index[T], error) {
-	circuitBreaker, err := circuitbreaking.ProvideCircuitBreaker(ctx, &cfg.CircuitBreaker, logger, metricsProvider)
+	circuitBreaker, err := circuitbreakingcfg.ProvideCircuitBreakerFromConfig(ctx, &cfg.CircuitBreaker, logger, metricsProvider)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to initialize text search circuit breaker")
 	}
@@ -63,6 +64,6 @@ func ProvideIndex[T any](
 	case AlgoliaProvider:
 		return algolia.ProvideIndexManager[T](logger, tracerProvider, cfg.Algolia, indexName, circuitBreaker)
 	default:
-		return &textsearch.NoopIndexManager[T]{}, nil
+		return noop.NewIndexManager[T](), nil
 	}
 }

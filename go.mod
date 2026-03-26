@@ -1,4 +1,4 @@
-module github.com/verygoodsoftwarenotvirus/platform/v3
+module github.com/verygoodsoftwarenotvirus/platform/v4
 
 go 1.26
 

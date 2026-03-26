@@ -1,7 +1,7 @@
 package databasecfg
 
 import (
-	"github.com/verygoodsoftwarenotvirus/platform/v3/database"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/database"
 )
 
 // ProvideClientConfig converts Config to database.ClientConfig.

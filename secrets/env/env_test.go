@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/secrets"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/secrets"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -24,7 +24,8 @@ func TestEnvSecretSource_GetSecret(T *testing.T) {
 		require.NoError(t, os.Setenv(key, value))
 		t.Cleanup(func() { _ = os.Unsetenv(key) })
 
-		source := NewEnvSecretSource()
+		source, err := NewEnvSecretSource(nil, nil, nil)
+		require.NoError(t, err)
 		ctx := context.Background()
 
 		got, err := source.GetSecret(ctx, key)
@@ -38,7 +39,8 @@ func TestEnvSecretSource_GetSecret(T *testing.T) {
 		key := "TEST_SECRET_UNSET_" + t.Name()
 		require.NoError(t, os.Unsetenv(key))
 
-		source := NewEnvSecretSource()
+		source, err := NewEnvSecretSource(nil, nil, nil)
+		require.NoError(t, err)
 		ctx := context.Background()
 
 		got, err := source.GetSecret(ctx, key)
@@ -53,8 +55,10 @@ func TestEnvSecretSource_Close(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		source := NewEnvSecretSource()
-		err := source.Close()
+		source, err := NewEnvSecretSource(nil, nil, nil)
+		require.NoError(t, err)
+
+		err = source.Close()
 		require.NoError(t, err)
 	})
 }

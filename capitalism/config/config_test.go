@@ -3,7 +3,7 @@ package config
 import (
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/capitalism/stripe"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/capitalism/stripe"
 
 	"github.com/stretchr/testify/assert"
 )

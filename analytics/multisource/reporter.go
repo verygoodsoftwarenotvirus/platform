@@ -5,9 +5,10 @@ import (
 	"maps"
 	"sync"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/analytics"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/analytics"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/analytics/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 )
 
 const (
@@ -49,7 +50,7 @@ func (m *MultiSourceEventReporter) getReporter(source string) analytics.EventRep
 		return r
 	}
 	m.logger.WithValue("source", source).WithValue("known_sources", m.knownSources()).Info("no analytics reporter configured for source, using noop")
-	return analytics.NewNoopEventReporter()
+	return noop.NewEventReporter()
 }
 
 func (m *MultiSourceEventReporter) knownSources() []string {

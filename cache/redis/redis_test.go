@@ -65,14 +65,15 @@ func Test_redisCacheImpl_Get(T *testing.T) {
 		defer func() {
 			assert.NoError(t, containerShutdown(ctx))
 		}()
-		c := NewRedisCache[example](cfg, 0)
+		c, err := NewRedisCache[example](cfg, 0, nil, nil, nil)
+		require.NoError(t, err)
 
 		exampleContent := &example{Name: t.Name()}
 		assert.NoError(t, c.Set(ctx, exampleKey, exampleContent))
 
-		actual, err := c.Get(ctx, exampleKey)
+		actual, getErr := c.Get(ctx, exampleKey)
 		assert.Equal(t, exampleContent, actual)
-		assert.NoError(t, err)
+		assert.NoError(t, getErr)
 	})
 }
 
@@ -88,7 +89,8 @@ func Test_redisCacheImpl_Set(T *testing.T) {
 		defer func() {
 			assert.NoError(t, containerShutdown(ctx))
 		}()
-		c := NewRedisCache[example](cfg, 0)
+		c, err := NewRedisCache[example](cfg, 0, nil, nil, nil)
+		require.NoError(t, err)
 
 		exampleContent := &example{Name: t.Name()}
 		assert.NoError(t, c.Set(ctx, exampleKey, exampleContent))
@@ -107,7 +109,8 @@ func Test_redisCacheImpl_Delete(T *testing.T) {
 		defer func() {
 			assert.NoError(t, containerShutdown(ctx))
 		}()
-		c := NewRedisCache[example](cfg, 0)
+		c, err := NewRedisCache[example](cfg, 0, nil, nil, nil)
+		require.NoError(t, err)
 
 		exampleContent := &example{Name: t.Name()}
 		assert.NoError(t, c.Set(ctx, exampleKey, exampleContent))

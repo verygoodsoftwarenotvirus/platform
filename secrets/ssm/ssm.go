@@ -2,15 +2,22 @@ package ssm
 
 import (
 	"context"
+	"fmt"
 	"strings"
+	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/secrets"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/secrets"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 )
+
+const name = "ssm_secret_source"
 
 // GetParameterAPI abstracts GetParameter for testability.
 type GetParameterAPI interface {
@@ -18,13 +25,18 @@ type GetParameterAPI interface {
 }
 
 type ssmSecretSource struct {
-	client GetParameterAPI
-	prefix string
+	logger        logging.Logger
+	tracer        tracing.Tracer
+	lookupCounter metrics.Int64Counter
+	errorCounter  metrics.Int64Counter
+	latencyHist   metrics.Float64Histogram
+	client        GetParameterAPI
+	prefix        string
 }
 
 // NewSSMSecretSource creates a SecretSource backed by AWS SSM Parameter Store.
 // If client is nil, a new client is created using the default credential chain.
-func NewSSMSecretSource(ctx context.Context, cfg *Config, client GetParameterAPI) (secrets.SecretSource, error) {
+func NewSSMSecretSource(ctx context.Context, cfg *Config, client GetParameterAPI, logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider) (secrets.SecretSource, error) {
 	if cfg == nil {
 		return nil, errors.New("ssm secret source: config is required")
 	}
@@ -32,25 +44,62 @@ func NewSSMSecretSource(ctx context.Context, cfg *Config, client GetParameterAPI
 		return nil, errors.Wrap(err, "ssm secret source")
 	}
 
+	l := logging.EnsureLogger(logger).WithName(name)
+	t := tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(name))
+	mp := metrics.EnsureMetricsProvider(metricsProvider)
+
+	lookupCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_lookups", name))
+	if err != nil {
+		return nil, fmt.Errorf("creating lookup counter: %w", err)
+	}
+
+	errorCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_errors", name))
+	if err != nil {
+		return nil, fmt.Errorf("creating error counter: %w", err)
+	}
+
+	latencyHist, err := mp.NewFloat64Histogram(fmt.Sprintf("%s_latency_ms", name))
+	if err != nil {
+		return nil, fmt.Errorf("creating latency histogram: %w", err)
+	}
+
 	if client != nil {
 		return &ssmSecretSource{
-			client: client,
-			prefix: cfg.Prefix,
+			logger:        l,
+			tracer:        t,
+			lookupCounter: lookupCounter,
+			errorCounter:  errorCounter,
+			latencyHist:   latencyHist,
+			client:        client,
+			prefix:        cfg.Prefix,
 		}, nil
 	}
 
-	awsCfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(cfg.Region))
-	if err != nil {
-		return nil, errors.Wrap(err, "ssm secret source: loading aws config")
+	awsCfg, loadErr := config.LoadDefaultConfig(ctx, config.WithRegion(cfg.Region))
+	if loadErr != nil {
+		return nil, errors.Wrap(loadErr, "ssm secret source: loading aws config")
 	}
 
 	return &ssmSecretSource{
-		client: ssm.NewFromConfig(awsCfg),
-		prefix: cfg.Prefix,
+		logger:        l,
+		tracer:        t,
+		lookupCounter: lookupCounter,
+		errorCounter:  errorCounter,
+		latencyHist:   latencyHist,
+		client:        ssm.NewFromConfig(awsCfg),
+		prefix:        cfg.Prefix,
 	}, nil
 }
 
 func (s *ssmSecretSource) GetSecret(ctx context.Context, name string) (string, error) {
+	_, span := s.tracer.StartSpan(ctx)
+	defer span.End()
+
+	startTime := time.Now()
+	defer func() {
+		s.latencyHist.Record(ctx, float64(time.Since(startTime).Milliseconds()))
+	}()
+
 	paramName := s.resolveName(name)
 	input := &ssm.GetParameterInput{
 		Name:           aws.String(paramName),
@@ -59,11 +108,16 @@ func (s *ssmSecretSource) GetSecret(ctx context.Context, name string) (string, e
 
 	output, err := s.client.GetParameter(ctx, input)
 	if err != nil {
+		s.logger.Error("getting parameter", err)
+		s.errorCounter.Add(ctx, 1)
 		return "", errors.Wrapf(err, "getting parameter %q", name)
 	}
 	if output.Parameter == nil {
 		return "", nil
 	}
+
+	s.lookupCounter.Add(ctx, 1)
+
 	return aws.ToString(output.Parameter.Value), nil
 }
 

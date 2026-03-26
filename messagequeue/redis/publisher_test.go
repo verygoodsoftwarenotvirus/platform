@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/messagequeue"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/testutils"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/messagequeue"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/testutils"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/assert"
@@ -43,6 +43,7 @@ func buildRedisBackedPublisher(t *testing.T, cfg *Config, topic string) messageq
 	provider := ProvideRedisPublisherProvider(
 		logging.NewNoopLogger(),
 		tracing.NewNoopTracerProvider(),
+		nil,
 		*cfg,
 	)
 
@@ -64,7 +65,7 @@ func Test_redisPublisher_Publish(T *testing.T) {
 		cfg := Config{
 			QueueAddresses: []string{t.Name()},
 		}
-		provider := ProvideRedisPublisherProvider(logger, tracing.NewNoopTracerProvider(), cfg)
+		provider := ProvideRedisPublisherProvider(logger, tracing.NewNoopTracerProvider(), nil, cfg)
 		require.NotNil(t, provider)
 
 		a, err := provider.ProvidePublisher(ctx, t.Name())
@@ -105,7 +106,7 @@ func Test_redisPublisher_Publish(T *testing.T) {
 		cfg := Config{
 			QueueAddresses: []string{t.Name()},
 		}
-		provider := ProvideRedisPublisherProvider(logger, tracing.NewNoopTracerProvider(), cfg)
+		provider := ProvideRedisPublisherProvider(logger, tracing.NewNoopTracerProvider(), nil, cfg)
 		require.NotNil(t, provider)
 
 		a, err := provider.ProvidePublisher(ctx, t.Name())
@@ -137,7 +138,7 @@ func TestProvideRedisPublisherProvider(T *testing.T) {
 		cfg := Config{
 			QueueAddresses: []string{t.Name()},
 		}
-		actual := ProvideRedisPublisherProvider(logger, tracing.NewNoopTracerProvider(), cfg)
+		actual := ProvideRedisPublisherProvider(logger, tracing.NewNoopTracerProvider(), nil, cfg)
 		assert.NotNil(t, actual)
 	})
 }
@@ -154,7 +155,7 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 		cfg := Config{
 			QueueAddresses: []string{t.Name()},
 		}
-		provider := ProvideRedisPublisherProvider(logger, tracing.NewNoopTracerProvider(), cfg)
+		provider := ProvideRedisPublisherProvider(logger, tracing.NewNoopTracerProvider(), nil, cfg)
 		require.NotNil(t, provider)
 
 		actual, err := provider.ProvidePublisher(ctx, t.Name())
@@ -171,7 +172,7 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 		cfg := Config{
 			QueueAddresses: []string{t.Name()},
 		}
-		provider := ProvideRedisPublisherProvider(logger, tracing.NewNoopTracerProvider(), cfg)
+		provider := ProvideRedisPublisherProvider(logger, tracing.NewNoopTracerProvider(), nil, cfg)
 		require.NotNil(t, provider)
 
 		actual, err := provider.ProvidePublisher(ctx, t.Name())

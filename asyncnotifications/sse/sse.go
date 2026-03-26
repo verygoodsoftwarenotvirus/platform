@@ -1,0 +1,85 @@
+package sse
+
+import (
+	"context"
+	"net/http"
+
+	"github.com/verygoodsoftwarenotvirus/platform/v2/asyncnotifications"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/eventstream"
+	essse "github.com/verygoodsoftwarenotvirus/platform/v2/eventstream/sse"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
+)
+
+const o11yName = "async_notifications_sse"
+
+var (
+	_ asyncnotifications.AsyncNotifier      = (*Notifier)(nil)
+	_ asyncnotifications.ConnectionAcceptor = (*Notifier)(nil)
+)
+
+// Notifier is an SSE-backed AsyncNotifier that manages direct client connections.
+// Note that AcceptConnection blocks the calling goroutine for the lifetime of the
+// client connection, as SSE uses the HTTP response writer directly.
+type Notifier struct {
+	logger   logging.Logger
+	tracer   tracing.Tracer
+	upgrader *essse.Upgrader
+	manager  *eventstream.StreamManager[eventstream.EventStream]
+}
+
+// NewNotifier creates a new SSE-backed AsyncNotifier.
+func NewNotifier(_ *Config, logger logging.Logger, tracerProvider tracing.TracerProvider) (*Notifier, error) {
+	return &Notifier{
+		logger:   logging.EnsureLogger(logger).WithName(o11yName),
+		tracer:   tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(o11yName)),
+		upgrader: essse.NewUpgrader(tracerProvider),
+		manager:  eventstream.NewStreamManager[eventstream.EventStream](tracerProvider, logger),
+	}, nil
+}
+
+// Publish sends an event to all connected clients on the given channel.
+func (n *Notifier) Publish(ctx context.Context, channel string, event *asyncnotifications.Event) error {
+	_, span := n.tracer.StartSpan(ctx)
+	defer span.End()
+
+	esEvent := &eventstream.Event{
+		Type:    event.Type,
+		Payload: event.Data,
+	}
+
+	n.manager.BroadcastToGroup(ctx, channel, esEvent)
+
+	return nil
+}
+
+// AcceptConnection upgrades the HTTP connection to an SSE stream and registers it
+// under the given channel and memberID. This method blocks the calling goroutine
+// for the lifetime of the client connection.
+func (n *Notifier) AcceptConnection(w http.ResponseWriter, r *http.Request, channel, memberID string) error {
+	ctx := r.Context()
+	_, span := n.tracer.StartSpan(ctx)
+	defer span.End()
+
+	stream, err := n.upgrader.UpgradeToEventStream(w, r)
+	if err != nil {
+		return observability.PrepareAndLogError(err, n.logger, span, "upgrading SSE connection")
+	}
+
+	n.manager.Add(ctx, channel, memberID, stream)
+
+	defer func(removeCtx context.Context) {
+		n.manager.Remove(removeCtx, channel, memberID)
+	}(ctx)
+
+	// Block until the client disconnects.
+	<-stream.Done()
+
+	return nil
+}
+
+// Close releases resources held by the notifier.
+func (n *Notifier) Close() error {
+	return nil
+}

@@ -22,8 +22,8 @@ func NewEncryptorDecryptor(tracerProvider tracing.TracerProvider, logger logging
 	copy(key32[:], key)
 
 	return &salsa20Impl{
-		logger: logging.EnsureLogger(logger).WithName("encryptor"),
-		tracer: tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer("encryptor")),
+		logger: logging.NewNamedLogger(logger, "encryptor"),
+		tracer: tracing.NewNamedTracer(tracerProvider, "encryptor"),
 		key:    key32,
 	}, nil
 }

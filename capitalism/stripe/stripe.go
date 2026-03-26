@@ -46,7 +46,7 @@ func ProvideStripePaymentManager(logger logging.Logger, tracerProvider tracing.T
 		webhookSecret:  cfg.WebhookSecret,
 		encoderDecoder: encoding.ProvideServerEncoderDecoder(logger, tracerProvider, encoding.ContentTypeJSON),
 		logger:         logging.EnsureLogger(logger),
-		tracer:         tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(implementationName)),
+		tracer:         tracing.NewNamedTracer(tracerProvider, implementationName),
 	}
 }
 

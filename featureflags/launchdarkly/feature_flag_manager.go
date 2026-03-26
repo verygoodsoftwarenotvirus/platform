@@ -91,7 +91,7 @@ func NewFeatureFlagManager(cfg *Config, logger logging.Logger, tracerProvider tr
 	ffm := &featureFlagManager{
 		logger:         logging.EnsureLogger(logger),
 		circuitBreaker: circuitBreaker,
-		tracer:         tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(serviceName)),
+		tracer:         tracing.NewNamedTracer(tracerProvider, serviceName),
 		ldClient:       client,
 		ofClient:       ofClient,
 	}

@@ -18,7 +18,7 @@ func TestBuildLoggingMiddleware(T *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		tracer := tracing.NewTracer(tracing.NewNoopTracerProvider().Tracer(""))
+		tracer := tracing.NewTracerForTest("")
 		middleware := buildLoggingMiddleware(logging.NewNoopLogger(), tracer, false)
 
 		assert.NotNil(t, middleware)

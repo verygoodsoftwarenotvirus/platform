@@ -35,7 +35,7 @@ func Test_buildChiMux(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, buildChiMux(logging.NewNoopLogger(), tracing.NewTracer(tracing.NewNoopTracerProvider().Tracer(t.Name())), metrics.NewNoopMetricsProvider(), &Config{}))
+		assert.NotNil(t, buildChiMux(logging.NewNoopLogger(), tracing.NewTracerForTest(t.Name()), metrics.NewNoopMetricsProvider(), &Config{}))
 	})
 }
 

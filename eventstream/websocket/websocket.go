@@ -55,8 +55,8 @@ func NewUpgrader(logger logging.Logger, tracerProvider tracing.TracerProvider, c
 	}
 
 	return &Upgrader{
-		logger: logging.EnsureLogger(logger).WithName("websocket_stream"),
-		tracer: tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer("websocket_stream")),
+		logger: logging.NewNamedLogger(logger, "websocket_stream"),
+		tracer: tracing.NewNamedTracer(tracerProvider, "websocket_stream"),
 		wsUpgrader: gorillawebsocket.Upgrader{
 			ReadBufferSize:  readBuf,
 			WriteBufferSize: writeBuf,

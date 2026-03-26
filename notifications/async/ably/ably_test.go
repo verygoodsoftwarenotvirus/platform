@@ -53,7 +53,7 @@ func TestNotifier_Publish(T *testing.T) {
 		var capturedChannel, capturedName string
 		n := &Notifier{
 			logger: logging.NewNoopLogger(),
-			tracer: tracing.NewTracer(tracing.NewNoopTracerProvider().Tracer("test")),
+			tracer: tracing.NewTracerForTest("test"),
 			publisher: &mockChannelPublisher{
 				publishFn: func(_ context.Context, channel, name string, _ any) error {
 					capturedChannel = channel
@@ -77,7 +77,7 @@ func TestNotifier_Publish(T *testing.T) {
 
 		n := &Notifier{
 			logger: logging.NewNoopLogger(),
-			tracer: tracing.NewTracer(tracing.NewNoopTracerProvider().Tracer("test")),
+			tracer: tracing.NewTracerForTest("test"),
 			publisher: &mockChannelPublisher{
 				publishFn: func(context.Context, string, string, any) error {
 					return errors.New("ably API error")
@@ -100,7 +100,7 @@ func TestNotifier_Close(T *testing.T) {
 
 		n := &Notifier{
 			logger: logging.NewNoopLogger(),
-			tracer: tracing.NewTracer(tracing.NewNoopTracerProvider().Tracer("test")),
+			tracer: tracing.NewTracerForTest("test"),
 		}
 
 		assert.NoError(t, n.Close())

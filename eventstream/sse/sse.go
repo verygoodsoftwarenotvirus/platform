@@ -24,7 +24,7 @@ type Upgrader struct {
 // NewUpgrader creates a new SSE Upgrader.
 func NewUpgrader(tracerProvider tracing.TracerProvider) *Upgrader {
 	return &Upgrader{
-		tracer: tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer("sse_stream")),
+		tracer: tracing.NewNamedTracer(tracerProvider, "sse_stream"),
 	}
 }
 

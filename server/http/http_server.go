@@ -73,7 +73,7 @@ func ProvideHTTPServer(
 
 		// infra things,
 		router:         router,
-		logger:         logging.EnsureLogger(logger).WithName(loggerName),
+		logger:         logging.NewNamedLogger(logger, loggerName),
 		panicker:       panicking.NewProductionPanicker(),
 		httpServer:     provideStdLibHTTPServer(serverSettings.Port),
 		tracerProvider: tracing.EnsureTracerProvider(tracerProvider),

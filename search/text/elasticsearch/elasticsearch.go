@@ -66,8 +66,8 @@ func ProvideIndexManager[T any](ctx context.Context, logger logging.Logger, trac
 	}
 
 	im := &indexManager[T]{
-		tracer:                tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(fmt.Sprintf("search_%s", indexName))),
-		logger:                logging.EnsureLogger(logger).WithName(indexName),
+		tracer:                tracing.NewNamedTracer(tracerProvider, fmt.Sprintf("search_%s", indexName)),
+		logger:                logging.NewNamedLogger(logger, indexName),
 		esClient:              c,
 		indexOperationTimeout: cfg.IndexOperationTimeout,
 		indexName:             indexName,

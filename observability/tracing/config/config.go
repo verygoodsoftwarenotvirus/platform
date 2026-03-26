@@ -69,7 +69,7 @@ func (c *Config) ProvideTracer(ctx context.Context, l logging.Logger, name strin
 		return nil, errors.Wrap(err, "configuring tracing provider")
 	}
 
-	return tracing.NewTracer(tp.Tracer(name)), nil
+	return tracing.NewNamedTracer(tp, name), nil
 }
 
 var _ validation.ValidatableWithContext = (*Config)(nil)

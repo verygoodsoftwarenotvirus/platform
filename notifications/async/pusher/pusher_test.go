@@ -56,7 +56,7 @@ func TestNotifier_Publish(T *testing.T) {
 		var capturedChannel, capturedEvent string
 		n := &Notifier{
 			logger: logging.NewNoopLogger(),
-			tracer: tracing.NewTracer(tracing.NewNoopTracerProvider().Tracer("test")),
+			tracer: tracing.NewTracerForTest("test"),
 			client: &mockPusherClient{
 				triggerFn: func(channel, eventName string, data any) error {
 					capturedChannel = channel
@@ -80,7 +80,7 @@ func TestNotifier_Publish(T *testing.T) {
 
 		n := &Notifier{
 			logger: logging.NewNoopLogger(),
-			tracer: tracing.NewTracer(tracing.NewNoopTracerProvider().Tracer("test")),
+			tracer: tracing.NewTracerForTest("test"),
 			client: &mockPusherClient{
 				triggerFn: func(string, string, any) error {
 					return errors.New("pusher API error")
@@ -103,7 +103,7 @@ func TestNotifier_Close(T *testing.T) {
 
 		n := &Notifier{
 			logger: logging.NewNoopLogger(),
-			tracer: tracing.NewTracer(tracing.NewNoopTracerProvider().Tracer("test")),
+			tracer: tracing.NewTracerForTest("test"),
 		}
 
 		assert.NoError(t, n.Close())

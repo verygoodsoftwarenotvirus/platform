@@ -12,18 +12,22 @@ type otelTraceWrapper struct {
 	tracer trace.Tracer
 }
 
-// NewTracerForTest creates a Tracer.
+// NewTracerForTest creates a noop Tracer for use in tests.
 func NewTracerForTest(name string) Tracer {
-	return &otelTraceWrapper{
-		tracer: NewNoopTracerProvider().Tracer(name),
-	}
+	return NewNamedTracer(nil, name)
 }
 
-// NewTracer creates a Tracer.
+// Deprecated: Use NewNamedTracer instead.
 func NewTracer(t trace.Tracer) Tracer {
 	return &otelTraceWrapper{
 		tracer: t,
 	}
+}
+
+// NewNamedTracer creates a named Tracer from the given TracerProvider.
+// If tracerProvider is nil, a noop TracerProvider is used.
+func NewNamedTracer(tracerProvider TracerProvider, name string) Tracer {
+	return NewTracer(EnsureTracerProvider(tracerProvider).Tracer(name))
 }
 
 // StartSpan wraps tracer.Start.

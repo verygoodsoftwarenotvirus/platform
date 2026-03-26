@@ -48,8 +48,8 @@ func NewPostHogEventReporter(logger logging.Logger, tracerProvider tracing.Trace
 	}
 
 	c := &EventReporter{
-		tracer:         tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(name)),
-		logger:         logging.EnsureLogger(logger).WithName(name),
+		tracer:         tracing.NewNamedTracer(tracerProvider, name),
+		logger:         logging.NewNamedLogger(logger, name),
 		client:         client,
 		circuitBreaker: circuitBreaker,
 	}

@@ -48,7 +48,7 @@ func buildPubSubConsumer(
 		logger:          logging.EnsureLogger(logger),
 		consumer:        pubsubClient,
 		handlerFunc:     handlerFunc,
-		tracer:          tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(fmt.Sprintf("%s_consumer", topic))),
+		tracer:          tracing.NewNamedTracer(tracerProvider, fmt.Sprintf("%s_consumer", topic)),
 		consumedCounter: consumedCounter,
 	}
 }

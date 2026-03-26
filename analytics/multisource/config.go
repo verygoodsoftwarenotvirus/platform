@@ -26,7 +26,7 @@ func ProvideMultiSourceEventReporter(
 	metricsProvider metrics.Provider,
 ) (*MultiSourceEventReporter, error) {
 	reporters := make(map[string]analytics.EventReporter)
-	log := logging.EnsureLogger(logger).WithName(name)
+	log := logging.NewNamedLogger(logger, name)
 
 	if len(proxySources) == 0 {
 		log.Info("no analytics proxy sources configured, multisource reporter will be empty")

@@ -123,7 +123,7 @@ func provideRedisPublisher(logger logging.Logger, tracerProvider tracing.TracerP
 		topic:             topic,
 		encoder:           encoding.ProvideClientEncoder(logger, tracerProvider, encoding.ContentTypeJSON),
 		logger:            logging.EnsureLogger(logger),
-		tracer:            tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(fmt.Sprintf("%s_publisher", topic))),
+		tracer:            tracing.NewNamedTracer(tracerProvider, fmt.Sprintf("%s_publisher", topic)),
 		publishedCounter:  publishedCounter,
 		publishErrCounter: publishErrCounter,
 		latencyHist:       latencyHist,

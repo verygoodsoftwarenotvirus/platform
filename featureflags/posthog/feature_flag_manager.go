@@ -83,8 +83,8 @@ func NewFeatureFlagManager(cfg *Config, logger logging.Logger, tracerProvider tr
 		posthogClient:  client,
 		ofClient:       ofClient,
 		circuitBreaker: circuitBreaker,
-		logger:         logging.EnsureLogger(logger).WithName(serviceName),
-		tracer:         tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(serviceName)),
+		logger:         logging.NewNamedLogger(logger, serviceName),
+		tracer:         tracing.NewNamedTracer(tracerProvider, serviceName),
 	}
 
 	return ffm, nil

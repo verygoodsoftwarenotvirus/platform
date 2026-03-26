@@ -57,7 +57,7 @@ func provideSQSConsumer(
 		receiver:        receiver,
 		queueURL:        queueURL,
 		handlerFunc:     handlerFunc,
-		tracer:          tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(fmt.Sprintf("%s_consumer", queueURL))),
+		tracer:          tracing.NewNamedTracer(tracerProvider, fmt.Sprintf("%s_consumer", queueURL)),
 		consumedCounter: consumedCounter,
 	}
 }

@@ -49,8 +49,8 @@ func NewGCPSecretSource(ctx context.Context, cfg *Config, client SecretVersionAc
 		return nil, errors.Wrap(err, "gcp secret source")
 	}
 
-	l := logging.EnsureLogger(logger).WithName(name)
-	t := tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(name))
+	l := logging.NewNamedLogger(logger, name)
+	t := tracing.NewNamedTracer(tracerProvider, name)
 	mp := metrics.EnsureMetricsProvider(metricsProvider)
 
 	lookupCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_lookups", name))

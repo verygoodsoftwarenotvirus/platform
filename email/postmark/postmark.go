@@ -84,8 +84,8 @@ func NewPostmarkEmailer(cfg *Config, logger logging.Logger, tracerProvider traci
 	}
 
 	e := &Emailer{
-		logger:         logging.EnsureLogger(logger).WithName(name),
-		tracer:         tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(name)),
+		logger:         logging.NewNamedLogger(logger, name),
+		tracer:         tracing.NewNamedTracer(tracerProvider, name),
 		sendCounter:    sendCounter,
 		errorCounter:   errorCounter,
 		latencyHist:    latencyHist,

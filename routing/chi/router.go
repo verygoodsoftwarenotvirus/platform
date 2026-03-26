@@ -97,7 +97,7 @@ func buildChiMux(
 				return !isHealthCheck(r.URL.Path)
 			}),
 		),
-		buildLoggingMiddleware(logging.EnsureLogger(logger).WithName("router"), tracer, cfg.SilenceRouteLogging),
+		buildLoggingMiddleware(logging.NewNamedLogger(logger, "router"), tracer, cfg.SilenceRouteLogging),
 		chimiddleware.RequestID,
 		chimiddleware.RealIP,
 		chimiddleware.CleanPath,
@@ -115,7 +115,7 @@ func buildChiMux(
 
 func buildRouter(mux chi.Router, l logging.Logger, tracerProvider tracing.TracerProvider, metricProvider metrics.Provider, cfg *Config) *router {
 	logger := logging.EnsureLogger(l)
-	tracer := tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer("router"))
+	tracer := tracing.NewNamedTracer(tracerProvider, "router")
 
 	if mux == nil {
 		logger.Debug("starting with a new mux")

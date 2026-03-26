@@ -74,8 +74,8 @@ func NewRedisCache[T any](cfg *Config, expiration time.Duration, logger logging.
 	}
 
 	return &redisCacheImpl[T]{
-		logger:           logging.EnsureLogger(logger).WithName(name),
-		tracer:           tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(name)),
+		logger:           logging.NewNamedLogger(logger, name),
+		tracer:           tracing.NewNamedTracer(tracerProvider, name),
 		cacheHitCounter:  cacheHitCounter,
 		cacheMissCounter: cacheMissCounter,
 		cacheSetCounter:  cacheSetCounter,

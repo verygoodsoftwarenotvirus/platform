@@ -40,8 +40,8 @@ func ProvideIndexManager[T any](
 	}
 
 	im := &indexManager[T]{
-		tracer:         tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(fmt.Sprintf("search_%s", indexName))),
-		logger:         logging.EnsureLogger(logger).WithName(indexName),
+		tracer:         tracing.NewNamedTracer(tracerProvider, fmt.Sprintf("search_%s", indexName)),
+		logger:         logging.NewNamedLogger(logger, indexName),
 		client:         algolia.NewClient(cfg.AppID, cfg.APIKey).InitIndex(indexName),
 		circuitBreaker: circuitBreaker,
 	}

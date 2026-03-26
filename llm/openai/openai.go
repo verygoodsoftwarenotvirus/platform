@@ -57,8 +57,8 @@ func NewProvider(cfg *Config, logger logging.Logger, tracerProvider tracing.Trac
 	}
 
 	return &openaiProvider{
-		logger:         logging.EnsureLogger(logger).WithName(name),
-		tracer:         tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(name)),
+		logger:         logging.NewNamedLogger(logger, name),
+		tracer:         tracing.NewNamedTracer(tracerProvider, name),
 		requestCounter: requestCounter,
 		errorCounter:   errorCounter,
 		latencyHist:    latencyHist,

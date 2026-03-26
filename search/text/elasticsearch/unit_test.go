@@ -26,7 +26,7 @@ func buildTestIndexManagerForUnit(t *testing.T, cb circuitbreaking.CircuitBreake
 
 	return &indexManager[example]{
 		logger:         logging.NewNoopLogger(),
-		tracer:         tracing.NewTracer(tracing.NewNoopTracerProvider().Tracer("test")),
+		tracer:         tracing.NewTracerForTest("test"),
 		circuitBreaker: cb,
 		esClient:       client,
 		indexName:      "test",

@@ -50,8 +50,8 @@ func NewRudderstackEventReporter(logger logging.Logger, tracerProvider tracing.T
 	}
 
 	c := &EventReporter{
-		tracer:         tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(name)),
-		logger:         logging.EnsureLogger(logger).WithName(name),
+		tracer:         tracing.NewNamedTracer(tracerProvider, name),
+		logger:         logging.NewNamedLogger(logger, name),
 		client:         rudderstack.New(cfg.APIKey, cfg.DataPlaneURL),
 		circuitBreaker: circuitBreaker,
 	}

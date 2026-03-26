@@ -49,7 +49,7 @@ func provideRedisConsumer(ctx context.Context, logger logging.Logger, tracerProv
 		handlerFunc:     handlerFunc,
 		subscription:    subscription,
 		logger:          logging.EnsureLogger(logger),
-		tracer:          tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(fmt.Sprintf("%s_consumer", topic))),
+		tracer:          tracing.NewNamedTracer(tracerProvider, fmt.Sprintf("%s_consumer", topic)),
 		consumedCounter: consumedCounter,
 	}
 }

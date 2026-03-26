@@ -36,7 +36,7 @@ type Client struct {
 // If metricsProvider is non-nil, the DB driver will use it so SQL latency and other
 // db.sql.* metrics are emitted (e.g. db_sql_latency_milliseconds_bucket in Prometheus).
 func ProvideDatabaseClient(ctx context.Context, logger logging.Logger, tracerProvider tracing.TracerProvider, cfg database.ClientConfig, metricsProvider metrics.Provider) (database.Client, error) {
-	tracer := tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(tracingName))
+	tracer := tracing.NewNamedTracer(tracerProvider, tracingName)
 
 	_, span := tracer.StartSpan(ctx)
 	defer span.End()
@@ -99,7 +99,7 @@ func ProvideDatabaseClient(ctx context.Context, logger logging.Logger, tracerPro
 		config:   cfg,
 		tracer:   tracer,
 		timeFunc: defaultTimeFunc,
-		logger:   logging.EnsureLogger(logger).WithName("querier"),
+		logger:   logging.NewNamedLogger(logger, "querier"),
 	}
 
 	return c, nil

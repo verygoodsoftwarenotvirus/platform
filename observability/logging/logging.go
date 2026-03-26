@@ -68,6 +68,12 @@ func EnsureLogger(logger Logger) Logger {
 	return NewNoopLogger()
 }
 
+// NewNamedLogger creates a named Logger from the given Logger.
+// If logger is nil, a noop Logger is used.
+func NewNamedLogger(logger Logger, name string) Logger {
+	return EnsureLogger(logger).WithName(name)
+}
+
 func init() {
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 }

@@ -96,7 +96,7 @@ func NewGRPCServer(
 	reflection.Register(grpcServer)
 
 	return &Server{
-		logger:         logging.EnsureLogger(logger).WithName(serviceName),
+		logger:         logging.NewNamedLogger(logger, serviceName),
 		config:         cfg,
 		grpcServer:     grpcServer,
 		tracerProvider: tp,

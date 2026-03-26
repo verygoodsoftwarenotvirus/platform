@@ -27,8 +27,8 @@ func NewStreamManager[S EventStream](
 	logger logging.Logger,
 ) *StreamManager[S] {
 	return &StreamManager[S]{
-		logger:  logging.EnsureLogger(logger).WithName(managerObservabilityName),
-		tracer:  tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(managerObservabilityName)),
+		logger:  logging.NewNamedLogger(logger, managerObservabilityName),
+		tracer:  tracing.NewNamedTracer(tracerProvider, managerObservabilityName),
 		streams: make(map[string]map[string]S),
 	}
 }

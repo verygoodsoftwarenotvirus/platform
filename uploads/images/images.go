@@ -86,8 +86,8 @@ func (i *Upload) Thumbnail(width, height uint, filename string) (*Upload, error)
 // NewMediaUploadProcessor provides a new MediaUploadProcessor.
 func NewMediaUploadProcessor(logger logging.Logger, tracerProvider tracing.TracerProvider) MediaUploadProcessor {
 	return &uploadProcessor{
-		logger: logging.EnsureLogger(logger).WithName("media_upload_processor"),
-		tracer: tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer("media_upload_processor")),
+		logger: logging.NewNamedLogger(logger, "media_upload_processor"),
+		tracer: tracing.NewNamedTracer(tracerProvider, "media_upload_processor"),
 	}
 }
 

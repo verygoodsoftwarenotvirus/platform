@@ -16,6 +16,22 @@ func TestNewTracer(T *testing.T) {
 	})
 }
 
+func TestNewNamedTracer(T *testing.T) {
+	T.Parallel()
+
+	T.Run("with nil provider", func(t *testing.T) {
+		t.Parallel()
+
+		assert.NotNil(t, NewNamedTracer(nil, t.Name()))
+	})
+
+	T.Run("with valid provider", func(t *testing.T) {
+		t.Parallel()
+
+		assert.NotNil(t, NewNamedTracer(NewNoopTracerProvider(), t.Name()))
+	})
+}
+
 func Test_otelSpanManager_StartSpan(T *testing.T) {
 	T.Parallel()
 

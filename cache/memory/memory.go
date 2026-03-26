@@ -2,52 +2,134 @@ package memory
 
 import (
 	"context"
+	"fmt"
 	"sync"
+	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/cache"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/cache"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 )
 
+const name = "in_memory_cache"
+
 type inMemoryCacheImpl[T any] struct {
-	cache   map[string]*T
-	cacheMu sync.RWMutex
+	logger           logging.Logger
+	tracer           tracing.Tracer
+	cacheHitCounter  metrics.Int64Counter
+	cacheMissCounter metrics.Int64Counter
+	cacheSetCounter  metrics.Int64Counter
+	cacheDelCounter  metrics.Int64Counter
+	latencyHist      metrics.Float64Histogram
+	cache            map[string]*T
+	cacheMu          sync.RWMutex
 }
 
 // NewInMemoryCache builds an in-memory cache.
-func NewInMemoryCache[T any]() cache.Cache[T] {
-	return &inMemoryCacheImpl[T]{
-		cache: make(map[string]*T),
+func NewInMemoryCache[T any](logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider) (cache.Cache[T], error) {
+	mp := metrics.EnsureMetricsProvider(metricsProvider)
+
+	cacheHitCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_cache_hits", name))
+	if err != nil {
+		return nil, fmt.Errorf("creating cache hit counter: %w", err)
 	}
+
+	cacheMissCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_cache_misses", name))
+	if err != nil {
+		return nil, fmt.Errorf("creating cache miss counter: %w", err)
+	}
+
+	cacheSetCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_cache_sets", name))
+	if err != nil {
+		return nil, fmt.Errorf("creating cache set counter: %w", err)
+	}
+
+	cacheDelCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_cache_deletes", name))
+	if err != nil {
+		return nil, fmt.Errorf("creating cache delete counter: %w", err)
+	}
+
+	latencyHist, err := mp.NewFloat64Histogram(fmt.Sprintf("%s_cache_latency_ms", name))
+	if err != nil {
+		return nil, fmt.Errorf("creating cache latency histogram: %w", err)
+	}
+
+	return &inMemoryCacheImpl[T]{
+		logger:           logging.EnsureLogger(logger).WithName(name),
+		tracer:           tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(name)),
+		cacheHitCounter:  cacheHitCounter,
+		cacheMissCounter: cacheMissCounter,
+		cacheSetCounter:  cacheSetCounter,
+		cacheDelCounter:  cacheDelCounter,
+		latencyHist:      latencyHist,
+		cache:            make(map[string]*T),
+	}, nil
 }
 
-func (i *inMemoryCacheImpl[T]) Get(_ context.Context, key string) (*T, error) {
+func (i *inMemoryCacheImpl[T]) Get(ctx context.Context, key string) (*T, error) {
+	_, span := i.tracer.StartSpan(ctx)
+	defer span.End()
+
+	startTime := time.Now()
+	defer func() {
+		i.latencyHist.Record(ctx, float64(time.Since(startTime).Milliseconds()))
+	}()
+
 	i.cacheMu.RLock()
 	defer i.cacheMu.RUnlock()
 
 	if val, ok := i.cache[key]; ok {
+		i.cacheHitCounter.Add(ctx, 1)
 		return val, nil
 	}
+
+	i.cacheMissCounter.Add(ctx, 1)
 
 	return nil, cache.ErrNotFound
 }
 
-func (i *inMemoryCacheImpl[T]) Set(_ context.Context, key string, value *T) error {
+func (i *inMemoryCacheImpl[T]) Set(ctx context.Context, key string, value *T) error {
+	_, span := i.tracer.StartSpan(ctx)
+	defer span.End()
+
+	startTime := time.Now()
+	defer func() {
+		i.latencyHist.Record(ctx, float64(time.Since(startTime).Milliseconds()))
+	}()
+
 	i.cacheMu.Lock()
 	defer i.cacheMu.Unlock()
 
 	i.cache[key] = value
+	i.cacheSetCounter.Add(ctx, 1)
 
 	return nil
 }
 
-func (i *inMemoryCacheImpl[T]) Delete(_ context.Context, key string) error {
+func (i *inMemoryCacheImpl[T]) Delete(ctx context.Context, key string) error {
+	_, span := i.tracer.StartSpan(ctx)
+	defer span.End()
+
+	startTime := time.Now()
+	defer func() {
+		i.latencyHist.Record(ctx, float64(time.Since(startTime).Milliseconds()))
+	}()
+
 	i.cacheMu.Lock()
 	defer i.cacheMu.Unlock()
 
 	delete(i.cache, key)
+	i.cacheDelCounter.Add(ctx, 1)
 
 	return nil
 }
 
-func (i *inMemoryCacheImpl[T]) Ping(_ context.Context) error {
+func (i *inMemoryCacheImpl[T]) Ping(ctx context.Context) error {
+	_, span := i.tracer.StartSpan(ctx)
+	defer span.End()
+
+	i.logger.Debug("ping")
+
 	return nil
 }

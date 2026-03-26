@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/circuitbreaking"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/email"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
+	cbnoop "github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/email"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 
 	"github.com/stretchr/testify/require"
 )
@@ -33,7 +33,7 @@ func TestNewPostmarkEmailer(T *testing.T) {
 
 		config := &Config{ServerToken: t.Name()}
 
-		client, err := NewPostmarkEmailer(config, logger, tracing.NewNoopTracerProvider(), &http.Client{}, circuitbreaking.NewNoopCircuitBreaker())
+		client, err := NewPostmarkEmailer(config, logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
 		require.NotNil(t, client)
 		require.NoError(t, err)
 	})
@@ -43,7 +43,7 @@ func TestNewPostmarkEmailer(T *testing.T) {
 
 		logger := logging.NewNoopLogger()
 
-		client, err := NewPostmarkEmailer(nil, logger, tracing.NewNoopTracerProvider(), &http.Client{}, circuitbreaking.NewNoopCircuitBreaker())
+		client, err := NewPostmarkEmailer(nil, logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
 		require.Nil(t, client)
 		require.Error(t, err)
 	})
@@ -55,7 +55,7 @@ func TestNewPostmarkEmailer(T *testing.T) {
 
 		config := &Config{}
 
-		client, err := NewPostmarkEmailer(config, logger, tracing.NewNoopTracerProvider(), &http.Client{}, circuitbreaking.NewNoopCircuitBreaker())
+		client, err := NewPostmarkEmailer(config, logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
 		require.Nil(t, client)
 		require.Error(t, err)
 	})
@@ -67,7 +67,7 @@ func TestNewPostmarkEmailer(T *testing.T) {
 
 		config := &Config{ServerToken: t.Name()}
 
-		client, err := NewPostmarkEmailer(config, logger, tracing.NewNoopTracerProvider(), nil, circuitbreaking.NewNoopCircuitBreaker())
+		client, err := NewPostmarkEmailer(config, logger, tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker(), nil)
 		require.Nil(t, client)
 		require.Error(t, err)
 	})
@@ -93,7 +93,7 @@ func TestPostmarkEmailer_SendEmail(T *testing.T) {
 
 		cfg := &Config{ServerToken: t.Name(), BaseURL: ts.URL}
 
-		c, err := NewPostmarkEmailer(cfg, logger, tracing.NewNoopTracerProvider(), ts.Client(), circuitbreaking.NewNoopCircuitBreaker())
+		c, err := NewPostmarkEmailer(cfg, logger, tracing.NewNoopTracerProvider(), ts.Client(), cbnoop.NewCircuitBreaker(), nil)
 		require.NotNil(t, c)
 		require.NoError(t, err)
 
@@ -124,7 +124,7 @@ func TestPostmarkEmailer_SendEmail(T *testing.T) {
 
 		cfg := &Config{ServerToken: t.Name(), BaseURL: ts.URL}
 
-		c, err := NewPostmarkEmailer(cfg, logger, tracing.NewNoopTracerProvider(), client, circuitbreaking.NewNoopCircuitBreaker())
+		c, err := NewPostmarkEmailer(cfg, logger, tracing.NewNoopTracerProvider(), client, cbnoop.NewCircuitBreaker(), nil)
 		require.NotNil(t, c)
 		require.NoError(t, err)
 
@@ -153,7 +153,7 @@ func TestPostmarkEmailer_SendEmail(T *testing.T) {
 
 		cfg := &Config{ServerToken: t.Name(), BaseURL: ts.URL}
 
-		c, err := NewPostmarkEmailer(cfg, logger, tracing.NewNoopTracerProvider(), ts.Client(), circuitbreaking.NewNoopCircuitBreaker())
+		c, err := NewPostmarkEmailer(cfg, logger, tracing.NewNoopTracerProvider(), ts.Client(), cbnoop.NewCircuitBreaker(), nil)
 		require.NotNil(t, c)
 		require.NoError(t, err)
 

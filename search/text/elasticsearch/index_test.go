@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/circuitbreaking"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/identifiers"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
+	cbnoop "github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/identifiers"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,7 +38,7 @@ func Test_indexManager_CompleteLifecycle(T *testing.T) {
 			require.NoError(t, shutdownFunc(ctx))
 		}()
 
-		im, err := ProvideIndexManager[example](ctx, nil, nil, cfg, "index_test", circuitbreaking.NewNoopCircuitBreaker())
+		im, err := ProvideIndexManager[example](ctx, nil, nil, cfg, "index_test", cbnoop.NewCircuitBreaker())
 		assert.NoError(t, err)
 		assert.NotNil(t, im)
 
@@ -76,7 +76,7 @@ func Test_indexManager_Index(T *testing.T) {
 			require.NoError(t, shutdownFunc(ctx))
 		}()
 
-		im, err := ProvideIndexManager[example](ctx, nil, nil, cfg, "index_test", circuitbreaking.NewNoopCircuitBreaker())
+		im, err := ProvideIndexManager[example](ctx, nil, nil, cfg, "index_test", cbnoop.NewCircuitBreaker())
 		require.NoError(t, err)
 
 		searchable := &example{
@@ -97,7 +97,7 @@ func Test_indexManager_Index(T *testing.T) {
 			require.NoError(t, shutdownFunc(ctx))
 		}()
 
-		im, err := ProvideIndexManager[example](ctx, nil, nil, cfg, "index_test", circuitbreaking.NewNoopCircuitBreaker())
+		im, err := ProvideIndexManager[example](ctx, nil, nil, cfg, "index_test", cbnoop.NewCircuitBreaker())
 		require.NoError(t, err)
 
 		invalid := &invalidJSON{
@@ -118,7 +118,7 @@ func Test_indexManager_Index(T *testing.T) {
 		}()
 
 		// Create a circuit breaker that's already open
-		cb := circuitbreaking.NewNoopCircuitBreaker()
+		cb := cbnoop.NewCircuitBreaker()
 		// We can't easily test circuit breaker state without a real implementation
 		// This test documents the expected behavior when circuit breaker is open
 		im, err := ProvideIndexManager[example](ctx, nil, nil, cfg, "index_test", cb)
@@ -151,7 +151,7 @@ func Test_indexManager_Search(T *testing.T) {
 			require.NoError(t, shutdownFunc(ctx))
 		}()
 
-		im, err := ProvideIndexManager[example](ctx, nil, nil, cfg, "search_test", circuitbreaking.NewNoopCircuitBreaker())
+		im, err := ProvideIndexManager[example](ctx, nil, nil, cfg, "search_test", cbnoop.NewCircuitBreaker())
 		require.NoError(t, err)
 
 		// Index a document first
@@ -181,7 +181,7 @@ func Test_indexManager_Search(T *testing.T) {
 			require.NoError(t, shutdownFunc(ctx))
 		}()
 
-		im, err := ProvideIndexManager[example](ctx, nil, nil, cfg, "search_test", circuitbreaking.NewNoopCircuitBreaker())
+		im, err := ProvideIndexManager[example](ctx, nil, nil, cfg, "search_test", cbnoop.NewCircuitBreaker())
 		require.NoError(t, err)
 
 		results, err := im.Search(ctx, "")
@@ -199,7 +199,7 @@ func Test_indexManager_Search(T *testing.T) {
 			require.NoError(t, shutdownFunc(ctx))
 		}()
 
-		im, err := ProvideIndexManager[example](ctx, nil, nil, cfg, "search_test", circuitbreaking.NewNoopCircuitBreaker())
+		im, err := ProvideIndexManager[example](ctx, nil, nil, cfg, "search_test", cbnoop.NewCircuitBreaker())
 		require.NoError(t, err)
 
 		results, err := im.Search(ctx, "nonexistent document")
@@ -224,7 +224,7 @@ func Test_indexManager_Delete(T *testing.T) {
 			require.NoError(t, shutdownFunc(ctx))
 		}()
 
-		im, err := ProvideIndexManager[example](ctx, nil, nil, cfg, "delete_test", circuitbreaking.NewNoopCircuitBreaker())
+		im, err := ProvideIndexManager[example](ctx, nil, nil, cfg, "delete_test", cbnoop.NewCircuitBreaker())
 		require.NoError(t, err)
 
 		// Index a document first
@@ -249,7 +249,7 @@ func Test_indexManager_Delete(T *testing.T) {
 			require.NoError(t, shutdownFunc(ctx))
 		}()
 
-		im, err := ProvideIndexManager[example](ctx, nil, nil, cfg, "delete_test", circuitbreaking.NewNoopCircuitBreaker())
+		im, err := ProvideIndexManager[example](ctx, nil, nil, cfg, "delete_test", cbnoop.NewCircuitBreaker())
 		require.NoError(t, err)
 
 		// Try to delete a non-existent document
@@ -295,7 +295,7 @@ func Test_ProvideIndexManager(T *testing.T) {
 		logger := logging.NewNoopLogger()
 		tracerProvider := tracing.NewNoopTracerProvider()
 
-		im, err := ProvideIndexManager[example](ctx, logger, tracerProvider, cfg, "provide_test", circuitbreaking.NewNoopCircuitBreaker())
+		im, err := ProvideIndexManager[example](ctx, logger, tracerProvider, cfg, "provide_test", cbnoop.NewCircuitBreaker())
 		assert.NoError(t, err)
 		assert.NotNil(t, im)
 	})
@@ -311,7 +311,7 @@ func Test_ProvideIndexManager(T *testing.T) {
 		logger := logging.NewNoopLogger()
 		tracerProvider := tracing.NewNoopTracerProvider()
 
-		im, err := ProvideIndexManager[example](ctx, logger, tracerProvider, invalidCfg, "provide_test", circuitbreaking.NewNoopCircuitBreaker())
+		im, err := ProvideIndexManager[example](ctx, logger, tracerProvider, invalidCfg, "provide_test", cbnoop.NewCircuitBreaker())
 		assert.Error(t, err)
 		assert.Nil(t, im)
 		assert.Contains(t, err.Error(), "initializing search client")

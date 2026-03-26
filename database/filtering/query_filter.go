@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/keys"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/keys"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
 )
 
 const (

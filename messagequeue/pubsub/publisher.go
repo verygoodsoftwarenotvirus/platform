@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/encoding"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/messagequeue"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/encoding"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/messagequeue"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 
 	"cloud.google.com/go/pubsub/v2"
 )
@@ -23,20 +25,43 @@ type (
 	}
 
 	pubSubPublisher struct {
-		tracer    tracing.Tracer
-		encoder   encoding.ClientEncoder
-		logger    logging.Logger
-		publisher messagePublisher
+		tracer            tracing.Tracer
+		encoder           encoding.ClientEncoder
+		logger            logging.Logger
+		publisher         messagePublisher
+		publishedCounter  metrics.Int64Counter
+		publishErrCounter metrics.Int64Counter
+		latencyHist       metrics.Float64Histogram
 	}
 )
 
 // buildPubSubPublisher provides a Pub/Sub-backed pubSubPublisher.
-func buildPubSubPublisher(logger logging.Logger, pubsubClient *pubsub.Publisher, tracerProvider tracing.TracerProvider, topic string) *pubSubPublisher {
+func buildPubSubPublisher(logger logging.Logger, pubsubClient *pubsub.Publisher, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider, topic string) *pubSubPublisher {
+	mp := metrics.EnsureMetricsProvider(metricsProvider)
+
+	publishedCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_published", topic))
+	if err != nil {
+		panic(fmt.Sprintf("creating published counter: %v", err))
+	}
+
+	publishErrCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_publish_errors", topic))
+	if err != nil {
+		panic(fmt.Sprintf("creating publish error counter: %v", err))
+	}
+
+	latencyHist, err := mp.NewFloat64Histogram(fmt.Sprintf("%s_publish_latency_ms", topic))
+	if err != nil {
+		panic(fmt.Sprintf("creating publish latency histogram: %v", err))
+	}
+
 	return &pubSubPublisher{
-		encoder:   encoding.ProvideClientEncoder(logger, tracerProvider, encoding.ContentTypeJSON),
-		logger:    logging.EnsureLogger(logger),
-		publisher: pubsubClient,
-		tracer:    tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(fmt.Sprintf("%s_publisher", topic))),
+		encoder:           encoding.ProvideClientEncoder(logger, tracerProvider, encoding.ContentTypeJSON),
+		logger:            logging.EnsureLogger(logger),
+		publisher:         pubsubClient,
+		tracer:            tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(fmt.Sprintf("%s_publisher", topic))),
+		publishedCounter:  publishedCounter,
+		publishErrCounter: publishErrCounter,
+		latencyHist:       latencyHist,
 	}
 }
 
@@ -50,18 +75,20 @@ type publisherProvider struct {
 	publisherCache    map[string]messagequeue.Publisher
 	pubsubClient      *pubsub.Client
 	tracerProvider    tracing.TracerProvider
+	metricsProvider   metrics.Provider
 	projectID         string
 	publisherCacheHat sync.RWMutex
 }
 
 // ProvidePubSubPublisherProvider returns a PublisherProvider for a given address.
-func ProvidePubSubPublisherProvider(logger logging.Logger, tracerProvider tracing.TracerProvider, client *pubsub.Client, projectID string) messagequeue.PublisherProvider {
+func ProvidePubSubPublisherProvider(logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider, client *pubsub.Client, projectID string) messagequeue.PublisherProvider {
 	return &publisherProvider{
-		logger:         logging.EnsureLogger(logger),
-		pubsubClient:   client,
-		publisherCache: map[string]messagequeue.Publisher{},
-		tracerProvider: tracerProvider,
-		projectID:      projectID,
+		logger:          logging.EnsureLogger(logger),
+		pubsubClient:    client,
+		publisherCache:  map[string]messagequeue.Publisher{},
+		tracerProvider:  tracerProvider,
+		metricsProvider: metricsProvider,
+		projectID:       projectID,
 	}
 }
 
@@ -103,7 +130,7 @@ func (p *publisherProvider) ProvidePublisher(ctx context.Context, topicName stri
 	// pubsub.topics.get (TopicAdminClient.GetTopic); pubsub.topics.publish is sufficient.
 	publisher := p.pubsubClient.Publisher(qualifiedName)
 
-	pub := buildPubSubPublisher(logger, publisher, p.tracerProvider, qualifiedName)
+	pub := buildPubSubPublisher(logger, publisher, p.tracerProvider, p.metricsProvider, qualifiedName)
 	p.publisherCache[qualifiedName] = pub
 
 	return pub, nil
@@ -113,10 +140,12 @@ func (p *pubSubPublisher) Publish(ctx context.Context, data any) error {
 	_, span := p.tracer.StartSpan(ctx)
 	defer span.End()
 
+	startTime := time.Now()
 	logger := p.logger.Clone()
 
 	var b bytes.Buffer
 	if err := p.encoder.Encode(ctx, &b, data); err != nil {
+		p.publishErrCounter.Add(ctx, 1)
 		return observability.PrepareError(err, span, "encoding topic message")
 	}
 
@@ -127,8 +156,12 @@ func (p *pubSubPublisher) Publish(ctx context.Context, data any) error {
 
 	// The Get method blocks until a server-generated ID or an error is returned for the published message.
 	if _, err := result.Get(ctx); err != nil {
+		p.publishErrCounter.Add(ctx, 1)
 		observability.AcknowledgeError(err, logger, span, "publishing pubsub message")
 	}
+
+	p.publishedCounter.Add(ctx, 1)
+	p.latencyHist.Record(ctx, float64(time.Since(startTime).Milliseconds()))
 
 	logger.Debug("published message")
 
@@ -139,11 +172,14 @@ func (p *pubSubPublisher) PublishAsync(ctx context.Context, data any) {
 	_, span := p.tracer.StartSpan(ctx)
 	defer span.End()
 
+	startTime := time.Now()
 	logger := p.logger.Clone()
 
 	var b bytes.Buffer
 	if err := p.encoder.Encode(ctx, &b, data); err != nil {
+		p.publishErrCounter.Add(ctx, 1)
 		observability.AcknowledgeError(err, logger, span, "encoding topic message")
+		return
 	}
 
 	msg := &pubsub.Message{Data: b.Bytes()}
@@ -152,8 +188,13 @@ func (p *pubSubPublisher) PublishAsync(ctx context.Context, data any) {
 
 	// The Get method blocks until a server-generated ID or an error is returned for the published message.
 	if _, err := result.Get(ctx); err != nil {
+		p.publishErrCounter.Add(ctx, 1)
 		observability.AcknowledgeError(err, logger, span, "publishing pubsub message")
+		return
 	}
+
+	p.publishedCounter.Add(ctx, 1)
+	p.latencyHist.Record(ctx, float64(time.Since(startTime).Milliseconds()))
 
 	logger.Debug("published message")
 }

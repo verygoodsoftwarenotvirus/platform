@@ -3,7 +3,7 @@ package compression_test
 import (
 	"fmt"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/compression"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/compression"
 )
 
 func Example_roundTrip() {

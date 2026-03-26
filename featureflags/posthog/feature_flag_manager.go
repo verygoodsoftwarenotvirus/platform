@@ -3,13 +3,13 @@ package posthog
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/circuitbreaking"
-	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v3/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/featureflags"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/keys"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking"
+	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v4/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/featureflags"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/keys"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 
 	openfeatureposthog "github.com/dhaus67/openfeature-posthog-go"
 	"github.com/open-feature/go-sdk/openfeature"

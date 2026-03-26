@@ -3,10 +3,10 @@ package analyticscfg
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/analytics"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/analytics"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 )
 
 // ProvideEventReporter provides an analytics.EventReporter from a config.

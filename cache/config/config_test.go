@@ -33,7 +33,7 @@ func TestProvideCache(T *testing.T) {
 
 		_, err := ProvideCache[example](&Config{
 			Provider: ProviderMemory,
-		})
+		}, nil, nil, nil)
 
 		assert.NoError(t, err)
 	})
@@ -41,7 +41,7 @@ func TestProvideCache(T *testing.T) {
 	T.Run("invalid provider", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := ProvideCache[example](&Config{})
+		_, err := ProvideCache[example](&Config{}, nil, nil, nil)
 
 		assert.Error(t, err)
 	})

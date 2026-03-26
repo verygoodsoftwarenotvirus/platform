@@ -3,10 +3,13 @@ package llmcfg
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/llm"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/llm"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 )
 
 // ProvideLLMProvider provides an LLM provider from config.
-func ProvideLLMProvider(c *Config) (llm.Provider, error) {
-	return c.ProvideLLMProvider(context.Background())
+func ProvideLLMProvider(c *Config, logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider) (llm.Provider, error) {
+	return c.ProvideLLMProvider(context.Background(), logger, tracerProvider, metricsProvider)
 }

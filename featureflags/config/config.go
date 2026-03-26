@@ -5,12 +5,14 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/circuitbreaking"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/featureflags"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/featureflags/launchdarkly"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/featureflags/posthog"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking"
+	circuitbreakingcfg "github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/config"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/featureflags"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/featureflags/launchdarkly"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/featureflags/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/featureflags/posthog"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
@@ -25,10 +27,10 @@ const (
 type (
 	// Config configures our feature flag manager.
 	Config struct {
-		LaunchDarkly   *launchdarkly.Config   `env:"init"     envPrefix:"LAUNCH_DARKLY"     json:"launchDarkly"`
-		PostHog        *posthog.Config        `env:"init"     envPrefix:"POSTHOG_"          json:"posthog"`
-		Provider       string                 `env:"PROVIDER" json:"provider"`
-		CircuitBreaker circuitbreaking.Config `env:"init"     envPrefix:"CIRCUIT_BREAKING_" json:"circuitBreakingConfig"`
+		LaunchDarkly   *launchdarkly.Config      `env:"init"     envPrefix:"LAUNCH_DARKLY"     json:"launchDarkly"`
+		PostHog        *posthog.Config           `env:"init"     envPrefix:"POSTHOG_"          json:"posthog"`
+		Provider       string                    `env:"PROVIDER" json:"provider"`
+		CircuitBreaker circuitbreakingcfg.Config `env:"init"     envPrefix:"CIRCUIT_BREAKING_" json:"circuitBreakingConfig"`
 	}
 )
 
@@ -55,6 +57,6 @@ func (c *Config) ProvideFeatureFlagManager(logger logging.Logger, tracerProvider
 	case ProviderPostHog:
 		return posthog.NewFeatureFlagManager(c.PostHog, logger, tracerProvider, circuitBreaker)
 	default:
-		return featureflags.NewNoopFeatureFlagManager(), nil
+		return noop.NewFeatureFlagManager(), nil
 	}
 }

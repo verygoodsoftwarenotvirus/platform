@@ -3,7 +3,7 @@ package objectstorage
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/uploads"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/uploads"
 
 	"github.com/stretchr/testify/mock"
 )

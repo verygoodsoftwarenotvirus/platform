@@ -3,10 +3,10 @@ package segment
 import (
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/circuitbreaking"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/identifiers"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
+	cbnoop "github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/identifiers"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 
 	"github.com/stretchr/testify/require"
 )
@@ -19,7 +19,7 @@ func TestNewSegmentEventReporter(T *testing.T) {
 
 		logger := logging.NewNoopLogger()
 
-		collector, err := NewSegmentEventReporter(logger, tracing.NewNoopTracerProvider(), t.Name(), circuitbreaking.NewNoopCircuitBreaker())
+		collector, err := NewSegmentEventReporter(logger, tracing.NewNoopTracerProvider(), t.Name(), cbnoop.NewCircuitBreaker())
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 	})
@@ -29,7 +29,7 @@ func TestNewSegmentEventReporter(T *testing.T) {
 
 		logger := logging.NewNoopLogger()
 
-		collector, err := NewSegmentEventReporter(logger, tracing.NewNoopTracerProvider(), "", circuitbreaking.NewNoopCircuitBreaker())
+		collector, err := NewSegmentEventReporter(logger, tracing.NewNoopTracerProvider(), "", cbnoop.NewCircuitBreaker())
 		require.Error(t, err)
 		require.Nil(t, collector)
 	})
@@ -43,7 +43,7 @@ func TestSegmentEventReporter_Close(T *testing.T) {
 
 		logger := logging.NewNoopLogger()
 
-		collector, err := NewSegmentEventReporter(logger, tracing.NewNoopTracerProvider(), t.Name(), circuitbreaking.NewNoopCircuitBreaker())
+		collector, err := NewSegmentEventReporter(logger, tracing.NewNoopTracerProvider(), t.Name(), cbnoop.NewCircuitBreaker())
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
@@ -64,7 +64,7 @@ func TestSegmentEventReporter_AddUser(T *testing.T) {
 			"test.name": t.Name(),
 		}
 
-		collector, err := NewSegmentEventReporter(logger, tracing.NewNoopTracerProvider(), t.Name(), circuitbreaking.NewNoopCircuitBreaker())
+		collector, err := NewSegmentEventReporter(logger, tracing.NewNoopTracerProvider(), t.Name(), cbnoop.NewCircuitBreaker())
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
@@ -85,7 +85,7 @@ func TestSegmentEventReporter_EventOccurred(T *testing.T) {
 			"test.name": t.Name(),
 		}
 
-		collector, err := NewSegmentEventReporter(logger, tracing.NewNoopTracerProvider(), t.Name(), circuitbreaking.NewNoopCircuitBreaker())
+		collector, err := NewSegmentEventReporter(logger, tracing.NewNoopTracerProvider(), t.Name(), cbnoop.NewCircuitBreaker())
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 

@@ -4,11 +4,12 @@ import (
 	"context"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/analytics"
-	analyticscfg "github.com/verygoodsoftwarenotvirus/platform/v3/analytics/config"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/analytics"
+	analyticscfg "github.com/verygoodsoftwarenotvirus/platform/v4/analytics/config"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/analytics/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 )
 
 // ProvideMultiSourceEventReporter builds a MultiSourceEventReporter from proxy sources config.
@@ -48,12 +49,12 @@ func ProvideMultiSourceEventReporter(
 		r, err := sourceCfg.ProvideCollector(ctx, log, tracerProvider, metricsProvider)
 		if err != nil {
 			log.WithValue("source", source).WithValue("reason", err.Error()).Error("failed to create reporter for proxy source, using noop", err)
-			reporters[source] = analytics.NewNoopEventReporter()
+			reporters[source] = noop.NewEventReporter()
 			continue
 		}
 		if r == nil {
 			log.WithValue("source", source).WithValue("provider", sourceCfg.Provider).Info("ProvideCollector returned nil reporter, using noop")
-			reporters[source] = analytics.NewNoopEventReporter()
+			reporters[source] = noop.NewEventReporter()
 			continue
 		}
 

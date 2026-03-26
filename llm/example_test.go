@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/llm"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/llm"
 )
 
 func ExampleNewNoopProvider() {

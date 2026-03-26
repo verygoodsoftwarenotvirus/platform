@@ -5,10 +5,11 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/capitalism"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/encoding"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/capitalism"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/capitalism/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/encoding"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 
 	"github.com/stripe/stripe-go/v75"
 	"github.com/stripe/stripe-go/v75/webhook"
@@ -38,7 +39,7 @@ type (
 // ProvideStripePaymentManager builds a Stripe-backed PaymentManager.
 func ProvideStripePaymentManager(logger logging.Logger, tracerProvider tracing.TracerProvider, cfg *Config) capitalism.PaymentManager {
 	if cfg == nil {
-		return &capitalism.NoopPaymentManager{}
+		return noop.NewPaymentManager()
 	}
 
 	return &stripePaymentManager{

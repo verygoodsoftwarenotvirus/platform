@@ -4,9 +4,12 @@ import (
 	"context"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/llm"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/llm/anthropic"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/llm/openai"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/llm"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/llm/anthropic"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/llm/openai"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
@@ -37,12 +40,12 @@ func (c *Config) ValidateWithContext(ctx context.Context) error {
 }
 
 // ProvideLLMProvider provides an LLM provider based on config.
-func (c *Config) ProvideLLMProvider(ctx context.Context) (llm.Provider, error) {
+func (c *Config) ProvideLLMProvider(ctx context.Context, logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider) (llm.Provider, error) {
 	switch strings.TrimSpace(strings.ToLower(c.Provider)) {
 	case ProviderOpenAI:
-		return openai.NewProvider(c.OpenAI)
+		return openai.NewProvider(c.OpenAI, logger, tracerProvider, metricsProvider)
 	case ProviderAnthropic:
-		return anthropic.NewProvider(c.Anthropic)
+		return anthropic.NewProvider(c.Anthropic, logger, tracerProvider, metricsProvider)
 	default:
 		return llm.NewNoopProvider(), nil
 	}

@@ -15,7 +15,7 @@ func TestNewGCPSecretSource(T *testing.T) {
 
 	T.Run("nil config returns error", func(t *testing.T) {
 		t.Parallel()
-		source, err := NewGCPSecretSource(context.Background(), nil, nil)
+		source, err := NewGCPSecretSource(context.Background(), nil, nil, nil, nil, nil)
 		require.Error(t, err)
 		assert.Nil(t, source)
 		assert.Contains(t, err.Error(), "config is required")
@@ -24,7 +24,7 @@ func TestNewGCPSecretSource(T *testing.T) {
 	T.Run("missing ProjectID returns error", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{ProjectID: ""}
-		source, err := NewGCPSecretSource(context.Background(), cfg, nil)
+		source, err := NewGCPSecretSource(context.Background(), cfg, nil, nil, nil, nil)
 		require.Error(t, err)
 		assert.Nil(t, source)
 	})
@@ -33,7 +33,7 @@ func TestNewGCPSecretSource(T *testing.T) {
 		t.Parallel()
 		cfg := &Config{ProjectID: "test-project"}
 		mock := &mockGCPClient{value: "secret-value"}
-		source, err := NewGCPSecretSource(context.Background(), cfg, mock)
+		source, err := NewGCPSecretSource(context.Background(), cfg, mock, nil, nil, nil)
 		require.NoError(t, err)
 		require.NotNil(t, source)
 		defer source.Close()
@@ -47,7 +47,7 @@ func TestGCPSecretSource_GetSecret(T *testing.T) {
 		t.Parallel()
 		cfg := &Config{ProjectID: "test-project"}
 		mock := &mockGCPClient{value: "my-secret-value"}
-		source, err := NewGCPSecretSource(context.Background(), cfg, mock)
+		source, err := NewGCPSecretSource(context.Background(), cfg, mock, nil, nil, nil)
 		require.NoError(t, err)
 		defer source.Close()
 
@@ -60,7 +60,7 @@ func TestGCPSecretSource_GetSecret(T *testing.T) {
 		t.Parallel()
 		cfg := &Config{ProjectID: "test-project"}
 		mock := &mockGCPClient{err: errors.New("gcp error")}
-		source, err := NewGCPSecretSource(context.Background(), cfg, mock)
+		source, err := NewGCPSecretSource(context.Background(), cfg, mock, nil, nil, nil)
 		require.NoError(t, err)
 		defer source.Close()
 
@@ -73,7 +73,7 @@ func TestGCPSecretSource_GetSecret(T *testing.T) {
 		t.Parallel()
 		cfg := &Config{ProjectID: "test-project"}
 		mock := &mockGCPClient{value: "full-name-secret"}
-		source, err := NewGCPSecretSource(context.Background(), cfg, mock)
+		source, err := NewGCPSecretSource(context.Background(), cfg, mock, nil, nil, nil)
 		require.NoError(t, err)
 		defer source.Close()
 
@@ -91,7 +91,7 @@ func TestGCPSecretSource_Close(T *testing.T) {
 
 		cfg := &Config{ProjectID: "test-project"}
 		mock := &mockGCPClient{}
-		source, err := NewGCPSecretSource(context.Background(), cfg, mock)
+		source, err := NewGCPSecretSource(context.Background(), cfg, mock, nil, nil, nil)
 		require.NoError(t, err)
 
 		err = source.Close()

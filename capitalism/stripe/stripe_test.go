@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/random"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/random"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/messagequeue"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/messagequeue"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,6 +21,7 @@ func buildRedisBackedConsumer(t *testing.T, cfg *Config, topic string, handlerFu
 	provider := ProvideRedisConsumerProvider(
 		logging.NewNoopLogger(),
 		tracing.NewNoopTracerProvider(),
+		nil,
 		*cfg,
 	)
 
@@ -115,7 +116,7 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 			QueueAddresses: []string{t.Name()},
 		}
 
-		conPro := ProvideRedisConsumerProvider(logger, tracing.NewNoopTracerProvider(), cfg)
+		conPro := ProvideRedisConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil, cfg)
 		require.NotNil(t, conPro)
 
 		ctx := t.Context()
@@ -133,7 +134,7 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 			QueueAddresses: []string{t.Name()},
 		}
 
-		conPro := ProvideRedisConsumerProvider(logger, tracing.NewNoopTracerProvider(), cfg)
+		conPro := ProvideRedisConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil, cfg)
 		require.NotNil(t, conPro)
 
 		ctx := t.Context()

@@ -3,7 +3,7 @@ package mockpublishers
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/messagequeue"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/messagequeue"
 
 	"github.com/stretchr/testify/mock"
 )

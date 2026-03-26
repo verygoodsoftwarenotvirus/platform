@@ -1,0 +1,20 @@
+package asynccfg
+
+import (
+	"github.com/verygoodsoftwarenotvirus/platform/v4/notifications/async"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+
+	"github.com/samber/do/v2"
+)
+
+// RegisterAsyncNotifier registers an async.AsyncNotifier with the injector.
+func RegisterAsyncNotifier(i do.Injector) {
+	do.Provide[async.AsyncNotifier](i, func(i do.Injector) (async.AsyncNotifier, error) {
+		return ProvideAsyncNotifierFromConfig(
+			do.MustInvoke[*Config](i),
+			do.MustInvoke[logging.Logger](i),
+			do.MustInvoke[tracing.TracerProvider](i),
+		)
+	})
+}

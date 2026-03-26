@@ -3,15 +3,15 @@ package observability
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	loggingcfg "github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging/config"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/metrics"
-	metricscfg "github.com/verygoodsoftwarenotvirus/platform/v3/observability/metrics/config"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/profiling"
-	profilingcfg "github.com/verygoodsoftwarenotvirus/platform/v3/observability/profiling/config"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
-	tracingcfg "github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing/config"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	loggingcfg "github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging/config"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
+	metricscfg "github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics/config"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/profiling"
+	profilingcfg "github.com/verygoodsoftwarenotvirus/platform/v4/observability/profiling/config"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	tracingcfg "github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing/config"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )

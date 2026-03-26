@@ -8,15 +8,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/circuitbreaking"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/email"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/email/mailgun"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/email/mailjet"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/email/postmark"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/email/resend"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/email/sendgrid"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking"
+	circuitbreakingcfg "github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/config"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/email"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/email/mailgun"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/email/mailjet"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/email/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/email/postmark"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/email/resend"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/email/sendgrid"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/matcornic/hermes/v2"
@@ -38,17 +41,17 @@ const (
 type (
 	// Config is the configuration structure.
 	Config struct {
-		Sendgrid                            *sendgrid.Config       `env:"init"                                    envPrefix:"SENDGRID_"                      json:"sendgrid"`
-		Mailgun                             *mailgun.Config        `env:"init"                                    envPrefix:"MAILGUN_"                       json:"mailgun"`
-		Mailjet                             *mailjet.Config        `env:"init"                                    envPrefix:"MAILJET_"                       json:"mailjet"`
-		Resend                              *resend.Config         `env:"init"                                    envPrefix:"RESEND_"                        json:"resend"`
-		Postmark                            *postmark.Config       `env:"init"                                    envPrefix:"POSTMARK_"                      json:"postmark"`
-		Provider                            string                 `env:"PROVIDER"                                json:"provider"`
-		BaseURL                             template.URL           `env:"BASE_URL"                                json:"baseURL"`
-		OutboundInvitesEmailAddress         string                 `env:"OUTBOUND_INVITES_EMAIL_ADDRESS"          json:"outboundInvitesEmailAddress"`
-		PasswordResetCreationEmailAddress   string                 `env:"PASSWORD_RESET_CREATION_EMAIL_ADDRESS"   json:"passwordResetCreationEmailAddress"`
-		PasswordResetRedemptionEmailAddress string                 `env:"PASSWORD_RESET_REDEMPTION_EMAIL_ADDRESS" json:"passwordResetRedemptionEmailAddress"`
-		CircuitBreaker                      circuitbreaking.Config `env:"init"                                    envPrefix:"CIRCUIT_BREAKING_"              json:"circuitBreakerConfig"`
+		Sendgrid                            *sendgrid.Config          `env:"init"                                    envPrefix:"SENDGRID_"                      json:"sendgrid"`
+		Mailgun                             *mailgun.Config           `env:"init"                                    envPrefix:"MAILGUN_"                       json:"mailgun"`
+		Mailjet                             *mailjet.Config           `env:"init"                                    envPrefix:"MAILJET_"                       json:"mailjet"`
+		Resend                              *resend.Config            `env:"init"                                    envPrefix:"RESEND_"                        json:"resend"`
+		Postmark                            *postmark.Config          `env:"init"                                    envPrefix:"POSTMARK_"                      json:"postmark"`
+		Provider                            string                    `env:"PROVIDER"                                json:"provider"`
+		BaseURL                             template.URL              `env:"BASE_URL"                                json:"baseURL"`
+		OutboundInvitesEmailAddress         string                    `env:"OUTBOUND_INVITES_EMAIL_ADDRESS"          json:"outboundInvitesEmailAddress"`
+		PasswordResetCreationEmailAddress   string                    `env:"PASSWORD_RESET_CREATION_EMAIL_ADDRESS"   json:"passwordResetCreationEmailAddress"`
+		PasswordResetRedemptionEmailAddress string                    `env:"PASSWORD_RESET_REDEMPTION_EMAIL_ADDRESS" json:"passwordResetRedemptionEmailAddress"`
+		CircuitBreaker                      circuitbreakingcfg.Config `env:"init"                                    envPrefix:"CIRCUIT_BREAKING_"              json:"circuitBreakerConfig"`
 	}
 )
 
@@ -91,20 +94,20 @@ func (cfg *Config) ValidateWithContext(ctx context.Context) error {
 }
 
 // ProvideEmailer provides an outbound_emailer.
-func (cfg *Config) ProvideEmailer(logger logging.Logger, tracerProvider tracing.TracerProvider, client *http.Client, circuitBreaker circuitbreaking.CircuitBreaker) (email.Emailer, error) {
+func (cfg *Config) ProvideEmailer(logger logging.Logger, tracerProvider tracing.TracerProvider, client *http.Client, circuitBreaker circuitbreaking.CircuitBreaker, metricsProvider metrics.Provider) (email.Emailer, error) {
 	switch strings.ToLower(strings.TrimSpace(cfg.Provider)) {
 	case ProviderSendgrid:
-		return sendgrid.NewSendGridEmailer(cfg.Sendgrid, logger, tracerProvider, client, circuitBreaker)
+		return sendgrid.NewSendGridEmailer(cfg.Sendgrid, logger, tracerProvider, client, circuitBreaker, metricsProvider)
 	case ProviderMailgun:
-		return mailgun.NewMailgunEmailer(cfg.Mailgun, logger, tracerProvider, client, circuitBreaker)
+		return mailgun.NewMailgunEmailer(cfg.Mailgun, logger, tracerProvider, client, circuitBreaker, metricsProvider)
 	case ProviderMailjet:
-		return mailjet.NewMailjetEmailer(cfg.Mailjet, logger, tracerProvider, client, circuitBreaker)
+		return mailjet.NewMailjetEmailer(cfg.Mailjet, logger, tracerProvider, client, circuitBreaker, metricsProvider)
 	case ProviderResend:
-		return resend.NewResendEmailer(cfg.Resend, logger, tracerProvider, client, circuitBreaker)
+		return resend.NewResendEmailer(cfg.Resend, logger, tracerProvider, client, circuitBreaker, metricsProvider)
 	case ProviderPostmark:
-		return postmark.NewPostmarkEmailer(cfg.Postmark, logger, tracerProvider, client, circuitBreaker)
+		return postmark.NewPostmarkEmailer(cfg.Postmark, logger, tracerProvider, client, circuitBreaker, metricsProvider)
 	default:
 		logger.Debug("providing noop outbound_emailer")
-		return email.NewNoopEmailer()
+		return noop.NewEmailer()
 	}
 }

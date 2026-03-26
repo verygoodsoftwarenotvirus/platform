@@ -4,11 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/search/text/algolia"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/search/text/elasticsearch"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/search/text/algolia"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/search/text/elasticsearch"
 
 	"github.com/stretchr/testify/assert"
 )

@@ -7,9 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/eventstream"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/eventstream"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 
 	gorillawebsocket "github.com/gorilla/websocket"
 )
@@ -29,13 +30,14 @@ const (
 
 // Upgrader upgrades HTTP connections to WebSocket event streams.
 type Upgrader struct {
+	logger            logging.Logger
 	tracer            tracing.Tracer
 	wsUpgrader        gorillawebsocket.Upgrader
 	heartbeatInterval time.Duration
 }
 
 // NewUpgrader creates a new WebSocket Upgrader.
-func NewUpgrader(tracerProvider tracing.TracerProvider, cfg *Config) *Upgrader {
+func NewUpgrader(logger logging.Logger, tracerProvider tracing.TracerProvider, cfg *Config) *Upgrader {
 	heartbeat := defaultHeartbeatInterval
 	readBuf := defaultBufferSize
 	writeBuf := defaultBufferSize
@@ -53,6 +55,7 @@ func NewUpgrader(tracerProvider tracing.TracerProvider, cfg *Config) *Upgrader {
 	}
 
 	return &Upgrader{
+		logger: logging.EnsureLogger(logger).WithName("websocket_stream"),
 		tracer: tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer("websocket_stream")),
 		wsUpgrader: gorillawebsocket.Upgrader{
 			ReadBufferSize:  readBuf,
@@ -67,24 +70,27 @@ func NewUpgrader(tracerProvider tracing.TracerProvider, cfg *Config) *Upgrader {
 func (u *Upgrader) UpgradeToEventStream(w http.ResponseWriter, r *http.Request) (eventstream.EventStream, error) {
 	conn, err := u.wsUpgrader.Upgrade(w, r, nil)
 	if err != nil {
+		u.logger.Error("upgrading to websocket", err)
 		return nil, errors.Wrap(err, "upgrading to websocket")
 	}
 
-	return newWSStream(conn, u.heartbeatInterval, u.tracer), nil
+	return newWSStream(conn, u.heartbeatInterval, u.logger, u.tracer), nil
 }
 
 // UpgradeToBidirectionalStream upgrades an HTTP connection to a bidirectional WebSocket event stream.
 func (u *Upgrader) UpgradeToBidirectionalStream(w http.ResponseWriter, r *http.Request) (eventstream.BidirectionalEventStream, error) {
 	conn, err := u.wsUpgrader.Upgrade(w, r, nil)
 	if err != nil {
+		u.logger.Error("upgrading to bidirectional websocket", err)
 		return nil, errors.Wrap(err, "upgrading to websocket")
 	}
 
-	return newBidirectionalWSStream(conn, u.heartbeatInterval, u.tracer), nil
+	return newBidirectionalWSStream(conn, u.heartbeatInterval, u.logger, u.tracer), nil
 }
 
 // wsStream is a unidirectional (send-only) WebSocket event stream.
 type wsStream struct {
+	logger            logging.Logger
 	tracer            tracing.Tracer
 	conn              *gorillawebsocket.Conn
 	heartbeatInterval *time.Ticker
@@ -93,10 +99,11 @@ type wsStream struct {
 	closed            bool
 }
 
-func newWSStream(conn *gorillawebsocket.Conn, heartbeat time.Duration, tracer tracing.Tracer) *wsStream {
+func newWSStream(conn *gorillawebsocket.Conn, heartbeat time.Duration, logger logging.Logger, tracer tracing.Tracer) *wsStream {
 	s := &wsStream{
 		conn:   conn,
 		done:   make(chan struct{}),
+		logger: logger,
 		tracer: tracer,
 	}
 
@@ -118,6 +125,7 @@ func (s *wsStream) heartbeatLoop() {
 			err := s.conn.WriteMessage(gorillawebsocket.PingMessage, nil)
 			s.mu.Unlock()
 			if err != nil {
+				s.logger.Error("sending heartbeat ping", err)
 				return
 			}
 		}
@@ -169,9 +177,9 @@ type bidirectionalWSStream struct {
 	incoming chan *eventstream.Event
 }
 
-func newBidirectionalWSStream(conn *gorillawebsocket.Conn, heartbeat time.Duration, tracer tracing.Tracer) *bidirectionalWSStream {
+func newBidirectionalWSStream(conn *gorillawebsocket.Conn, heartbeat time.Duration, logger logging.Logger, tracer tracing.Tracer) *bidirectionalWSStream {
 	s := &bidirectionalWSStream{
-		wsStream: newWSStream(conn, heartbeat, tracer),
+		wsStream: newWSStream(conn, heartbeat, logger, tracer),
 		incoming: make(chan *eventstream.Event, incomingChannelBuffer),
 	}
 

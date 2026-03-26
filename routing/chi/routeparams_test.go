@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/testutils"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/testutils"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"

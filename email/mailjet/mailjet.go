@@ -2,14 +2,17 @@ package mailjet
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/circuitbreaking"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/email"
-	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v3/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/email"
+	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v4/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 
 	"github.com/mailjet/mailjet-apiv3-go/v4"
 )
@@ -40,13 +43,16 @@ type (
 	Emailer struct {
 		logger         logging.Logger
 		tracer         tracing.Tracer
+		sendCounter    metrics.Int64Counter
+		errorCounter   metrics.Int64Counter
+		latencyHist    metrics.Float64Histogram
 		client         mailjetClient
 		circuitBreaker circuitbreaking.CircuitBreaker
 	}
 )
 
 // NewMailjetEmailer returns a new Mailjet-backed Emailer.
-func NewMailjetEmailer(cfg *Config, logger logging.Logger, tracerProvider tracing.TracerProvider, client *http.Client, circuitBreaker circuitbreaking.CircuitBreaker) (*Emailer, error) {
+func NewMailjetEmailer(cfg *Config, logger logging.Logger, tracerProvider tracing.TracerProvider, client *http.Client, circuitBreaker circuitbreaking.CircuitBreaker, metricsProvider metrics.Provider) (*Emailer, error) {
 	if cfg == nil {
 		return nil, ErrNilConfig
 	}
@@ -63,12 +69,32 @@ func NewMailjetEmailer(cfg *Config, logger logging.Logger, tracerProvider tracin
 		return nil, ErrNilHTTPClient
 	}
 
+	mp := metrics.EnsureMetricsProvider(metricsProvider)
+
+	sendCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_sends", name))
+	if err != nil {
+		return nil, fmt.Errorf("creating send counter: %w", err)
+	}
+
+	errorCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_errors", name))
+	if err != nil {
+		return nil, fmt.Errorf("creating error counter: %w", err)
+	}
+
+	latencyHist, err := mp.NewFloat64Histogram(fmt.Sprintf("%s_latency_ms", name))
+	if err != nil {
+		return nil, fmt.Errorf("creating latency histogram: %w", err)
+	}
+
 	mj := mailjet.NewMailjetClient(cfg.APIKey, cfg.SecretKey)
 	mj.SetClient(client)
 
 	e := &Emailer{
 		logger:         logging.EnsureLogger(logger).WithName(name),
 		tracer:         tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(name)),
+		sendCounter:    sendCounter,
+		errorCounter:   errorCounter,
+		latencyHist:    latencyHist,
 		client:         mj,
 		circuitBreaker: circuitBreaker,
 	}
@@ -80,6 +106,11 @@ func NewMailjetEmailer(cfg *Config, logger logging.Logger, tracerProvider tracin
 func (e *Emailer) SendEmail(ctx context.Context, details *email.OutboundEmailMessage) error {
 	_, span := e.tracer.StartSpan(ctx)
 	defer span.End()
+
+	startTime := time.Now()
+	defer func() {
+		e.latencyHist.Record(ctx, float64(time.Since(startTime).Milliseconds()))
+	}()
 
 	if e.circuitBreaker.CannotProceed() {
 		return circuitbreaking.ErrCircuitBroken
@@ -107,9 +138,11 @@ func (e *Emailer) SendEmail(ctx context.Context, details *email.OutboundEmailMes
 
 	if _, err := e.client.SendMailV31(&mailjet.MessagesV31{Info: messagesInfo}); err != nil {
 		e.circuitBreaker.Failed()
+		e.errorCounter.Add(ctx, 1)
 		return observability.PrepareAndLogError(err, logger, span, "sending email")
 	}
 
 	e.circuitBreaker.Succeeded()
+	e.sendCounter.Add(ctx, 1)
 	return nil
 }

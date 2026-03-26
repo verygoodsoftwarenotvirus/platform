@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/messagequeue"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/messagequeue"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -27,27 +28,37 @@ type (
 	}
 
 	sqsConsumer struct {
-		tracer      tracing.Tracer
-		logger      logging.Logger
-		receiver    messageReceiver
-		handlerFunc func(context.Context, []byte) error
-		queueURL    string
+		tracer          tracing.Tracer
+		logger          logging.Logger
+		consumedCounter metrics.Int64Counter
+		receiver        messageReceiver
+		handlerFunc     func(context.Context, []byte) error
+		queueURL        string
 	}
 )
 
 func provideSQSConsumer(
 	logger logging.Logger,
 	tracerProvider tracing.TracerProvider,
+	metricsProvider metrics.Provider,
 	receiver messageReceiver,
 	queueURL string,
 	handlerFunc func(context.Context, []byte) error,
 ) *sqsConsumer {
+	mp := metrics.EnsureMetricsProvider(metricsProvider)
+
+	consumedCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_consumed", queueURL))
+	if err != nil {
+		panic(fmt.Sprintf("creating consumed counter: %v", err))
+	}
+
 	return &sqsConsumer{
-		logger:      logging.EnsureLogger(logger),
-		receiver:    receiver,
-		queueURL:    queueURL,
-		handlerFunc: handlerFunc,
-		tracer:      tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(fmt.Sprintf("%s_consumer", queueURL))),
+		logger:          logging.EnsureLogger(logger),
+		receiver:        receiver,
+		queueURL:        queueURL,
+		handlerFunc:     handlerFunc,
+		tracer:          tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(fmt.Sprintf("%s_consumer", queueURL))),
+		consumedCounter: consumedCounter,
 	}
 }
 
@@ -92,6 +103,7 @@ func (c *sqsConsumer) Consume(ctx context.Context, stopChan chan bool, errs chan
 			body := []byte(aws.ToString(msg.Body))
 
 			msgCtx, span := c.tracer.StartCustomSpan(ctx, "consume_message")
+			c.consumedCounter.Add(msgCtx, 1)
 			if err = c.handlerFunc(msgCtx, body); err != nil {
 				observability.AcknowledgeError(err, c.logger, span, "handling SQS message")
 				if errs != nil {
@@ -118,13 +130,14 @@ func (c *sqsConsumer) Consume(ctx context.Context, stopChan chan bool, errs chan
 type consumerProvider struct {
 	logger          logging.Logger
 	tracerProvider  tracing.TracerProvider
+	metricsProvider metrics.Provider
 	consumerCache   map[string]messagequeue.Consumer
 	sqsClient       messageReceiver
 	consumerCacheMu sync.RWMutex
 }
 
 // ProvideSQSConsumerProvider returns a ConsumerProvider for SQS.
-func ProvideSQSConsumerProvider(ctx context.Context, logger logging.Logger, tracerProvider tracing.TracerProvider, _ Config) messagequeue.ConsumerProvider {
+func ProvideSQSConsumerProvider(ctx context.Context, logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider, _ Config) messagequeue.ConsumerProvider {
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		panic("sqs consumer provider: load default config: " + err.Error())
@@ -132,10 +145,11 @@ func ProvideSQSConsumerProvider(ctx context.Context, logger logging.Logger, trac
 	svc := sqs.NewFromConfig(cfg)
 
 	return &consumerProvider{
-		logger:         logging.EnsureLogger(logger),
-		tracerProvider: tracerProvider,
-		sqsClient:      svc,
-		consumerCache:  map[string]messagequeue.Consumer{},
+		logger:          logging.EnsureLogger(logger),
+		tracerProvider:  tracerProvider,
+		metricsProvider: metricsProvider,
+		sqsClient:       svc,
+		consumerCache:   map[string]messagequeue.Consumer{},
 	}
 }
 
@@ -151,7 +165,7 @@ func (p *consumerProvider) ProvideConsumer(_ context.Context, topic string, hand
 		return cached, nil
 	}
 
-	c := provideSQSConsumer(p.logger.WithValue("queue_url", topic), p.tracerProvider, p.sqsClient, topic, handlerFunc)
+	c := provideSQSConsumer(p.logger.WithValue("queue_url", topic), p.tracerProvider, p.metricsProvider, p.sqsClient, topic, handlerFunc)
 	p.consumerCache[topic] = c
 
 	return c, nil

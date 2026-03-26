@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/healthcheck"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/healthcheck"
 )
 
 // simpleChecker is a Checker that always reports healthy.

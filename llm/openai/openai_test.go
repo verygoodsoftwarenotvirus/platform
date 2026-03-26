@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/llm"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/llm"
 
 	"github.com/stretchr/testify/require"
 )
@@ -17,7 +17,7 @@ func TestNewProvider(T *testing.T) {
 	T.Run("with nil config", func(t *testing.T) {
 		t.Parallel()
 
-		provider, err := NewProvider(nil)
+		provider, err := NewProvider(nil, nil, nil, nil)
 		require.Error(t, err)
 		require.Nil(t, provider)
 	})
@@ -25,7 +25,7 @@ func TestNewProvider(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		provider, err := NewProvider(&Config{APIKey: "test-key"})
+		provider, err := NewProvider(&Config{APIKey: "test-key"}, nil, nil, nil)
 		require.NoError(t, err)
 		require.NotNil(t, provider)
 	})
@@ -37,7 +37,7 @@ func TestNewProvider(T *testing.T) {
 			APIKey:       "test-key",
 			BaseURL:      "https://custom.example.com/v1",
 			DefaultModel: "gpt-4o",
-		})
+		}, nil, nil, nil)
 		require.NoError(t, err)
 		require.NotNil(t, provider)
 	})
@@ -82,7 +82,7 @@ func TestOpenAIProvider_Completion(T *testing.T) {
 		provider, err := NewProvider(&Config{
 			APIKey:  "test-key",
 			BaseURL: ts.URL + "/v1",
-		})
+		}, nil, nil, nil)
 		require.NoError(t, err)
 		require.NotNil(t, provider)
 
@@ -111,7 +111,7 @@ func TestOpenAIProvider_Completion(T *testing.T) {
 			APIKey:       "test-key",
 			BaseURL:      ts.URL + "/v1",
 			DefaultModel: "gpt-4o",
-		})
+		}, nil, nil, nil)
 		require.NoError(t, err)
 
 		ctx := t.Context()
@@ -134,7 +134,7 @@ func TestOpenAIProvider_Completion(T *testing.T) {
 		provider, err := NewProvider(&Config{
 			APIKey:  "test-key",
 			BaseURL: ts.URL + "/v1",
-		})
+		}, nil, nil, nil)
 		require.NoError(t, err)
 
 		ctx := t.Context()

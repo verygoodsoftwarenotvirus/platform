@@ -4,10 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/circuitbreaking"
-	mockcircuitbreaking "github.com/verygoodsoftwarenotvirus/platform/v3/circuitbreaking/mock"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking"
+	mockcircuitbreaking "github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/mock"
+	cbnoop "github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -21,7 +22,7 @@ func buildTestIndexManager(t *testing.T) *indexManager[example] {
 		tracing.NewNoopTracerProvider(),
 		&Config{AppID: "fake", APIKey: "fake"},
 		"test",
-		circuitbreaking.NewNoopCircuitBreaker(),
+		cbnoop.NewCircuitBreaker(),
 	)
 	if err != nil {
 		t.Fatal(err)

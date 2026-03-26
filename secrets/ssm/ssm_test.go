@@ -17,7 +17,7 @@ func TestNewSSMSecretSource(T *testing.T) {
 
 	T.Run("nil config returns error", func(t *testing.T) {
 		t.Parallel()
-		source, err := NewSSMSecretSource(context.Background(), nil, nil)
+		source, err := NewSSMSecretSource(context.Background(), nil, nil, nil, nil, nil)
 		require.Error(t, err)
 		assert.Nil(t, source)
 		assert.Contains(t, err.Error(), "config is required")
@@ -26,7 +26,7 @@ func TestNewSSMSecretSource(T *testing.T) {
 	T.Run("missing Region returns error", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Region: ""}
-		source, err := NewSSMSecretSource(context.Background(), cfg, nil)
+		source, err := NewSSMSecretSource(context.Background(), cfg, nil, nil, nil, nil)
 		require.Error(t, err)
 		assert.Nil(t, source)
 	})
@@ -35,7 +35,7 @@ func TestNewSSMSecretSource(T *testing.T) {
 		t.Parallel()
 		cfg := &Config{Region: "us-east-1"}
 		mock := &mockSSMClient{value: "param-value"}
-		source, err := NewSSMSecretSource(context.Background(), cfg, mock)
+		source, err := NewSSMSecretSource(context.Background(), cfg, mock, nil, nil, nil)
 		require.NoError(t, err)
 		require.NotNil(t, source)
 	})
@@ -48,7 +48,7 @@ func TestSSMSecretSource_GetSecret(T *testing.T) {
 		t.Parallel()
 		cfg := &Config{Region: "us-east-1"}
 		mock := &mockSSMClient{value: "my-param-value"}
-		source, err := NewSSMSecretSource(context.Background(), cfg, mock)
+		source, err := NewSSMSecretSource(context.Background(), cfg, mock, nil, nil, nil)
 		require.NoError(t, err)
 
 		got, err := source.GetSecret(context.Background(), "MY_PARAM")
@@ -60,7 +60,7 @@ func TestSSMSecretSource_GetSecret(T *testing.T) {
 		t.Parallel()
 		cfg := &Config{Region: "us-east-1"}
 		mock := &mockSSMClient{err: errors.New("ssm error")}
-		source, err := NewSSMSecretSource(context.Background(), cfg, mock)
+		source, err := NewSSMSecretSource(context.Background(), cfg, mock, nil, nil, nil)
 		require.NoError(t, err)
 
 		_, err = source.GetSecret(context.Background(), "MY_PARAM")
@@ -72,7 +72,7 @@ func TestSSMSecretSource_GetSecret(T *testing.T) {
 		t.Parallel()
 		cfg := &Config{Region: "us-east-1", Prefix: "/myapp/"}
 		mock := &mockSSMClient{value: "prefixed-value"}
-		source, err := NewSSMSecretSource(context.Background(), cfg, mock)
+		source, err := NewSSMSecretSource(context.Background(), cfg, mock, nil, nil, nil)
 		require.NoError(t, err)
 
 		got, err := source.GetSecret(context.Background(), "MY_PARAM")
@@ -85,7 +85,7 @@ func TestSSMSecretSource_GetSecret(T *testing.T) {
 		t.Parallel()
 		cfg := &Config{Region: "us-east-1", Prefix: "/myapp/"}
 		mock := &mockSSMClient{value: "path-value"}
-		source, err := NewSSMSecretSource(context.Background(), cfg, mock)
+		source, err := NewSSMSecretSource(context.Background(), cfg, mock, nil, nil, nil)
 		require.NoError(t, err)
 
 		got, err := source.GetSecret(context.Background(), "/existing/path/param")
@@ -103,7 +103,7 @@ func TestSSMSecretSource_Close(T *testing.T) {
 
 		cfg := &Config{Region: "us-east-1"}
 		mock := &mockSSMClient{}
-		source, err := NewSSMSecretSource(context.Background(), cfg, mock)
+		source, err := NewSSMSecretSource(context.Background(), cfg, mock, nil, nil, nil)
 		require.NoError(t, err)
 
 		err = source.Close()

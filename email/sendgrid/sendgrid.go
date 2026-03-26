@@ -2,14 +2,17 @@ package sendgrid
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/circuitbreaking"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/email"
-	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v3/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/email"
+	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v4/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 
 	"github.com/sendgrid/rest"
 	"github.com/sendgrid/sendgrid-go"
@@ -35,6 +38,9 @@ type (
 	Emailer struct {
 		logger         logging.Logger
 		tracer         tracing.Tracer
+		sendCounter    metrics.Int64Counter
+		errorCounter   metrics.Int64Counter
+		latencyHist    metrics.Float64Histogram
 		circuitBreaker circuitbreaking.CircuitBreaker
 		client         *sendgrid.Client
 		config         Config
@@ -42,7 +48,7 @@ type (
 )
 
 // NewSendGridEmailer returns a new SendGrid-backed Emailer.
-func NewSendGridEmailer(cfg *Config, logger logging.Logger, tracerProvider tracing.TracerProvider, client *http.Client, circuitBreaker circuitbreaking.CircuitBreaker) (*Emailer, error) {
+func NewSendGridEmailer(cfg *Config, logger logging.Logger, tracerProvider tracing.TracerProvider, client *http.Client, circuitBreaker circuitbreaking.CircuitBreaker, metricsProvider metrics.Provider) (*Emailer, error) {
 	if cfg == nil {
 		return nil, ErrNilConfig
 	}
@@ -55,6 +61,23 @@ func NewSendGridEmailer(cfg *Config, logger logging.Logger, tracerProvider traci
 		return nil, ErrNilHTTPClient
 	}
 
+	mp := metrics.EnsureMetricsProvider(metricsProvider)
+
+	sendCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_sends", name))
+	if err != nil {
+		return nil, fmt.Errorf("creating send counter: %w", err)
+	}
+
+	errorCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_errors", name))
+	if err != nil {
+		return nil, fmt.Errorf("creating error counter: %w", err)
+	}
+
+	latencyHist, err := mp.NewFloat64Histogram(fmt.Sprintf("%s_latency_ms", name))
+	if err != nil {
+		return nil, fmt.Errorf("creating latency histogram: %w", err)
+	}
+
 	// this line causes data races when the unit tests in this package are run in parallel.
 	// that sucks, but I also basically can't do anything about it because of how SendGrid's dogshit client works.
 	sendgrid.DefaultClient = &rest.Client{HTTPClient: client}
@@ -62,6 +85,9 @@ func NewSendGridEmailer(cfg *Config, logger logging.Logger, tracerProvider traci
 	e := &Emailer{
 		logger:         logging.EnsureLogger(logger).WithName(name),
 		tracer:         tracing.NewTracer(tracing.EnsureTracerProvider(tracerProvider).Tracer(name)),
+		sendCounter:    sendCounter,
+		errorCounter:   errorCounter,
+		latencyHist:    latencyHist,
 		client:         sendgrid.NewSendClient(cfg.APIToken),
 		config:         *cfg,
 		circuitBreaker: circuitBreaker,
@@ -78,6 +104,11 @@ func (e *Emailer) SendEmail(ctx context.Context, details *email.OutboundEmailMes
 	ctx, span := e.tracer.StartSpan(ctx)
 	defer span.End()
 
+	startTime := time.Now()
+	defer func() {
+		e.latencyHist.Record(ctx, float64(time.Since(startTime).Milliseconds()))
+	}()
+
 	tracing.AttachToSpan(span, "to_email", details.ToAddress)
 
 	if e.circuitBreaker.CannotProceed() {
@@ -90,6 +121,7 @@ func (e *Emailer) SendEmail(ctx context.Context, details *email.OutboundEmailMes
 
 	res, err := e.client.SendWithContext(ctx, message)
 	if err != nil {
+		e.errorCounter.Add(ctx, 1)
 		return observability.PrepareError(err, span, "sending email")
 	}
 
@@ -99,10 +131,12 @@ func (e *Emailer) SendEmail(ctx context.Context, details *email.OutboundEmailMes
 		e.logger.Info("sending email yielded an invalid response")
 		tracing.AttachToSpan(span, e.config.APIToken, "sendgrid_api_token")
 		e.circuitBreaker.Failed()
+		e.errorCounter.Add(ctx, 1)
 		return observability.PrepareError(ErrSendgridAPIResponse, span, "sending email yielded a %d response", res.StatusCode)
 	}
 
 	e.circuitBreaker.Succeeded()
+	e.sendCounter.Add(ctx, 1)
 	return nil
 }
 

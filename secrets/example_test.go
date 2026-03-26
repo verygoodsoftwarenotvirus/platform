@@ -5,14 +5,17 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/secrets/env"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/secrets/env"
 )
 
 func Example_envSecretSource() {
 	os.Setenv("EXAMPLE_SECRET", "s3cret")
 	defer os.Unsetenv("EXAMPLE_SECRET")
 
-	source := env.NewEnvSecretSource()
+	source, err := env.NewEnvSecretSource(nil, nil, nil)
+	if err != nil {
+		panic(err)
+	}
 	defer source.Close()
 
 	secret, err := source.GetSecret(context.Background(), "EXAMPLE_SECRET")

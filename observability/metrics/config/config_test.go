@@ -3,8 +3,8 @@ package metricscfg
 import (
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v3/observability/metrics/otelgrpc"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics/otelgrpc"
 
 	"github.com/stretchr/testify/assert"
 )

@@ -1,4 +1,4 @@
-package notifications
+package mobilenotifications
 
 // MobileNotificationRequest is the generic message payload for mobile push notifications.
 // RequestType determines which handler processes the request; schedulers format the message.

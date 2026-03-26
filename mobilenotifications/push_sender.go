@@ -1,4 +1,4 @@
-package notifications
+package mobilenotifications
 
 import "context"
 

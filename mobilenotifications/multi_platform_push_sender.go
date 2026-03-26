@@ -1,12 +1,12 @@
-package notifications
+package mobilenotifications
 
 import (
 	"context"
 	"strings"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v2/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/notifications/apns"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/notifications/fcm"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/mobilenotifications/apns"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/mobilenotifications/fcm"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"

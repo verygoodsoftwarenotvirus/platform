@@ -3,7 +3,7 @@ package config
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/notifications"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/mobilenotifications"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
@@ -23,6 +23,6 @@ func ProvidePushSender(
 	cfg Config,
 	logger logging.Logger,
 	tracerProvider tracing.TracerProvider,
-) (notifications.PushNotificationSender, error) {
+) (mobilenotifications.PushNotificationSender, error) {
 	return (&cfg).ProvidePushSender(ctx, logger, tracerProvider)
 }

@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/notifications"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/mobilenotifications"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
@@ -118,7 +118,7 @@ func TestConfig_ProvidePushSender(T *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, sender)
 		// Noop returns nil on SendPush
-		assert.NoError(t, sender.SendPush(ctx, "ios", "token", notifications.PushMessage{Title: "title", Body: "body"}))
+		assert.NoError(t, sender.SendPush(ctx, "ios", "token", mobilenotifications.PushMessage{Title: "title", Body: "body"}))
 	})
 
 	T.Run("with noop provider returns noop", func(t *testing.T) {
@@ -128,7 +128,7 @@ func TestConfig_ProvidePushSender(T *testing.T) {
 		sender, err := cfg.ProvidePushSender(ctx, logger, tracer)
 		require.NoError(t, err)
 		require.NotNil(t, sender)
-		assert.NoError(t, sender.SendPush(ctx, "android", "token", notifications.PushMessage{Title: "title", Body: "body"}))
+		assert.NoError(t, sender.SendPush(ctx, "android", "token", mobilenotifications.PushMessage{Title: "title", Body: "body"}))
 	})
 
 	T.Run("with apns_fcm provider and nil APNs returns noop or FCM-only sender", func(t *testing.T) {
@@ -143,7 +143,7 @@ func TestConfig_ProvidePushSender(T *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, sender)
 		// FCM init typically fails in unit tests (no ADC), so we get noop; if it succeeds, iOS would error
-		_ = sender.SendPush(ctx, "ios", "token", notifications.PushMessage{Title: "title", Body: "body"})
+		_ = sender.SendPush(ctx, "ios", "token", mobilenotifications.PushMessage{Title: "title", Body: "body"})
 	})
 
 	T.Run("with apns_fcm provider and nil FCM returns iOS-only sender", func(t *testing.T) {
@@ -159,9 +159,9 @@ func TestConfig_ProvidePushSender(T *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, sender)
 		// Android not configured, should return ErrPlatformNotSupported
-		err = sender.SendPush(ctx, "android", "token", notifications.PushMessage{Title: "title", Body: "body"})
+		err = sender.SendPush(ctx, "android", "token", mobilenotifications.PushMessage{Title: "title", Body: "body"})
 		assert.Error(t, err)
-		assert.ErrorIs(t, err, notifications.ErrPlatformNotSupported)
+		assert.ErrorIs(t, err, mobilenotifications.ErrPlatformNotSupported)
 	})
 
 	T.Run("with apns_fcm provider and invalid APNs path returns noop or FCM-only sender", func(t *testing.T) {
@@ -176,7 +176,7 @@ func TestConfig_ProvidePushSender(T *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, sender)
 		// APNs init fails; FCM init typically fails in unit tests, so we get noop
-		_ = sender.SendPush(ctx, "ios", "token", notifications.PushMessage{Title: "title", Body: "body"})
+		_ = sender.SendPush(ctx, "ios", "token", mobilenotifications.PushMessage{Title: "title", Body: "body"})
 	})
 
 	T.Run("with apns_fcm provider and invalid FCM path returns iOS-only sender", func(t *testing.T) {
@@ -192,9 +192,9 @@ func TestConfig_ProvidePushSender(T *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, sender)
 		// FCM init fails, so Android not configured; should return ErrPlatformNotSupported
-		err = sender.SendPush(ctx, "android", "token", notifications.PushMessage{Title: "title", Body: "body"})
+		err = sender.SendPush(ctx, "android", "token", mobilenotifications.PushMessage{Title: "title", Body: "body"})
 		assert.Error(t, err)
-		assert.ErrorIs(t, err, notifications.ErrPlatformNotSupported)
+		assert.ErrorIs(t, err, mobilenotifications.ErrPlatformNotSupported)
 	})
 
 	T.Run("with unknown provider returns noop", func(t *testing.T) {
@@ -204,6 +204,6 @@ func TestConfig_ProvidePushSender(T *testing.T) {
 		sender, err := cfg.ProvidePushSender(ctx, logger, tracer)
 		require.NoError(t, err)
 		require.NotNil(t, sender)
-		assert.NoError(t, sender.SendPush(ctx, "ios", "token", notifications.PushMessage{Title: "title", Body: "body"}))
+		assert.NoError(t, sender.SendPush(ctx, "ios", "token", mobilenotifications.PushMessage{Title: "title", Body: "body"}))
 	})
 }

@@ -4,9 +4,9 @@ import (
 	"context"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v2/notifications"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/notifications/apns"
-	"github.com/verygoodsoftwarenotvirus/platform/v2/notifications/fcm"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/mobilenotifications"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/mobilenotifications/apns"
+	"github.com/verygoodsoftwarenotvirus/platform/v2/mobilenotifications/fcm"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v2/observability/tracing"
 
@@ -71,7 +71,7 @@ func (cfg *Config) ProvidePushSender(
 	ctx context.Context,
 	logger logging.Logger,
 	tracerProvider tracing.TracerProvider,
-) (notifications.PushNotificationSender, error) {
+) (mobilenotifications.PushNotificationSender, error) {
 	switch strings.ToLower(strings.TrimSpace(cfg.Provider)) {
 	case ProviderAPNsFCM:
 		var apnsSender *apns.Sender
@@ -104,11 +104,11 @@ func (cfg *Config) ProvidePushSender(
 
 		if apnsSender == nil && fcmSender == nil {
 			logger.Debug("push notifications: no platform senders available, using noop")
-			return &notifications.NoopPushNotificationSender{}, nil
+			return &mobilenotifications.NoopPushNotificationSender{}, nil
 		}
-		return notifications.NewMultiPlatformPushSender(apnsSender, fcmSender, logger, tracerProvider), nil
+		return mobilenotifications.NewMultiPlatformPushSender(apnsSender, fcmSender, logger, tracerProvider), nil
 	default:
 		logger.Debug("push notifications: using noop sender")
-		return &notifications.NoopPushNotificationSender{}, nil
+		return &mobilenotifications.NoopPushNotificationSender{}, nil
 	}
 }

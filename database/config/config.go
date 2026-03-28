@@ -12,7 +12,9 @@ import (
 
 	encryptioncfg "github.com/verygoodsoftwarenotvirus/platform/v4/cryptography/encryption/config"
 	"github.com/verygoodsoftwarenotvirus/platform/v4/database"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/database/mysql"
 	"github.com/verygoodsoftwarenotvirus/platform/v4/database/postgres"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/database/sqlite"
 	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
@@ -26,6 +28,8 @@ import (
 
 const (
 	ProviderPostgres = "postgres"
+	ProviderMySQL    = "mysql"
+	ProviderSQLite   = "sqlite"
 )
 
 type (
@@ -97,14 +101,25 @@ func (cfg *Config) EnsureDefaults() {
 	}
 }
 
-// GetConnectionString implements database.ClientConfig.
+// GetReadConnectionString implements database.ClientConfig.
 func (cfg *Config) GetReadConnectionString() string {
-	return cfg.ReadConnection.String()
+	return cfg.connectionStringForProvider(cfg.ReadConnection)
 }
 
 // GetWriteConnectionString implements database.ClientConfig.
 func (cfg *Config) GetWriteConnectionString() string {
-	return cfg.WriteConnection.String()
+	return cfg.connectionStringForProvider(cfg.WriteConnection)
+}
+
+func (cfg *Config) connectionStringForProvider(cd ConnectionDetails) string {
+	switch strings.TrimSpace(strings.ToLower(cfg.Provider)) {
+	case ProviderMySQL:
+		return cd.MySQLDSN()
+	case ProviderSQLite:
+		return cd.SQLiteDSN()
+	default:
+		return cd.String()
+	}
 }
 
 // GetMaxPingAttempts implements database.ClientConfig.
@@ -159,14 +174,24 @@ func (cfg *Config) LoadConnectionDetailsFromURL(u string) error {
 }
 
 func (cfg *Config) ConnectToDatabase() (*sql.DB, error) {
-	db, err := otelsql.Open("pgx", cfg.ReadConnection.String(), otelsql.WithAttributes(
+	var driverName string
+	switch strings.TrimSpace(strings.ToLower(cfg.Provider)) {
+	case ProviderMySQL:
+		driverName = "mysql"
+	case ProviderSQLite:
+		driverName = "sqlite"
+	default:
+		driverName = "pgx"
+	}
+
+	db, err := otelsql.Open(driverName, cfg.GetReadConnectionString(), otelsql.WithAttributes(
 		attribute.KeyValue{
 			Key:   semconv.ServiceNameKey,
 			Value: attribute.StringValue("database"),
 		},
 	))
 	if err != nil {
-		return nil, errors.Wrap(err, "connecting to postgres database")
+		return nil, errors.Wrapf(err, "connecting to %s database", cfg.Provider)
 	}
 
 	db.SetMaxIdleConns(cfg.GetMaxIdleConns())
@@ -212,6 +237,22 @@ func (x *ConnectionDetails) URI() string {
 	)
 }
 
+// MySQLDSN returns a MySQL DSN connection string.
+func (x *ConnectionDetails) MySQLDSN() string {
+	return fmt.Sprintf(
+		"%s:%s@tcp(%s)/%s",
+		x.Username,
+		x.Password,
+		net.JoinHostPort(x.Host, strconv.FormatUint(uint64(x.Port), 10)),
+		x.Database,
+	)
+}
+
+// SQLiteDSN returns the database file path for SQLite.
+func (x *ConnectionDetails) SQLiteDSN() string {
+	return x.Database
+}
+
 // LoadFromURL accepts a Postgres connection string and parses it into the ConnectionDetails struct.
 func (x *ConnectionDetails) LoadFromURL(u string) error {
 	z, err := url.Parse(u)
@@ -254,6 +295,10 @@ func ProvideDatabase(
 	switch strings.TrimSpace(strings.ToLower(cfg.Provider)) {
 	case ProviderPostgres:
 		client, err = postgres.ProvideDatabaseClient(ctx, logger, tracerProvider, cfg, dbMetricsProvider)
+	case ProviderMySQL:
+		client, err = mysql.ProvideDatabaseClient(ctx, logger, tracerProvider, cfg, dbMetricsProvider)
+	case ProviderSQLite:
+		client, err = sqlite.ProvideDatabaseClient(ctx, logger, tracerProvider, cfg, dbMetricsProvider)
 	default:
 		return nil, errors.Newf("invalid database provider: %q", cfg.Provider)
 	}

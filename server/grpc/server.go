@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/internalerrors"
+	perrors "github.com/verygoodsoftwarenotvirus/platform/v4/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 
@@ -51,7 +51,7 @@ func NewGRPCServer(
 	registrationFunctions ...RegistrationFunc,
 ) (*Server, error) {
 	if cfg == nil {
-		return nil, internalerrors.NilConfigError("grpc server")
+		return nil, perrors.ErrNilInputParameter
 	}
 
 	tp := tracing.EnsureTracerProvider(tracerProvider)

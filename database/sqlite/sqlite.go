@@ -57,14 +57,14 @@ func ProvideDatabaseClient(ctx context.Context, logger logging.Logger, tracerPro
 	var err error
 
 	if readConnStr := cfg.GetReadConnectionString(); readConnStr != "" {
-		readDB, err = connect(readConnStr, cfg, opts, false)
+		readDB, err = connect(ctx, readConnStr, cfg, opts, false)
 		if err != nil {
 			return nil, errors.Wrap(err, "connecting to read sqlite database")
 		}
 	}
 
 	if writeConnStr := cfg.GetWriteConnectionString(); writeConnStr != "" {
-		writeDB, err = connect(writeConnStr, cfg, opts, true)
+		writeDB, err = connect(ctx, writeConnStr, cfg, opts, true)
 		if err != nil {
 			return nil, errors.Wrap(err, "connecting to write sqlite database")
 		}
@@ -105,17 +105,17 @@ func ProvideDatabaseClient(ctx context.Context, logger logging.Logger, tracerPro
 	return c, nil
 }
 
-func connect(connStr string, cfg database.ClientConfig, opts []otelsql.Option, isWriter bool) (*sql.DB, error) {
+func connect(ctx context.Context, connStr string, cfg database.ClientConfig, opts []otelsql.Option, isWriter bool) (*sql.DB, error) {
 	db, err := otelsql.Open("sqlite", connStr, opts...)
 	if err != nil {
 		return nil, errors.Wrap(err, "connecting to sqlite database")
 	}
 
-	if _, err = db.Exec("PRAGMA journal_mode=WAL"); err != nil {
+	if _, err = db.ExecContext(ctx, "PRAGMA journal_mode=WAL"); err != nil {
 		return nil, errors.Wrap(err, "enabling WAL mode")
 	}
 
-	if _, err = db.Exec("PRAGMA foreign_keys=ON"); err != nil {
+	if _, err = db.ExecContext(ctx, "PRAGMA foreign_keys=ON"); err != nil {
 		return nil, errors.Wrap(err, "enabling foreign keys")
 	}
 

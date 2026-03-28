@@ -10,6 +10,8 @@ func TestBuildFkaeTime(T *testing.T) {
 	T.Parallel()
 
 	T.Run("simple", func(t *testing.T) {
+		t.Parallel()
+
 		actual := BuildFakeTime()
 
 		assert.NotNil(t, actual)

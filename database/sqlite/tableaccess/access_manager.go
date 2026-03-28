@@ -2,7 +2,6 @@ package tableaccess
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v4/database"
 	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
@@ -12,12 +11,10 @@ import (
 // SQLite has no concept of users, roles, permissions, or multiple databases.
 var ErrNotSupported = errors.New("operation not supported by SQLite")
 
-type manager struct {
-	db *sql.DB
-}
+type manager struct{}
 
-func NewManager(db *sql.DB) database.Manager {
-	return &manager{db: db}
+func NewManager() database.Manager {
+	return &manager{}
 }
 
 func (m *manager) CreateUser(_ context.Context, _, _ string) error {

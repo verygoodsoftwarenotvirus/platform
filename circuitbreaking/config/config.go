@@ -7,7 +7,7 @@ import (
 
 	"github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking"
 	"github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/noop"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/internalerrors"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
 
@@ -76,7 +76,7 @@ func (b *baseImplementation) CannotProceed() bool {
 // ProvideCircuitBreaker provides a CircuitBreaker.
 func (cfg *Config) ProvideCircuitBreaker(ctx context.Context, logger logging.Logger, metricsProvider metrics.Provider) (circuitbreaking.CircuitBreaker, error) {
 	if cfg == nil {
-		return nil, internalerrors.NilConfigError("circuit breaker")
+		return nil, errors.ErrNilInputParameter
 	}
 
 	logger = logging.EnsureLogger(logger).WithValue("circuit_breaker", cfg.Name)

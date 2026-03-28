@@ -6,6 +6,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestBuildFkaeTime(T *testing.T) {
+	T.Parallel()
+
+	T.Run("simple", func(t *testing.T) {
+		t.Parallel()
+
+		actual := BuildFakeTime()
+
+		assert.NotNil(t, actual)
+	})
+}
+
 type example struct {
 	Name string
 	Age  int

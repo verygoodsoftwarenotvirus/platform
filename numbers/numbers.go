@@ -15,7 +15,7 @@ func RoundToDecimalPlaces(value float32, precision uint8) float32 {
 }
 
 // Scale multiplies a value by a scaling factor and rounds to the specified precision (default: 2).
-// Useful for scaling quantities by a factor (e.g. when adjusting serving sizes).
+// Useful for scaling quantities by a factor.
 // For example, Scale(2.5, 2.0) would return 5.0 (doubling the quantity).
 func Scale(value, factor float32, precision ...uint8) float32 {
 	result := value * factor

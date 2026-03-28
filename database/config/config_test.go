@@ -360,6 +360,137 @@ func TestConnectionDetails_ValidateWithContext(T *testing.T) {
 	})
 }
 
+func TestConnectionDetails_MySQLDSN(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		d := &ConnectionDetails{
+			Username: "admin",
+			Password: "secret",
+			Database: "mydb",
+			Host:     "dbhost",
+			Port:     3306,
+		}
+
+		expected := "admin:secret@tcp(dbhost:3306)/mydb"
+		assert.Equal(t, expected, d.MySQLDSN())
+	})
+}
+
+func TestConnectionDetails_SQLiteDSN(T *testing.T) {
+	T.Parallel()
+
+	T.Run("file path", func(t *testing.T) {
+		t.Parallel()
+
+		d := &ConnectionDetails{
+			Database: "/tmp/test.db",
+		}
+
+		assert.Equal(t, "/tmp/test.db", d.SQLiteDSN())
+	})
+
+	T.Run("memory", func(t *testing.T) {
+		t.Parallel()
+
+		d := &ConnectionDetails{
+			Database: ":memory:",
+		}
+
+		assert.Equal(t, ":memory:", d.SQLiteDSN())
+	})
+}
+
+func TestConfig_GetReadConnectionString_ProviderAware(T *testing.T) {
+	T.Parallel()
+
+	T.Run("postgres provider", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{
+			Provider: ProviderPostgres,
+			ReadConnection: ConnectionDetails{
+				Username: "user",
+				Password: "pass",
+				Database: "db",
+				Host:     "localhost",
+				Port:     5432,
+			},
+		}
+
+		expected := "user=user password=pass database=db host=localhost port=5432"
+		assert.Equal(t, expected, cfg.GetReadConnectionString())
+	})
+
+	T.Run("mysql provider", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{
+			Provider: ProviderMySQL,
+			ReadConnection: ConnectionDetails{
+				Username: "user",
+				Password: "pass",
+				Database: "db",
+				Host:     "localhost",
+				Port:     3306,
+			},
+		}
+
+		expected := "user:pass@tcp(localhost:3306)/db"
+		assert.Equal(t, expected, cfg.GetReadConnectionString())
+	})
+
+	T.Run("sqlite provider", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{
+			Provider: ProviderSQLite,
+			ReadConnection: ConnectionDetails{
+				Database: "/tmp/test.db",
+			},
+		}
+
+		assert.Equal(t, "/tmp/test.db", cfg.GetReadConnectionString())
+	})
+}
+
+func TestConfig_GetWriteConnectionString_ProviderAware(T *testing.T) {
+	T.Parallel()
+
+	T.Run("mysql provider", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{
+			Provider: ProviderMySQL,
+			WriteConnection: ConnectionDetails{
+				Username: "writer",
+				Password: "secret",
+				Database: "mydb",
+				Host:     "writehost",
+				Port:     3306,
+			},
+		}
+
+		expected := "writer:secret@tcp(writehost:3306)/mydb"
+		assert.Equal(t, expected, cfg.GetWriteConnectionString())
+	})
+
+	T.Run("sqlite provider", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{
+			Provider: ProviderSQLite,
+			WriteConnection: ConnectionDetails{
+				Database: ":memory:",
+			},
+		}
+
+		assert.Equal(t, ":memory:", cfg.GetWriteConnectionString())
+	})
+}
+
 func TestProvideDatabase(T *testing.T) {
 	T.Parallel()
 

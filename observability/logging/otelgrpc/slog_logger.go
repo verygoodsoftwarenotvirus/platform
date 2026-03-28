@@ -8,7 +8,6 @@ import (
 	"os"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/internalerrors"
 	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/keys"
 	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
 	o11yutils "github.com/verygoodsoftwarenotvirus/platform/v4/observability/utils"
@@ -35,7 +34,7 @@ type otelSlogLogger struct {
 // NewOtelSlogLogger builds a new otelSlogLogger.
 func NewOtelSlogLogger(ctx context.Context, lvl logging.Level, serviceName string, cfg *Config) (logging.Logger, error) {
 	if cfg == nil {
-		return nil, internalerrors.NilConfigError("otel slog logger")
+		return nil, errors.ErrNilInputParameter
 	}
 
 	var level slog.Leveler

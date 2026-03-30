@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v4/secrets/gcp"
+	"github.com/verygoodsoftwarenotvirus/platform/v4/secrets/kubectl"
 	"github.com/verygoodsoftwarenotvirus/platform/v4/secrets/ssm"
 
 	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
@@ -14,6 +15,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ssm/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type mockGCPClient struct {
@@ -38,6 +41,14 @@ func (m *mockSSMClient) GetParameter(ctx context.Context, params *awsssm.GetPara
 			Value: aws.String(m.value),
 		},
 	}, nil
+}
+
+type mockKubectlClient struct {
+	secret *corev1.Secret
+}
+
+func (m *mockKubectlClient) Get(_ context.Context, _ string, _ metav1.GetOptions) (*corev1.Secret, error) {
+	return m.secret, nil
 }
 
 func TestConfig_ValidateWithContext(T *testing.T) {
@@ -76,6 +87,18 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 	T.Run("invalid ssm provider missing config", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Provider: ProviderSSM}
+		require.Error(t, cfg.ValidateWithContext(context.Background()))
+	})
+
+	T.Run("valid kubectl provider", func(t *testing.T) {
+		t.Parallel()
+		cfg := &Config{Provider: ProviderKubectl, Kubectl: &kubectl.Config{Namespace: "default"}}
+		require.NoError(t, cfg.ValidateWithContext(context.Background()))
+	})
+
+	T.Run("invalid kubectl provider missing config", func(t *testing.T) {
+		t.Parallel()
+		cfg := &Config{Provider: ProviderKubectl}
 		require.Error(t, cfg.ValidateWithContext(context.Background()))
 	})
 
@@ -188,6 +211,29 @@ func TestConfig_ProvideSecretSource(T *testing.T) {
 		got, err := source.GetSecret(context.Background(), "MY_PARAM")
 		require.NoError(t, err)
 		assert.Equal(t, "ssm-param-value", got)
+	})
+
+	T.Run("kubectl provider with mock client", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{
+			Provider: ProviderKubectl,
+			Kubectl:  &kubectl.Config{Namespace: "default"},
+			KubectlClient: &mockKubectlClient{
+				secret: &corev1.Secret{
+					Data: map[string][]byte{
+						"password": []byte("k8s-secret-value"),
+					},
+				},
+			},
+		}
+		source, err := cfg.ProvideSecretSource(context.Background(), nil, nil, nil)
+		require.NoError(t, err)
+		require.NotNil(t, source)
+
+		got, err := source.GetSecret(context.Background(), "my-secret/password")
+		require.NoError(t, err)
+		assert.Equal(t, "k8s-secret-value", got)
 	})
 
 	T.Run("unknown provider returns error", func(t *testing.T) {

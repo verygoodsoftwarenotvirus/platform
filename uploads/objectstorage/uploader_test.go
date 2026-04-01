@@ -112,6 +112,37 @@ func TestUploader_selectBucket(T *testing.T) {
 		assert.NoError(t, u.selectBucket(ctx, cfg))
 	})
 
+	T.Run("r2 happy path", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		u := &Uploader{}
+		cfg := &Config{
+			Provider: R2Provider,
+			R2Config: &R2Config{
+				AccountID:       t.Name(),
+				BucketName:      t.Name(),
+				AccessKeyID:     t.Name(),
+				SecretAccessKey: t.Name(),
+			},
+		}
+
+		assert.NoError(t, u.selectBucket(ctx, cfg))
+	})
+
+	T.Run("r2 with nil config", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		u := &Uploader{}
+		cfg := &Config{
+			Provider: R2Provider,
+			R2Config: nil,
+		}
+
+		assert.Error(t, u.selectBucket(ctx, cfg))
+	})
+
 	T.Run("filesystem happy path", func(t *testing.T) {
 		t.Parallel()
 

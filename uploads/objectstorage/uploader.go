@@ -9,6 +9,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	s3v2 "github.com/aws/aws-sdk-go-v2/service/s3"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"gocloud.dev/blob"
@@ -44,6 +46,7 @@ type (
 		FilesystemConfig  *FilesystemConfig `env:"init"                envPrefix:"FILESYSTEM_"            json:"filesystem,omitempty"`
 		S3Config          *S3Config         `env:"init"                envPrefix:"S3_"                    json:"s3,omitempty"`
 		GCP               *GCPConfig        `env:"init"                envPrefix:"GCP_"                   json:"gcpConfig,omitempty"`
+		R2Config          *R2Config         `env:"init"                envPrefix:"R2_"                    json:"r2,omitempty"`
 		BucketPrefix      string            `env:"BUCKET_PREFIX"       json:"bucketPrefix,omitempty"`
 		BucketName        string            `env:"BUCKET_NAME"         json:"bucketName,omitempty"`
 		UploadFilenameKey string            `env:"UPLOAD_FILENAME_KEY" json:"uploadFilenameKey,omitempty"`
@@ -57,10 +60,11 @@ var _ validation.ValidatableWithContext = (*Config)(nil)
 func (c *Config) ValidateWithContext(ctx context.Context) error {
 	return validation.ValidateStructWithContext(ctx, c,
 		validation.Field(&c.BucketName, validation.Required),
-		validation.Field(&c.Provider, validation.In(S3Provider, FilesystemProvider, MemoryProvider, GCPCloudStorageProvider)),
+		validation.Field(&c.Provider, validation.In(S3Provider, FilesystemProvider, MemoryProvider, GCPCloudStorageProvider, R2Provider)),
 		validation.Field(&c.S3Config, validation.When(c.Provider == S3Provider, validation.Required).Else(validation.Nil)),
 		validation.Field(&c.GCP, validation.When(c.Provider == GCPCloudStorageProvider, validation.Required).Else(validation.Nil)),
 		validation.Field(&c.FilesystemConfig, validation.When(c.Provider == FilesystemProvider, validation.Required).Else(validation.Nil)),
+		validation.Field(&c.R2Config, validation.When(c.Provider == R2Provider, validation.Required).Else(validation.Nil)),
 	)
 }
 
@@ -121,6 +125,23 @@ func (u *Uploader) selectBucket(ctx context.Context, cfg *Config) (err error) {
 			return platformerrors.Newf("bucket %q is unavailable", cfg.BucketName)
 		}
 
+	case R2Provider:
+		if cfg.R2Config == nil {
+			return ErrNilConfig
+		}
+
+		endpoint := fmt.Sprintf("https://%s.r2.cloudflarestorage.com", cfg.R2Config.AccountID)
+		client := s3v2.New(s3v2.Options{
+			BaseEndpoint: aws.String(endpoint),
+			Credentials:  credentials.NewStaticCredentialsProvider(cfg.R2Config.AccessKeyID, cfg.R2Config.SecretAccessKey, ""),
+			Region:       "auto",
+		})
+
+		if u.bucket, err = s3blob.OpenBucketV2(ctx, client, cfg.R2Config.BucketName, &s3blob.Options{
+			UseLegacyList: false,
+		}); err != nil {
+			return platformerrors.Wrap(err, "initializing r2 bucket")
+		}
 	case MemoryProvider:
 		u.bucket = memblob.OpenBucket(&memblob.Options{})
 	default:

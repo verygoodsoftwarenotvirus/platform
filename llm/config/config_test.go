@@ -9,7 +9,11 @@ import (
 )
 
 func TestConfig_ProvideLLMProvider_Empty(T *testing.T) {
+	T.Parallel()
+
 	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
 		ctx := t.Context()
 		cfg := &Config{Provider: ""}
 
@@ -20,7 +24,11 @@ func TestConfig_ProvideLLMProvider_Empty(T *testing.T) {
 }
 
 func TestConfig_ProvideLLMProvider_OpenAI(T *testing.T) {
+	T.Parallel()
+
 	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
 		ctx := t.Context()
 		cfg := &Config{
 			Provider: ProviderOpenAI,

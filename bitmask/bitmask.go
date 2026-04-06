@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/bits"
 	"strconv"
+
+	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
 )
 
 // Unsigned is a constraint for fixed-width unsigned integer types that can be used as bitmask values.
@@ -133,7 +135,7 @@ func (b *Bitmask[T]) MarshalJSON() ([]byte, error) {
 func (b *Bitmask[T]) UnmarshalJSON(data []byte) error {
 	v, err := strconv.ParseUint(string(data), 10, 64)
 	if err != nil {
-		return fmt.Errorf("bitmask: invalid JSON value: %w", err)
+		return errors.Wrap(err, "bitmask: invalid JSON value")
 	}
 
 	b.value = T(v)

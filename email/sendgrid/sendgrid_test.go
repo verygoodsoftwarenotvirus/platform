@@ -31,7 +31,11 @@ func TestNewSendGridEmailer(T *testing.T) {
 }
 
 func TestSendGridEmailer_SendEmail(T *testing.T) {
+	T.Parallel()
+
 	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
 		logger := logging.NewNoopLogger()
 
 		ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
@@ -58,6 +62,8 @@ func TestSendGridEmailer_SendEmail(T *testing.T) {
 	})
 
 	T.Run("with error executing request", func(t *testing.T) {
+		t.Parallel()
+
 		logger := logging.NewNoopLogger()
 
 		ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
@@ -87,6 +93,8 @@ func TestSendGridEmailer_SendEmail(T *testing.T) {
 	})
 
 	T.Run("with invalid response code", func(t *testing.T) {
+		t.Parallel()
+
 		logger := logging.NewNoopLogger()
 
 		ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
@@ -115,7 +123,11 @@ func TestSendGridEmailer_SendEmail(T *testing.T) {
 }
 
 func TestSendGridEmailer_sendDynamicTemplateEmail(T *testing.T) {
+	T.Parallel()
+
 	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
 		logger := logging.NewNoopLogger()
 
 		ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {

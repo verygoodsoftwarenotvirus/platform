@@ -64,17 +64,17 @@ func NewPostmarkEmailer(cfg *Config, logger logging.Logger, tracerProvider traci
 
 	sendCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_sends", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating send counter: %w", err)
+		return nil, platformerrors.Wrap(err, "creating send counter")
 	}
 
 	errorCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_errors", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating error counter: %w", err)
+		return nil, platformerrors.Wrap(err, "creating error counter")
 	}
 
 	latencyHist, err := mp.NewFloat64Histogram(fmt.Sprintf("%s_latency_ms", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating latency histogram: %w", err)
+		return nil, platformerrors.Wrap(err, "creating latency histogram")
 	}
 
 	pm := postmark.NewClient(cfg.ServerToken, "")

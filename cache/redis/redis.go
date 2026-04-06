@@ -45,32 +45,32 @@ func NewRedisCache[T any](cfg *Config, expiration time.Duration, logger logging.
 
 	cacheHitCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_cache_hits", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating cache hit counter: %w", err)
+		return nil, errors.Wrap(err, "creating cache hit counter")
 	}
 
 	cacheMissCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_cache_misses", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating cache miss counter: %w", err)
+		return nil, errors.Wrap(err, "creating cache miss counter")
 	}
 
 	cacheSetCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_cache_sets", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating cache set counter: %w", err)
+		return nil, errors.Wrap(err, "creating cache set counter")
 	}
 
 	cacheDelCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_cache_deletes", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating cache delete counter: %w", err)
+		return nil, errors.Wrap(err, "creating cache delete counter")
 	}
 
 	cacheErrCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_cache_errors", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating cache error counter: %w", err)
+		return nil, errors.Wrap(err, "creating cache error counter")
 	}
 
 	latencyHist, err := mp.NewFloat64Histogram(fmt.Sprintf("%s_cache_latency_ms", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating cache latency histogram: %w", err)
+		return nil, errors.Wrap(err, "creating cache latency histogram")
 	}
 
 	return &redisCacheImpl[T]{

@@ -3,11 +3,12 @@ package ably
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/notifications/async"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/notifications/async"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	ablyrest "github.com/ably/ably-go/ably"
 )
@@ -36,13 +37,15 @@ func (a *ablyChannelPublisher) Publish(ctx context.Context, channel, name string
 
 // Notifier is an Ably-backed AsyncNotifier.
 type Notifier struct {
-	logger    logging.Logger
-	tracer    tracing.Tracer
-	publisher ChannelPublisher
+	logger       logging.Logger
+	tracer       tracing.Tracer
+	publisher    ChannelPublisher
+	sendCounter  metrics.Int64Counter
+	errorCounter metrics.Int64Counter
 }
 
 // NewNotifier creates a new Ably-backed AsyncNotifier.
-func NewNotifier(cfg *Config, logger logging.Logger, tracerProvider tracing.TracerProvider) (*Notifier, error) {
+func NewNotifier(cfg *Config, logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider) (*Notifier, error) {
 	if cfg == nil {
 		return nil, ErrNilConfig
 	}
@@ -52,10 +55,24 @@ func NewNotifier(cfg *Config, logger logging.Logger, tracerProvider tracing.Trac
 		return nil, errors.Wrap(err, "creating ably client")
 	}
 
+	mp := metrics.EnsureMetricsProvider(metricsProvider)
+
+	sendCounter, err := mp.NewInt64Counter(o11yName + "_sends")
+	if err != nil {
+		return nil, errors.Wrap(err, "creating send counter")
+	}
+
+	errorCounter, err := mp.NewInt64Counter(o11yName + "_errors")
+	if err != nil {
+		return nil, errors.Wrap(err, "creating error counter")
+	}
+
 	return &Notifier{
-		logger:    logging.NewNamedLogger(logger, o11yName),
-		tracer:    tracing.NewNamedTracer(tracerProvider, o11yName),
-		publisher: &ablyChannelPublisher{client: client},
+		logger:       logging.NewNamedLogger(logger, o11yName),
+		tracer:       tracing.NewNamedTracer(tracerProvider, o11yName),
+		publisher:    &ablyChannelPublisher{client: client},
+		sendCounter:  sendCounter,
+		errorCounter: errorCounter,
 	}, nil
 }
 
@@ -65,9 +82,11 @@ func (n *Notifier) Publish(ctx context.Context, channel string, event *async.Eve
 	defer span.End()
 
 	if err := n.publisher.Publish(ctx, channel, event.Type, event.Data); err != nil {
+		n.errorCounter.Add(ctx, 1)
 		return observability.PrepareAndLogError(err, n.logger, span, "publishing to ably channel")
 	}
 
+	n.sendCounter.Add(ctx, 1)
 	return nil
 }
 

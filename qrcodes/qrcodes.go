@@ -7,10 +7,11 @@ import (
 	"fmt"
 	"image/png"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/keys"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/keys"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/boombuler/barcode"
 	"github.com/boombuler/barcode/qr"
@@ -24,7 +25,7 @@ const (
 type (
 	// Builder generates QR codes for TOTP two-factor authentication.
 	Builder interface {
-		BuildQRCode(ctx context.Context, username, twoFactorSecret string) string
+		BuildQRCode(ctx context.Context, username, twoFactorSecret string) (string, error)
 	}
 
 	// Issuer identifies the service that issued the TOTP secret.
@@ -38,16 +39,16 @@ type (
 )
 
 // NewBuilder returns a new QR code Builder.
-func NewBuilder(tracerProvider tracing.TracerProvider, logger logging.Logger) Builder {
+func NewBuilder(issuer Issuer, tracerProvider tracing.TracerProvider, logger logging.Logger) Builder {
 	return &builder{
 		tracer:     tracing.NewNamedTracer(tracerProvider, o11yName),
 		logger:     logging.NewNamedLogger(logger, o11yName),
-		totpIssuer: "UNKNOWN_REPLACEME",
+		totpIssuer: issuer,
 	}
 }
 
 // BuildQRCode builds a QR code for a given username and secret.
-func (s *builder) BuildQRCode(ctx context.Context, username, twoFactorSecret string) string {
+func (s *builder) BuildQRCode(ctx context.Context, username, twoFactorSecret string) (string, error) {
 	_, span := s.tracer.StartSpan(ctx)
 	defer span.End()
 
@@ -66,23 +67,23 @@ func (s *builder) BuildQRCode(ctx context.Context, username, twoFactorSecret str
 	qrCode, err := qr.Encode(otpString, qr.L, qr.Auto)
 	if err != nil {
 		observability.AcknowledgeError(err, logger, span, "encoding OTP string")
-		return ""
+		return "", errors.Wrap(err, "encoding OTP string")
 	}
 
 	// scale the QR code so that it's not a PNG for ants.
 	qrCode, err = barcode.Scale(qrCode, 256, 256)
 	if err != nil {
 		observability.AcknowledgeError(err, logger, span, "scaling QR code")
-		return ""
+		return "", errors.Wrap(err, "scaling QR code")
 	}
 
 	// encode the QR code to PNG.
 	var b bytes.Buffer
 	if err = png.Encode(&b, qrCode); err != nil {
 		observability.AcknowledgeError(err, logger, span, "encoding QR code to PNG")
-		return ""
+		return "", errors.Wrap(err, "encoding QR code to PNG")
 	}
 
 	// base64 encode the image for easy HTML use.
-	return fmt.Sprintf("%s%s", base64ImagePrefix, base64.StdEncoding.EncodeToString(b.Bytes()))
+	return fmt.Sprintf("%s%s", base64ImagePrefix, base64.StdEncoding.EncodeToString(b.Bytes())), nil
 }

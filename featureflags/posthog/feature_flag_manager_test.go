@@ -6,11 +6,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking"
-	mockCircuitBreaker "github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/mock"
-	cbnoop "github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/noop"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking"
+	mockCircuitBreaker "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/mock"
+	cbnoop "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/posthog/posthog-go"
 	"github.com/stretchr/testify/assert"
@@ -25,7 +25,7 @@ func buildTestManager(t *testing.T, cb circuitbreaking.CircuitBreaker, configMod
 		PersonalAPIKey: t.Name(),
 	}
 
-	ffm, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), cb, configModifiers...)
+	ffm, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cb, configModifiers...)
 	require.NoError(t, err)
 	require.NotNil(t, ffm)
 
@@ -43,7 +43,7 @@ func TestNewFeatureFlagManager(T *testing.T) {
 			PersonalAPIKey: t.Name(),
 		}
 
-		actual, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), cbnoop.NewCircuitBreaker())
+		actual, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker())
 		assert.NoError(t, err)
 		assert.NotNil(t, actual)
 	})
@@ -51,7 +51,7 @@ func TestNewFeatureFlagManager(T *testing.T) {
 	T.Run("with nil config", func(t *testing.T) {
 		t.Parallel()
 
-		actual, err := NewFeatureFlagManager(nil, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), cbnoop.NewCircuitBreaker())
+		actual, err := NewFeatureFlagManager(nil, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker())
 		assert.Error(t, err)
 		assert.Nil(t, actual)
 	})
@@ -61,7 +61,7 @@ func TestNewFeatureFlagManager(T *testing.T) {
 
 		cfg := &Config{}
 
-		actual, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), cbnoop.NewCircuitBreaker())
+		actual, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker())
 		assert.Error(t, err)
 		assert.Nil(t, actual)
 	})
@@ -73,7 +73,7 @@ func TestNewFeatureFlagManager(T *testing.T) {
 			ProjectAPIKey: t.Name(),
 		}
 
-		actual, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), cbnoop.NewCircuitBreaker())
+		actual, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker())
 		assert.Error(t, err)
 		assert.Nil(t, actual)
 	})
@@ -86,7 +86,7 @@ func TestNewFeatureFlagManager(T *testing.T) {
 			PersonalAPIKey: t.Name(),
 		}
 
-		actual, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), cbnoop.NewCircuitBreaker(), func(config *posthog.Config) {
+		actual, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker(), func(config *posthog.Config) {
 			config.Interval = -1
 		})
 		assert.Error(t, err)
@@ -132,7 +132,7 @@ func TestFeatureFlagManager_CanUseFeature(T *testing.T) {
 			require.NoError(t, err)
 		}))
 
-		ffm, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), cbnoop.NewCircuitBreaker(), func(config *posthog.Config) {
+		ffm, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker(), func(config *posthog.Config) {
 			config.Transport = ts.Client().Transport
 			config.Endpoint = ts.URL
 		})
@@ -155,7 +155,7 @@ func TestFeatureFlagManager_CanUseFeature(T *testing.T) {
 			res.WriteHeader(http.StatusForbidden)
 		}))
 
-		ffm, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), cbnoop.NewCircuitBreaker(), func(config *posthog.Config) {
+		ffm, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker(), func(config *posthog.Config) {
 			config.Transport = ts.Client().Transport
 			config.Endpoint = ts.URL
 		})

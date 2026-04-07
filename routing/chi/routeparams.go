@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/routing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/routing"
 
 	"github.com/go-chi/chi/v5"
 )

@@ -4,7 +4,7 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/cryptography/hashing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/cryptography/hashing"
 )
 
 var _ hashing.Hasher = (*sha512Hasher)(nil)

@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/encoding"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/encoding"
 
 	"github.com/stretchr/testify/mock"
 )

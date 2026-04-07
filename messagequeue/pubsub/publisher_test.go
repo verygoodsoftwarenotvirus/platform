@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/messagequeue"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/random"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/messagequeue"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/random"
 
 	"cloud.google.com/go/pubsub/v2"
 	"cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"

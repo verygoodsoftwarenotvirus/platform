@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/keys"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	o11yutils "github.com/verygoodsoftwarenotvirus/platform/v4/observability/utils"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/version"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/keys"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	o11yutils "github.com/verygoodsoftwarenotvirus/platform/v5/observability/utils"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/version"
 
 	slogmulti "github.com/samber/slog-multi"
 	"go.opentelemetry.io/contrib/bridges/otelslog"

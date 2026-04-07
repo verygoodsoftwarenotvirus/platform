@@ -4,15 +4,16 @@ import (
 	"context"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/messagequeue"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/messagequeue/noop"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/messagequeue/pubsub"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/messagequeue/redis"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/messagequeue/sqs"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/messagequeue"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/messagequeue/kafka"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/messagequeue/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/messagequeue/pubsub"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/messagequeue/redis"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/messagequeue/sqs"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	ps "cloud.google.com/go/pubsub/v2"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
@@ -25,6 +26,8 @@ const (
 	ProviderSQS provider = "sqs"
 	// ProviderPubSub is used to refer to GCP Pub/Sub.
 	ProviderPubSub provider = "pubsub"
+	// ProviderKafka is used to refer to Kafka.
+	ProviderKafka provider = "kafka"
 )
 
 var (
@@ -43,6 +46,7 @@ type (
 		SQS      sqs.Config    `envPrefix:"SQS_"    json:"sqs"`
 		PubSub   pubsub.Config `envPrefix:"PUBSUB_" json:"pubSub"`
 		Redis    redis.Config  `envPrefix:"REDIS_"  json:"redis"`
+		Kafka    kafka.Config  `envPrefix:"KAFKA_"  json:"kafka"`
 	}
 
 	// Config is used to indicate how the messaging provider should be configured.
@@ -95,6 +99,8 @@ func ProvideConsumerProvider(ctx context.Context, logger logging.Logger, tracerP
 		return redis.ProvideRedisConsumerProvider(logger, tracerProvider, metricsProvider, c.Consumer.Redis), nil
 	case string(ProviderSQS):
 		return sqs.ProvideSQSConsumerProvider(ctx, logger, tracerProvider, metricsProvider, c.Consumer.SQS), nil
+	case string(ProviderKafka):
+		return kafka.ProvideKafkaConsumerProvider(logger, tracerProvider, metricsProvider, c.Consumer.Kafka), nil
 	case string(ProviderPubSub):
 		client, err := ps.NewClientWithConfig(ctx, c.Consumer.PubSub.ProjectID, &ps.ClientConfig{
 			EnableOpenTelemetryTracing: true,
@@ -121,6 +127,8 @@ func ProvidePublisherProvider(ctx context.Context, logger logging.Logger, tracer
 		return redis.ProvideRedisPublisherProvider(logger, tracerProvider, metricsProvider, c.Publisher.Redis), nil
 	case string(ProviderSQS):
 		return sqs.ProvideSQSPublisherProvider(ctx, logger, tracerProvider, metricsProvider), nil
+	case string(ProviderKafka):
+		return kafka.ProvideKafkaPublisherProvider(logger, tracerProvider, metricsProvider, c.Publisher.Kafka), nil
 	case string(ProviderPubSub):
 		client, err := ps.NewClientWithConfig(ctx, c.Publisher.PubSub.ProjectID, &ps.ClientConfig{
 			EnableOpenTelemetryTracing: true,

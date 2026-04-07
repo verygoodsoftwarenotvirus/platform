@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/secrets"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/secrets"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"

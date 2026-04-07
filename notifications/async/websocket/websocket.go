@@ -4,13 +4,13 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/eventstream"
-	eswebsocket "github.com/verygoodsoftwarenotvirus/platform/v4/eventstream/websocket"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/notifications/async"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/eventstream"
+	eswebsocket "github.com/verygoodsoftwarenotvirus/platform/v5/eventstream/websocket"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/notifications/async"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 )
 
 const o11yName = "async_notifications_websocket"

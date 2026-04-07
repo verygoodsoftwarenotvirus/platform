@@ -3,7 +3,7 @@ package mock
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/featureflags"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/featureflags"
 
 	"github.com/stretchr/testify/mock"
 )

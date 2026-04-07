@@ -4,10 +4,10 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/featureflags"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/featureflags"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/samber/do/v2"
 )

@@ -2,12 +2,14 @@ package posthog
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/analytics"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking"
-	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/analytics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking"
+	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/posthog/posthog-go"
 )
@@ -27,12 +29,14 @@ type (
 		tracer         tracing.Tracer
 		logger         logging.Logger
 		client         posthog.Client
+		eventCounter   metrics.Int64Counter
+		errorCounter   metrics.Int64Counter
 		circuitBreaker circuitbreaking.CircuitBreaker
 	}
 )
 
 // NewPostHogEventReporter returns a new PostHog-backed EventReporter.
-func NewPostHogEventReporter(logger logging.Logger, tracerProvider tracing.TracerProvider, apiKey string, circuitBreaker circuitbreaking.CircuitBreaker, configModifiers ...func(*posthog.Config)) (analytics.EventReporter, error) {
+func NewPostHogEventReporter(logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider, apiKey string, circuitBreaker circuitbreaking.CircuitBreaker, configModifiers ...func(*posthog.Config)) (analytics.EventReporter, error) {
 	if apiKey == "" {
 		return nil, ErrEmptyAPIToken
 	}
@@ -47,10 +51,24 @@ func NewPostHogEventReporter(logger logging.Logger, tracerProvider tracing.Trace
 		return nil, err
 	}
 
+	mp := metrics.EnsureMetricsProvider(metricsProvider)
+
+	eventCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_events", name))
+	if err != nil {
+		return nil, platformerrors.Wrap(err, "creating event counter")
+	}
+
+	errorCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_errors", name))
+	if err != nil {
+		return nil, platformerrors.Wrap(err, "creating error counter")
+	}
+
 	c := &EventReporter{
 		tracer:         tracing.NewNamedTracer(tracerProvider, name),
 		logger:         logging.NewNamedLogger(logger, name),
 		client:         client,
+		eventCounter:   eventCounter,
+		errorCounter:   errorCounter,
 		circuitBreaker: circuitBreaker,
 	}
 
@@ -83,10 +101,12 @@ func (c *EventReporter) AddUser(ctx context.Context, userID string, properties m
 		Properties: props,
 	})
 	if err != nil {
+		c.errorCounter.Add(ctx, 1)
 		c.circuitBreaker.Failed()
 		return err
 	}
 
+	c.eventCounter.Add(ctx, 1)
 	c.circuitBreaker.Succeeded()
 	return nil
 }
@@ -111,10 +131,12 @@ func (c *EventReporter) EventOccurred(ctx context.Context, event, userID string,
 		Properties: props,
 	})
 	if err != nil {
+		c.errorCounter.Add(ctx, 1)
 		c.circuitBreaker.Failed()
 		return err
 	}
 
+	c.eventCounter.Add(ctx, 1)
 	c.circuitBreaker.Succeeded()
 	return nil
 }
@@ -139,10 +161,12 @@ func (c *EventReporter) EventOccurredAnonymous(ctx context.Context, event, anony
 		Properties: props,
 	})
 	if err != nil {
+		c.errorCounter.Add(ctx, 1)
 		c.circuitBreaker.Failed()
 		return err
 	}
 
+	c.eventCounter.Add(ctx, 1)
 	c.circuitBreaker.Succeeded()
 	return nil
 }

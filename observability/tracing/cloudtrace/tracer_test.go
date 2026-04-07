@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 )
 
 func Test_tracingErrorHandler_Handle(T *testing.T) {

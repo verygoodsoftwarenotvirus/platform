@@ -3,7 +3,7 @@ package pointer_test
 import (
 	"fmt"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/pointer"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/pointer"
 )
 
 func ExampleTo() {

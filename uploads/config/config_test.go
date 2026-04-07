@@ -3,7 +3,7 @@ package config
 import (
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/uploads/objectstorage"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/uploads/objectstorage"
 
 	"github.com/stretchr/testify/assert"
 )

@@ -1,9 +1,9 @@
 package aes
 
 import (
-	"github.com/verygoodsoftwarenotvirus/platform/v4/cryptography/encryption"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/cryptography/encryption"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 )
 
 // aesImpl is the standard EncryptorDecryptor implementation.

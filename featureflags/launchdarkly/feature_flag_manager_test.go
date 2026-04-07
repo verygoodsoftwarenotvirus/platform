@@ -4,11 +4,11 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking"
-	mockCircuitBreaker "github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/mock"
-	cbnoop "github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/noop"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking"
+	mockCircuitBreaker "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/mock"
+	cbnoop "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	ld "github.com/launchdarkly/go-server-sdk/v6"
 	"github.com/launchdarkly/go-server-sdk/v6/subsystems"
@@ -42,7 +42,7 @@ func buildTestManager(t *testing.T, cb circuitbreaking.CircuitBreaker) *featureF
 
 	cfg := &Config{SDKKey: t.Name()}
 
-	ffm, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), http.DefaultClient, cb, func(config ld.Config) ld.Config {
+	ffm, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, http.DefaultClient, cb, func(config ld.Config) ld.Config {
 		config.DataSource = &fakeLaunchDarklyDataSourceBuilder{}
 		return config
 	})
@@ -60,7 +60,7 @@ func TestNewFeatureFlagManager(T *testing.T) {
 
 		cfg := &Config{SDKKey: t.Name()}
 
-		actual, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), http.DefaultClient, cbnoop.NewCircuitBreaker(), func(config ld.Config) ld.Config {
+		actual, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, http.DefaultClient, cbnoop.NewCircuitBreaker(), func(config ld.Config) ld.Config {
 			config.DataSource = &fakeLaunchDarklyDataSourceBuilder{}
 			return config
 		})
@@ -73,7 +73,7 @@ func TestNewFeatureFlagManager(T *testing.T) {
 
 		cfg := &Config{SDKKey: t.Name()}
 
-		actual, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker())
+		actual, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, nil, cbnoop.NewCircuitBreaker())
 		require.Error(t, err)
 		require.Nil(t, actual)
 	})
@@ -81,7 +81,7 @@ func TestNewFeatureFlagManager(T *testing.T) {
 	T.Run("with nil config", func(t *testing.T) {
 		t.Parallel()
 
-		actual, err := NewFeatureFlagManager(nil, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), http.DefaultClient, cbnoop.NewCircuitBreaker())
+		actual, err := NewFeatureFlagManager(nil, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, http.DefaultClient, cbnoop.NewCircuitBreaker())
 		require.Error(t, err)
 		require.Nil(t, actual)
 	})
@@ -91,7 +91,7 @@ func TestNewFeatureFlagManager(T *testing.T) {
 
 		cfg := &Config{}
 
-		actual, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), http.DefaultClient, cbnoop.NewCircuitBreaker(), func(config ld.Config) ld.Config {
+		actual, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, http.DefaultClient, cbnoop.NewCircuitBreaker(), func(config ld.Config) ld.Config {
 			config.DataSource = &fakeLaunchDarklyDataSourceBuilder{}
 			return config
 		})
@@ -104,7 +104,7 @@ func TestNewFeatureFlagManager(T *testing.T) {
 
 		cfg := &Config{SDKKey: t.Name(), InitTimeout: 0}
 
-		actual, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), http.DefaultClient, cbnoop.NewCircuitBreaker(), func(config ld.Config) ld.Config {
+		actual, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, http.DefaultClient, cbnoop.NewCircuitBreaker(), func(config ld.Config) ld.Config {
 			config.DataSource = &fakeLaunchDarklyDataSourceBuilder{}
 			return config
 		})

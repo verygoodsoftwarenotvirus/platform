@@ -3,7 +3,7 @@ package noop
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/retry"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/retry"
 )
 
 var _ retry.Policy = (*policy)(nil)

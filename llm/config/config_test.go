@@ -3,7 +3,7 @@ package llmcfg
 import (
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/llm/openai"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/llm/openai"
 
 	"github.com/stretchr/testify/require"
 )

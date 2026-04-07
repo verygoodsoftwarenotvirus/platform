@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/messagequeue/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/messagequeue/noop"
 )
 
 func ExampleNewPublisher() {

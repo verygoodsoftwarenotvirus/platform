@@ -4,11 +4,11 @@ import (
 	"context"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging/otelgrpc"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging/slog"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging/zap"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging/zerolog"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging/otelgrpc"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging/slog"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging/zap"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging/zerolog"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )

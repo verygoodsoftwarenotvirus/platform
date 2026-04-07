@@ -4,12 +4,12 @@ import (
 	"context"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/embeddings"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/embeddings/cohere"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/embeddings/ollama"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/embeddings/openai"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/embeddings"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/embeddings/cohere"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/embeddings/ollama"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/embeddings/openai"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 )
 
 // ProvideEmbedder provides an Embedder from config.

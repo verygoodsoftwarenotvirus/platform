@@ -3,7 +3,7 @@ package noop
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/featureflags"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/featureflags"
 )
 
 var _ featureflags.FeatureFlagManager = (*featureFlagManager)(nil)

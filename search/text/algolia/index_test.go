@@ -4,11 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking"
-	mockcircuitbreaking "github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/mock"
-	cbnoop "github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/noop"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking"
+	mockcircuitbreaking "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/mock"
+	cbnoop "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

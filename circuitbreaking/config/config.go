@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/noop"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	circuit "github.com/rubyist/circuitbreaker"

@@ -9,7 +9,7 @@ import (
 	"image/png"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
 
 	"github.com/nfnt/resize"
 )

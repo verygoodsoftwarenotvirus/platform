@@ -1,7 +1,7 @@
 package circuitbreaking
 
 import (
-	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
 )
 
 // ErrCircuitBroken is returned when a circuit breaker has tripped.

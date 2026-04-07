@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,7 +22,7 @@ func TestNewSender(T *testing.T) {
 	T.Run("with nil config", func(t *testing.T) {
 		t.Parallel()
 
-		sender, err := NewSender(ctx, nil, tracingProvider, logger)
+		sender, err := NewSender(ctx, nil, tracingProvider, logger, nil)
 		assert.Nil(t, sender)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "config is required")
@@ -34,7 +34,7 @@ func TestNewSender(T *testing.T) {
 		cfg := &Config{
 			CredentialsPath: filepath.Join(t.TempDir(), "nonexistent-firebase-credentials.json"),
 		}
-		sender, err := NewSender(ctx, cfg, tracingProvider, logger)
+		sender, err := NewSender(ctx, cfg, tracingProvider, logger, nil)
 		assert.Nil(t, sender)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "credentials file not found")
@@ -44,7 +44,7 @@ func TestNewSender(T *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{CredentialsPath: ""}
-		sender, err := NewSender(ctx, cfg, tracingProvider, logger)
+		sender, err := NewSender(ctx, cfg, tracingProvider, logger, nil)
 		// ADC typically fails without GCP credentials in test env
 		if err != nil {
 			assert.Nil(t, sender)
@@ -63,7 +63,7 @@ func TestNewSender(T *testing.T) {
 		require.NoError(t, os.WriteFile(path, []byte("not valid json"), 0o600))
 
 		cfg := &Config{CredentialsPath: path}
-		sender, err := NewSender(ctx, cfg, tracingProvider, logger)
+		sender, err := NewSender(ctx, cfg, tracingProvider, logger, nil)
 		assert.Nil(t, sender)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "fcm:")

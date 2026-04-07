@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/identifiers"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/identifiers"
 
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/stretchr/testify/assert"

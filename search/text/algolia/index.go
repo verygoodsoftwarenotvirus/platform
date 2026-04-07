@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking"
-	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/keys"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking"
+	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/keys"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 )
 
 const (

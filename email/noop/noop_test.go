@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/email"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/email"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

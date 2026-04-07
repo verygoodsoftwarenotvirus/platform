@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/eventstream"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/eventstream"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 )
 
 var (

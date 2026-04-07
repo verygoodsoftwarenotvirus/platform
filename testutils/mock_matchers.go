@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/database/filtering"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/database/filtering"
 
 	"github.com/stretchr/testify/mock"
 )

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/featureflags/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/featureflags/noop"
 )
 
 func ExampleNewFeatureFlagManager() {

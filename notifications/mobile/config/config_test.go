@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/notifications/mobile"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/notifications/mobile"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -114,7 +114,7 @@ func TestConfig_ProvidePushSender(T *testing.T) {
 		t.Parallel()
 
 		cfg := Config{Provider: ""}
-		sender, err := cfg.ProvidePushSender(ctx, logger, tracer)
+		sender, err := cfg.ProvidePushSender(ctx, logger, tracer, nil)
 		require.NoError(t, err)
 		require.NotNil(t, sender)
 		// Noop returns nil on SendPush
@@ -125,7 +125,7 @@ func TestConfig_ProvidePushSender(T *testing.T) {
 		t.Parallel()
 
 		cfg := Config{Provider: ProviderNoop}
-		sender, err := cfg.ProvidePushSender(ctx, logger, tracer)
+		sender, err := cfg.ProvidePushSender(ctx, logger, tracer, nil)
 		require.NoError(t, err)
 		require.NotNil(t, sender)
 		assert.NoError(t, sender.SendPush(ctx, "android", "token", mobile.PushMessage{Title: "title", Body: "body"}))
@@ -139,7 +139,7 @@ func TestConfig_ProvidePushSender(T *testing.T) {
 			APNs:     nil,
 			FCM:      &FCMConfig{},
 		}
-		sender, err := cfg.ProvidePushSender(ctx, logger, tracer)
+		sender, err := cfg.ProvidePushSender(ctx, logger, tracer, nil)
 		require.NoError(t, err)
 		require.NotNil(t, sender)
 		// FCM init typically fails in unit tests (no ADC), so we get noop; if it succeeds, iOS would error
@@ -155,7 +155,7 @@ func TestConfig_ProvidePushSender(T *testing.T) {
 			APNs:     &APNsConfig{AuthKeyPath: p8Path, KeyID: "x", TeamID: "x", BundleID: "x"},
 			FCM:      nil,
 		}
-		sender, err := cfg.ProvidePushSender(ctx, logger, tracer)
+		sender, err := cfg.ProvidePushSender(ctx, logger, tracer, nil)
 		require.NoError(t, err)
 		require.NotNil(t, sender)
 		// Android not configured, should return ErrPlatformNotSupported
@@ -172,7 +172,7 @@ func TestConfig_ProvidePushSender(T *testing.T) {
 			APNs:     &APNsConfig{AuthKeyPath: filepath.Join(t.TempDir(), "nonexistent.p8"), KeyID: "x", TeamID: "x", BundleID: "x"},
 			FCM:      &FCMConfig{},
 		}
-		sender, err := cfg.ProvidePushSender(ctx, logger, tracer)
+		sender, err := cfg.ProvidePushSender(ctx, logger, tracer, nil)
 		require.NoError(t, err)
 		require.NotNil(t, sender)
 		// APNs init fails; FCM init typically fails in unit tests, so we get noop
@@ -188,7 +188,7 @@ func TestConfig_ProvidePushSender(T *testing.T) {
 			APNs:     &APNsConfig{AuthKeyPath: p8Path, KeyID: "x", TeamID: "x", BundleID: "x"},
 			FCM:      &FCMConfig{CredentialsPath: filepath.Join(t.TempDir(), "nonexistent.json")},
 		}
-		sender, err := cfg.ProvidePushSender(ctx, logger, tracer)
+		sender, err := cfg.ProvidePushSender(ctx, logger, tracer, nil)
 		require.NoError(t, err)
 		require.NotNil(t, sender)
 		// FCM init fails, so Android not configured; should return ErrPlatformNotSupported
@@ -201,7 +201,7 @@ func TestConfig_ProvidePushSender(T *testing.T) {
 		t.Parallel()
 
 		cfg := Config{Provider: "unknown"}
-		sender, err := cfg.ProvidePushSender(ctx, logger, tracer)
+		sender, err := cfg.ProvidePushSender(ctx, logger, tracer, nil)
 		require.NoError(t, err)
 		require.NotNil(t, sender)
 		assert.NoError(t, sender.SendPush(ctx, "ios", "token", mobile.PushMessage{Title: "title", Body: "body"}))

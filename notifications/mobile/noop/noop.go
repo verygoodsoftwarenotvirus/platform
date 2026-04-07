@@ -3,7 +3,7 @@ package noop
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/notifications/mobile"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/notifications/mobile"
 )
 
 var _ mobile.PushNotificationSender = (*pushNotificationSender)(nil)

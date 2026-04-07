@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,7 +46,7 @@ func TestNewSender(T *testing.T) {
 	T.Run("with nil config", func(t *testing.T) {
 		t.Parallel()
 
-		sender, err := NewSender(nil, tracingProvider, logger)
+		sender, err := NewSender(nil, tracingProvider, logger, nil)
 		assert.Nil(t, sender)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "missing required config")
@@ -61,7 +61,7 @@ func TestNewSender(T *testing.T) {
 			BundleID:   "com.example.app",
 			Production: false,
 		}
-		sender, err := NewSender(cfg, tracingProvider, logger)
+		sender, err := NewSender(cfg, tracingProvider, logger, nil)
 		assert.Nil(t, sender)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "missing required config")
@@ -77,7 +77,7 @@ func TestNewSender(T *testing.T) {
 			BundleID:    "com.example.app",
 			Production:  false,
 		}
-		sender, err := NewSender(cfg, tracingProvider, logger)
+		sender, err := NewSender(cfg, tracingProvider, logger, nil)
 		assert.Nil(t, sender)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "missing required config")
@@ -93,7 +93,7 @@ func TestNewSender(T *testing.T) {
 			BundleID:    "com.example.app",
 			Production:  false,
 		}
-		sender, err := NewSender(cfg, tracingProvider, logger)
+		sender, err := NewSender(cfg, tracingProvider, logger, nil)
 		assert.Nil(t, sender)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "loading auth key")
@@ -110,7 +110,7 @@ func TestNewSender(T *testing.T) {
 			BundleID:    "com.example.app",
 			Production:  false,
 		}
-		sender, err := NewSender(cfg, tracingProvider, logger)
+		sender, err := NewSender(cfg, tracingProvider, logger, nil)
 		require.NoError(t, err)
 		require.NotNil(t, sender)
 		assert.Equal(t, "com.example.app", sender.topic)
@@ -128,7 +128,7 @@ func TestSender_Send_rejectsInvalidDeviceToken(T *testing.T) {
 		BundleID:    "com.example.app",
 		Production:  false,
 	}
-	sender, err := NewSender(cfg, tracing.NewNoopTracerProvider(), logging.NewNoopLogger())
+	sender, err := NewSender(cfg, tracing.NewNoopTracerProvider(), logging.NewNoopLogger(), nil)
 	require.NoError(T, err)
 
 	ctx := T.Context()

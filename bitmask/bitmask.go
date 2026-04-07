@@ -5,7 +5,7 @@ import (
 	"math/bits"
 	"strconv"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
 )
 
 // Unsigned is a constraint for fixed-width unsigned integer types that can be used as bitmask values.

@@ -5,14 +5,15 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking"
-	circuitbreakingcfg "github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/config"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/featureflags"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/featureflags/launchdarkly"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/featureflags/noop"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/featureflags/posthog"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking"
+	circuitbreakingcfg "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/config"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/featureflags"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/featureflags/launchdarkly"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/featureflags/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/featureflags/posthog"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
@@ -50,12 +51,12 @@ func (c *Config) ValidateWithContext(ctx context.Context) error {
 	)
 }
 
-func (c *Config) ProvideFeatureFlagManager(logger logging.Logger, tracerProvider tracing.TracerProvider, httpClient *http.Client, circuitBreaker circuitbreaking.CircuitBreaker) (featureflags.FeatureFlagManager, error) {
+func (c *Config) ProvideFeatureFlagManager(logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider, httpClient *http.Client, circuitBreaker circuitbreaking.CircuitBreaker) (featureflags.FeatureFlagManager, error) {
 	switch strings.TrimSpace(strings.ToLower(c.Provider)) {
 	case ProviderLaunchDarkly:
-		return launchdarkly.NewFeatureFlagManager(c.LaunchDarkly, logger, tracerProvider, httpClient, circuitBreaker)
+		return launchdarkly.NewFeatureFlagManager(c.LaunchDarkly, logger, tracerProvider, metricsProvider, httpClient, circuitBreaker)
 	case ProviderPostHog:
-		return posthog.NewFeatureFlagManager(c.PostHog, logger, tracerProvider, circuitBreaker)
+		return posthog.NewFeatureFlagManager(c.PostHog, logger, tracerProvider, metricsProvider, circuitBreaker)
 	default:
 		return noop.NewFeatureFlagManager(), nil
 	}

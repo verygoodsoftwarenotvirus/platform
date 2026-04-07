@@ -4,11 +4,11 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/featureflags"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/featureflags"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 )
 
 // ProvideFeatureFlagManager provides a FeatureFlagManager from config.
@@ -18,5 +18,5 @@ func ProvideFeatureFlagManager(ctx context.Context, c *Config, logger logging.Lo
 		return nil, errors.Wrap(err, "failed to initialize feature flag circuit breaker")
 	}
 
-	return c.ProvideFeatureFlagManager(logger, tracerProvider, httpClient, circuitBreaker)
+	return c.ProvideFeatureFlagManager(logger, tracerProvider, metricsProvider, httpClient, circuitBreaker)
 }

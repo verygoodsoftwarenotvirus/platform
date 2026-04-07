@@ -4,11 +4,11 @@ import (
 	"context"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/capitalism"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/capitalism/stripe"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/capitalism"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/capitalism/stripe"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )

@@ -8,12 +8,12 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/keys"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/panicking"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/keys"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/panicking"
 
 	"github.com/BurntSushi/toml"
 	"gopkg.in/yaml.v3"

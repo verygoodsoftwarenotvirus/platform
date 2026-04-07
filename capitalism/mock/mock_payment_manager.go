@@ -3,7 +3,7 @@ package capitalismmock
 import (
 	"net/http"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/capitalism"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/capitalism"
 
 	"github.com/stretchr/testify/mock"
 )

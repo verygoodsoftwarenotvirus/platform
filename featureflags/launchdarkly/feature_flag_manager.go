@@ -2,16 +2,18 @@ package launchdarkly
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking"
-	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/featureflags"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/keys"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking"
+	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/featureflags"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/keys"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	ld "github.com/launchdarkly/go-server-sdk/v6"
 	"github.com/launchdarkly/go-server-sdk/v6/ldcomponents"
@@ -38,11 +40,14 @@ type (
 		circuitBreaker circuitbreaking.CircuitBreaker
 		logger         logging.Logger
 		tracer         tracing.Tracer
+		evalCounter    metrics.Int64Counter
+		errorCounter   metrics.Int64Counter
+		latencyHist    metrics.Float64Histogram
 	}
 )
 
 // NewFeatureFlagManager constructs a new featureFlagManager backed by OpenFeature.
-func NewFeatureFlagManager(cfg *Config, logger logging.Logger, tracerProvider tracing.TracerProvider, httpClient *http.Client, circuitBreaker circuitbreaking.CircuitBreaker, configModifiers ...func(ld.Config) ld.Config) (featureflags.FeatureFlagManager, error) {
+func NewFeatureFlagManager(cfg *Config, logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider, httpClient *http.Client, circuitBreaker circuitbreaking.CircuitBreaker, configModifiers ...func(ld.Config) ld.Config) (featureflags.FeatureFlagManager, error) {
 	if httpClient == nil {
 		return nil, ErrMissingHTTPClient
 	}
@@ -88,12 +93,32 @@ func NewFeatureFlagManager(cfg *Config, logger logging.Logger, tracerProvider tr
 
 	ofClient := openfeature.NewClient(clientDomain)
 
+	mp := metrics.EnsureMetricsProvider(metricsProvider)
+
+	evalCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_evaluations", serviceName))
+	if err != nil {
+		return nil, platformerrors.Wrap(err, "creating eval counter")
+	}
+
+	errorCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_errors", serviceName))
+	if err != nil {
+		return nil, platformerrors.Wrap(err, "creating error counter")
+	}
+
+	latencyHist, err := mp.NewFloat64Histogram(fmt.Sprintf("%s_latency_ms", serviceName))
+	if err != nil {
+		return nil, platformerrors.Wrap(err, "creating latency histogram")
+	}
+
 	ffm := &featureFlagManager{
 		logger:         logging.EnsureLogger(logger),
 		circuitBreaker: circuitBreaker,
 		tracer:         tracing.NewNamedTracer(tracerProvider, serviceName),
 		ldClient:       client,
 		ofClient:       ofClient,
+		evalCounter:    evalCounter,
+		errorCounter:   errorCounter,
+		latencyHist:    latencyHist,
 	}
 
 	return ffm, nil
@@ -110,13 +135,17 @@ func (f *featureFlagManager) CanUseFeature(ctx context.Context, userID, feature 
 		return false, circuitbreaking.ErrCircuitBroken
 	}
 
+	startTime := time.Now()
 	evalCtx := openfeature.NewEvaluationContext(userID, nil)
 	result, err := f.ofClient.BooleanValue(ctx, feature, false, evalCtx)
+	f.latencyHist.Record(ctx, float64(time.Since(startTime).Milliseconds()))
 	if err != nil {
+		f.errorCounter.Add(ctx, 1)
 		f.circuitBreaker.Failed()
 		return false, observability.PrepareAndLogError(err, logger, span, "checking feature flag variation")
 	}
 
+	f.evalCounter.Add(ctx, 1)
 	f.circuitBreaker.Succeeded()
 	return result, nil
 }
@@ -132,13 +161,17 @@ func (f *featureFlagManager) GetStringValue(ctx context.Context, userID, feature
 		return "", circuitbreaking.ErrCircuitBroken
 	}
 
+	startTime := time.Now()
 	evalCtx := openfeature.NewEvaluationContext(userID, nil)
 	result, err := f.ofClient.StringValue(ctx, feature, "", evalCtx)
+	f.latencyHist.Record(ctx, float64(time.Since(startTime).Milliseconds()))
 	if err != nil {
+		f.errorCounter.Add(ctx, 1)
 		f.circuitBreaker.Failed()
 		return "", observability.PrepareAndLogError(err, logger, span, "checking feature flag string variation")
 	}
 
+	f.evalCounter.Add(ctx, 1)
 	f.circuitBreaker.Succeeded()
 	return result, nil
 }
@@ -154,13 +187,17 @@ func (f *featureFlagManager) GetInt64Value(ctx context.Context, userID, feature 
 		return 0, circuitbreaking.ErrCircuitBroken
 	}
 
+	startTime := time.Now()
 	evalCtx := openfeature.NewEvaluationContext(userID, nil)
 	result, err := f.ofClient.IntValue(ctx, feature, 0, evalCtx)
+	f.latencyHist.Record(ctx, float64(time.Since(startTime).Milliseconds()))
 	if err != nil {
+		f.errorCounter.Add(ctx, 1)
 		f.circuitBreaker.Failed()
 		return 0, observability.PrepareAndLogError(err, logger, span, "checking feature flag int variation")
 	}
 
+	f.evalCounter.Add(ctx, 1)
 	f.circuitBreaker.Succeeded()
 	return result, nil
 }

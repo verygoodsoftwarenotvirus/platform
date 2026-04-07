@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"io"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
 
 	"github.com/klauspost/compress/s2"
 	"github.com/klauspost/compress/zstd"

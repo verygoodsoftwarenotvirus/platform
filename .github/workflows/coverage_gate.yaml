@@ -9,7 +9,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-name: codecov (pr)
+name: coverage gate
 jobs:
   coverage:
     timeout-minutes: 25
@@ -36,4 +36,10 @@ jobs:
         with:
           files: ./coverage.out
           fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
           token: ${{ secrets.CODECOV_TOKEN }}

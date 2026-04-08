@@ -29,6 +29,8 @@ jobs:
           cache-dependency-path: go.sum
 
       - name: run tests with coverage
+        env:
+          RUN_CONTAINER_TESTS: "true"
         run: ./.scripts/coverage.sh coverage.out
 
       - name: Upload coverage to Codecov

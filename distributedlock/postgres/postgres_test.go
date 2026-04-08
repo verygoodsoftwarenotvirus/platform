@@ -3,22 +3,28 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking"
+	cbmock "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/mock"
 	cbnoop "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/noop"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/database"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/distributedlock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/identifiers"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	postgrescontainer "github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"go.opentelemetry.io/otel/metric"
 )
 
 const postgresImage = "postgres:16-alpine"
@@ -81,6 +87,56 @@ func newTestLocker(t *testing.T, client database.Client) distributedlock.Locker 
 
 // --------- unit tests (no container) ---------
 
+// errorAtCallProvider wraps a noop metrics provider but injects errors at a
+// specific Int64Counter call index or on the Float64Histogram call. It exists
+// so the constructor's metric-creation error branches can be exercised.
+type errorAtCallProvider struct {
+	metrics.Provider
+	errOnInt64Counter     int
+	int64CallCount        int
+	errOnFloat64Histogram bool
+}
+
+func newErrorAtCallProvider(int64FailIdx int, histFail bool) *errorAtCallProvider {
+	return &errorAtCallProvider{
+		Provider:              metrics.NewNoopMetricsProvider(),
+		errOnInt64Counter:     int64FailIdx,
+		errOnFloat64Histogram: histFail,
+	}
+}
+
+func (p *errorAtCallProvider) NewInt64Counter(name string, options ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+	p.int64CallCount++
+	if p.errOnInt64Counter == p.int64CallCount {
+		return nil, errors.New("simulated counter error")
+	}
+	return p.Provider.NewInt64Counter(name, options...)
+}
+
+func (p *errorAtCallProvider) NewFloat64Histogram(name string, options ...metric.Float64HistogramOption) (metrics.Float64Histogram, error) {
+	if p.errOnFloat64Histogram {
+		return nil, errors.New("simulated histogram error")
+	}
+	return p.Provider.NewFloat64Histogram(name, options...)
+}
+
+// buildSqlmockClient builds a testDBClient backed by go-sqlmock so unit tests
+// can drive the locker without spinning up a real postgres.
+func buildSqlmockClient(t *testing.T) (*testDBClient, sqlmock.Sqlmock) {
+	t.Helper()
+	db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+	require.NoError(t, err)
+	return &testDBClient{db: db}, mock
+}
+
+func newTestLockerWithCB(t *testing.T, client database.Client, cb circuitbreaking.CircuitBreaker) distributedlock.Locker {
+	t.Helper()
+	l, err := NewPostgresLocker(&Config{}, client, nil, nil, nil, cb)
+	require.NoError(t, err)
+	require.NotNil(t, l)
+	return l
+}
+
 func TestNewPostgresLocker(T *testing.T) {
 	T.Parallel()
 
@@ -94,6 +150,414 @@ func TestNewPostgresLocker(T *testing.T) {
 		t.Parallel()
 		_, err := NewPostgresLocker(&Config{}, nil, nil, nil, nil, cbnoop.NewCircuitBreaker())
 		require.ErrorIs(t, err, distributedlock.ErrNilDatabaseClient)
+	})
+
+	T.Run("standard happy path", func(t *testing.T) {
+		t.Parallel()
+		client, _ := buildSqlmockClient(t)
+		t.Cleanup(func() { _ = client.Close() })
+		l, err := NewPostgresLocker(&Config{Namespace: 7}, client, nil, nil, nil, cbnoop.NewCircuitBreaker())
+		require.NoError(t, err)
+		require.NotNil(t, l)
+	})
+
+	// Each Int64Counter creation has its own error branch; exercise them all so
+	// no error path is left untested.
+	for idx := 1; idx <= 5; idx++ {
+		T.Run("int64 counter creation failure", func(t *testing.T) {
+			t.Parallel()
+			client, _ := buildSqlmockClient(t)
+			t.Cleanup(func() { _ = client.Close() })
+			mp := newErrorAtCallProvider(idx, false)
+			_, err := NewPostgresLocker(&Config{}, client, nil, nil, mp, cbnoop.NewCircuitBreaker())
+			require.Error(t, err)
+		})
+	}
+
+	T.Run("float64 histogram creation failure", func(t *testing.T) {
+		t.Parallel()
+		client, _ := buildSqlmockClient(t)
+		t.Cleanup(func() { _ = client.Close() })
+		mp := newErrorAtCallProvider(0, true)
+		_, err := NewPostgresLocker(&Config{}, client, nil, nil, mp, cbnoop.NewCircuitBreaker())
+		require.Error(t, err)
+	})
+}
+
+func TestLocker_Acquire_Unit(T *testing.T) {
+	T.Parallel()
+
+	T.Run("happy path", func(t *testing.T) {
+		t.Parallel()
+		client, mock := buildSqlmockClient(t)
+		t.Cleanup(func() { _ = client.Close() })
+		l := newTestLocker(t, client)
+
+		mock.ExpectQuery(`SELECT pg_try_advisory_lock`).
+			WithArgs(hashLockID(0, "k")).
+			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
+
+		got, err := l.Acquire(t.Context(), "k", time.Minute)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+		assert.Equal(t, "k", got.Key())
+		assert.Equal(t, time.Minute, got.TTL())
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	T.Run("rejects empty key", func(t *testing.T) {
+		t.Parallel()
+		client, _ := buildSqlmockClient(t)
+		t.Cleanup(func() { _ = client.Close() })
+		l := newTestLocker(t, client)
+		_, err := l.Acquire(t.Context(), "", time.Minute)
+		require.ErrorIs(t, err, distributedlock.ErrEmptyKey)
+	})
+
+	T.Run("rejects zero TTL", func(t *testing.T) {
+		t.Parallel()
+		client, _ := buildSqlmockClient(t)
+		t.Cleanup(func() { _ = client.Close() })
+		l := newTestLocker(t, client)
+		_, err := l.Acquire(t.Context(), "k", 0)
+		require.ErrorIs(t, err, distributedlock.ErrInvalidTTL)
+	})
+
+	T.Run("rejects negative TTL", func(t *testing.T) {
+		t.Parallel()
+		client, _ := buildSqlmockClient(t)
+		t.Cleanup(func() { _ = client.Close() })
+		l := newTestLocker(t, client)
+		_, err := l.Acquire(t.Context(), "k", -time.Second)
+		require.ErrorIs(t, err, distributedlock.ErrInvalidTTL)
+	})
+
+	T.Run("blocked by circuit breaker", func(t *testing.T) {
+		t.Parallel()
+		client, _ := buildSqlmockClient(t)
+		t.Cleanup(func() { _ = client.Close() })
+		cb := &cbmock.MockCircuitBreaker{}
+		cb.On("CannotProceed").Return(true)
+		l := newTestLockerWithCB(t, client, cb)
+		_, err := l.Acquire(t.Context(), "k", time.Minute)
+		require.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
+		cb.AssertExpectations(t)
+	})
+
+	T.Run("Conn reservation failure", func(t *testing.T) {
+		t.Parallel()
+		client, mock := buildSqlmockClient(t)
+		mock.ExpectClose()
+		l := newTestLocker(t, client)
+		// Close the underlying DB so Conn() returns an error.
+		require.NoError(t, client.Close())
+
+		_, err := l.Acquire(t.Context(), "k", time.Minute)
+		require.Error(t, err)
+	})
+
+	T.Run("pg_try_advisory_lock query failure", func(t *testing.T) {
+		t.Parallel()
+		client, mock := buildSqlmockClient(t)
+		t.Cleanup(func() { _ = client.Close() })
+		l := newTestLocker(t, client)
+
+		mock.ExpectQuery(`SELECT pg_try_advisory_lock`).
+			WithArgs(hashLockID(0, "k")).
+			WillReturnError(errors.New("query boom"))
+
+		_, err := l.Acquire(t.Context(), "k", time.Minute)
+		require.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	T.Run("contention returns ErrLockNotAcquired", func(t *testing.T) {
+		t.Parallel()
+		client, mock := buildSqlmockClient(t)
+		t.Cleanup(func() { _ = client.Close() })
+		l := newTestLocker(t, client)
+
+		mock.ExpectQuery(`SELECT pg_try_advisory_lock`).
+			WithArgs(hashLockID(0, "k")).
+			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(false))
+
+		_, err := l.Acquire(t.Context(), "k", time.Minute)
+		require.ErrorIs(t, err, distributedlock.ErrLockNotAcquired)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+}
+
+func TestLocker_Release_Unit(T *testing.T) {
+	T.Parallel()
+
+	T.Run("happy path", func(t *testing.T) {
+		t.Parallel()
+		client, mock := buildSqlmockClient(t)
+		t.Cleanup(func() { _ = client.Close() })
+		l := newTestLocker(t, client)
+
+		mock.ExpectQuery(`SELECT pg_try_advisory_lock`).
+			WithArgs(hashLockID(0, "k")).
+			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
+		mock.ExpectQuery(`SELECT pg_advisory_unlock`).
+			WithArgs(hashLockID(0, "k")).
+			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
+
+		h, err := l.Acquire(t.Context(), "k", time.Minute)
+		require.NoError(t, err)
+		require.NoError(t, h.Release(t.Context()))
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	T.Run("blocked by circuit breaker", func(t *testing.T) {
+		t.Parallel()
+		client, mock := buildSqlmockClient(t)
+		t.Cleanup(func() { _ = client.Close() })
+		cb := &cbmock.MockCircuitBreaker{}
+		cb.On("CannotProceed").Return(false).Once()
+		cb.On("Succeeded").Return().Once()
+		cb.On("CannotProceed").Return(true).Once()
+		l := newTestLockerWithCB(t, client, cb)
+
+		mock.ExpectQuery(`SELECT pg_try_advisory_lock`).
+			WithArgs(hashLockID(0, "k")).
+			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
+
+		h, err := l.Acquire(t.Context(), "k", time.Minute)
+		require.NoError(t, err)
+		require.ErrorIs(t, h.Release(t.Context()), circuitbreaking.ErrCircuitBroken)
+		cb.AssertExpectations(t)
+	})
+
+	T.Run("double release returns ErrLockNotHeld", func(t *testing.T) {
+		t.Parallel()
+		client, mock := buildSqlmockClient(t)
+		t.Cleanup(func() { _ = client.Close() })
+		l := newTestLocker(t, client)
+
+		mock.ExpectQuery(`SELECT pg_try_advisory_lock`).
+			WithArgs(hashLockID(0, "k")).
+			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
+		mock.ExpectQuery(`SELECT pg_advisory_unlock`).
+			WithArgs(hashLockID(0, "k")).
+			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
+
+		h, err := l.Acquire(t.Context(), "k", time.Minute)
+		require.NoError(t, err)
+		require.NoError(t, h.Release(t.Context()))
+		require.ErrorIs(t, h.Release(t.Context()), distributedlock.ErrLockNotHeld)
+	})
+
+	T.Run("releaseLocked deferred conn close error tolerated", func(t *testing.T) {
+		t.Parallel()
+		client, mock := buildSqlmockClient(t)
+		t.Cleanup(func() { _ = client.Close() })
+		l := newTestLocker(t, client)
+
+		mock.ExpectQuery(`SELECT pg_try_advisory_lock`).
+			WithArgs(hashLockID(0, "k")).
+			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
+
+		h, err := l.Acquire(t.Context(), "k", time.Minute)
+		require.NoError(t, err)
+
+		// Force the deferred conn.Close inside releaseLocked to fail by closing
+		// the conn here first. The QueryRowContext on the already-closed conn
+		// will also fail (covered by the SQL failure subtest below); the value
+		// of this case is exercising the deferred Close error branch.
+		inner := h.(*lock)
+		require.NoError(t, inner.conn.Close())
+
+		require.Error(t, h.Release(t.Context()))
+	})
+
+	T.Run("releaseLocked SQL failure trips breaker", func(t *testing.T) {
+		t.Parallel()
+		client, mock := buildSqlmockClient(t)
+		t.Cleanup(func() { _ = client.Close() })
+		cb := &cbmock.MockCircuitBreaker{}
+		cb.On("CannotProceed").Return(false)
+		cb.On("Succeeded").Return().Once()
+		cb.On("Failed").Return().Once()
+		l := newTestLockerWithCB(t, client, cb)
+
+		mock.ExpectQuery(`SELECT pg_try_advisory_lock`).
+			WithArgs(hashLockID(0, "k")).
+			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
+		mock.ExpectQuery(`SELECT pg_advisory_unlock`).
+			WithArgs(hashLockID(0, "k")).
+			WillReturnError(errors.New("unlock boom"))
+
+		h, err := l.Acquire(t.Context(), "k", time.Minute)
+		require.NoError(t, err)
+		require.Error(t, h.Release(t.Context()))
+		cb.AssertExpectations(t)
+	})
+}
+
+func TestLocker_Refresh_Unit(T *testing.T) {
+	T.Parallel()
+
+	T.Run("happy path updates TTL", func(t *testing.T) {
+		t.Parallel()
+		client, mock := buildSqlmockClient(t)
+		t.Cleanup(func() { _ = client.Close() })
+		l := newTestLocker(t, client)
+
+		mock.ExpectQuery(`SELECT pg_try_advisory_lock`).
+			WithArgs(hashLockID(0, "k")).
+			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
+		mock.ExpectQuery(`SELECT 1`).
+			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(1))
+
+		h, err := l.Acquire(t.Context(), "k", time.Minute)
+		require.NoError(t, err)
+		require.NoError(t, h.Refresh(t.Context(), 5*time.Minute))
+		assert.Equal(t, 5*time.Minute, h.TTL())
+	})
+
+	T.Run("rejects zero TTL", func(t *testing.T) {
+		t.Parallel()
+		client, mock := buildSqlmockClient(t)
+		t.Cleanup(func() { _ = client.Close() })
+		l := newTestLocker(t, client)
+
+		mock.ExpectQuery(`SELECT pg_try_advisory_lock`).
+			WithArgs(hashLockID(0, "k")).
+			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
+
+		h, err := l.Acquire(t.Context(), "k", time.Minute)
+		require.NoError(t, err)
+		require.ErrorIs(t, h.Refresh(t.Context(), 0), distributedlock.ErrInvalidTTL)
+		assert.Equal(t, time.Minute, h.TTL())
+	})
+
+	T.Run("blocked by circuit breaker", func(t *testing.T) {
+		t.Parallel()
+		client, mock := buildSqlmockClient(t)
+		t.Cleanup(func() { _ = client.Close() })
+		cb := &cbmock.MockCircuitBreaker{}
+		cb.On("CannotProceed").Return(false).Once()
+		cb.On("Succeeded").Return().Once()
+		cb.On("CannotProceed").Return(true).Once()
+		l := newTestLockerWithCB(t, client, cb)
+
+		mock.ExpectQuery(`SELECT pg_try_advisory_lock`).
+			WithArgs(hashLockID(0, "k")).
+			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
+
+		h, err := l.Acquire(t.Context(), "k", time.Minute)
+		require.NoError(t, err)
+		require.ErrorIs(t, h.Refresh(t.Context(), time.Minute), circuitbreaking.ErrCircuitBroken)
+		cb.AssertExpectations(t)
+	})
+
+	T.Run("refresh after release returns ErrLockNotHeld", func(t *testing.T) {
+		t.Parallel()
+		client, mock := buildSqlmockClient(t)
+		t.Cleanup(func() { _ = client.Close() })
+		l := newTestLocker(t, client)
+
+		mock.ExpectQuery(`SELECT pg_try_advisory_lock`).
+			WithArgs(hashLockID(0, "k")).
+			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
+		mock.ExpectQuery(`SELECT pg_advisory_unlock`).
+			WithArgs(hashLockID(0, "k")).
+			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
+
+		h, err := l.Acquire(t.Context(), "k", time.Minute)
+		require.NoError(t, err)
+		require.NoError(t, h.Release(t.Context()))
+		require.ErrorIs(t, h.Refresh(t.Context(), time.Minute), distributedlock.ErrLockNotHeld)
+	})
+
+	T.Run("liveness check failure returns ErrLockNotHeld", func(t *testing.T) {
+		t.Parallel()
+		client, mock := buildSqlmockClient(t)
+		t.Cleanup(func() { _ = client.Close() })
+		l := newTestLocker(t, client)
+
+		mock.ExpectQuery(`SELECT pg_try_advisory_lock`).
+			WithArgs(hashLockID(0, "k")).
+			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
+		mock.ExpectQuery(`SELECT 1`).
+			WillReturnError(errors.New("conn dead"))
+
+		h, err := l.Acquire(t.Context(), "k", time.Minute)
+		require.NoError(t, err)
+		require.ErrorIs(t, h.Refresh(t.Context(), 5*time.Minute), distributedlock.ErrLockNotHeld)
+		// TTL must remain unchanged on failure.
+		assert.Equal(t, time.Minute, h.TTL())
+	})
+}
+
+func TestLocker_PingClose_Unit(T *testing.T) {
+	T.Parallel()
+
+	T.Run("ping success", func(t *testing.T) {
+		t.Parallel()
+		client, mock := buildSqlmockClient(t)
+		t.Cleanup(func() { _ = client.Close() })
+		l := newTestLocker(t, client)
+
+		mock.ExpectPing()
+		require.NoError(t, l.Ping(t.Context()))
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	T.Run("ping error", func(t *testing.T) {
+		t.Parallel()
+		client, mock := buildSqlmockClient(t)
+		t.Cleanup(func() { _ = client.Close() })
+		l := newTestLocker(t, client)
+
+		mock.ExpectPing().WillReturnError(errors.New("ping boom"))
+		require.Error(t, l.Ping(t.Context()))
+	})
+
+	T.Run("close with no outstanding locks", func(t *testing.T) {
+		t.Parallel()
+		client, _ := buildSqlmockClient(t)
+		t.Cleanup(func() { _ = client.Close() })
+		l := newTestLocker(t, client)
+		require.NoError(t, l.Close())
+	})
+
+	T.Run("close releases all outstanding locks", func(t *testing.T) {
+		t.Parallel()
+		client, mock := buildSqlmockClient(t)
+		t.Cleanup(func() { _ = client.Close() })
+		l := newTestLocker(t, client)
+
+		mock.ExpectQuery(`SELECT pg_try_advisory_lock`).
+			WithArgs(hashLockID(0, "a")).
+			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
+		mock.ExpectQuery(`SELECT pg_advisory_unlock`).
+			WithArgs(hashLockID(0, "a")).
+			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
+
+		_, err := l.Acquire(t.Context(), "a", time.Minute)
+		require.NoError(t, err)
+		require.NoError(t, l.Close())
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	T.Run("close surfaces release errors", func(t *testing.T) {
+		t.Parallel()
+		client, mock := buildSqlmockClient(t)
+		t.Cleanup(func() { _ = client.Close() })
+		l := newTestLocker(t, client)
+
+		mock.ExpectQuery(`SELECT pg_try_advisory_lock`).
+			WithArgs(hashLockID(0, "a")).
+			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
+		mock.ExpectQuery(`SELECT pg_advisory_unlock`).
+			WithArgs(hashLockID(0, "a")).
+			WillReturnError(errors.New("unlock boom"))
+
+		_, err := l.Acquire(t.Context(), "a", time.Minute)
+		require.NoError(t, err)
+		require.Error(t, l.Close())
 	})
 }
 

@@ -1,6 +1,7 @@
 package emailcfg
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -69,7 +70,7 @@ func TestConfig_ProvideEmailer(T *testing.T) {
 				Postmark: &postmark.Config{ServerToken: t.Name()},
 			}
 
-			actual, err := cfg.ProvideEmailer(logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
+			actual, err := cfg.ProvideEmailer(context.Background(), logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
 			assert.NotNil(t, actual)
 			assert.NoError(t, err)
 		})
@@ -83,7 +84,7 @@ func TestConfig_ProvideEmailer(T *testing.T) {
 			Provider: "",
 		}
 
-		actual, err := cfg.ProvideEmailer(logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
+		actual, err := cfg.ProvideEmailer(context.Background(), logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
 		assert.NotNil(t, actual)
 		assert.NoError(t, err)
 	})

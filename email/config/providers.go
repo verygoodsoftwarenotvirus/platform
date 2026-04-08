@@ -18,5 +18,5 @@ func ProvideEmailer(ctx context.Context, cfg *Config, logger logging.Logger, tra
 		return nil, errors.Wrap(err, "failed to initialize email circuit breaker")
 	}
 
-	return cfg.ProvideEmailer(logger, tracerProvider, client, circuitBreaker, metricsProvider)
+	return cfg.ProvideEmailer(ctx, logger, tracerProvider, client, circuitBreaker, metricsProvider)
 }

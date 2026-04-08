@@ -99,7 +99,7 @@ func (cfg *Config) ValidateWithContext(ctx context.Context) error {
 }
 
 // ProvideEmailer provides an outbound_emailer.
-func (cfg *Config) ProvideEmailer(logger logging.Logger, tracerProvider tracing.TracerProvider, client *http.Client, circuitBreaker circuitbreaking.CircuitBreaker, metricsProvider metrics.Provider) (email.Emailer, error) {
+func (cfg *Config) ProvideEmailer(ctx context.Context, logger logging.Logger, tracerProvider tracing.TracerProvider, client *http.Client, circuitBreaker circuitbreaking.CircuitBreaker, metricsProvider metrics.Provider) (email.Emailer, error) {
 	switch strings.ToLower(strings.TrimSpace(cfg.Provider)) {
 	case ProviderSendgrid:
 		return sendgrid.NewSendGridEmailer(cfg.Sendgrid, logger, tracerProvider, client, circuitBreaker, metricsProvider)
@@ -112,7 +112,7 @@ func (cfg *Config) ProvideEmailer(logger logging.Logger, tracerProvider tracing.
 	case ProviderPostmark:
 		return postmark.NewPostmarkEmailer(cfg.Postmark, logger, tracerProvider, client, circuitBreaker, metricsProvider)
 	case ProviderSES:
-		return ses.NewSESEmailer(cfg.SES, logger, tracerProvider, client, circuitBreaker, metricsProvider)
+		return ses.NewSESEmailer(ctx, cfg.SES, logger, tracerProvider, client, circuitBreaker, metricsProvider)
 	default:
 		logger.Debug("providing noop outbound_emailer")
 		return noop.NewEmailer()

@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
-	circuitbreakingcfg "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/config"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/cache"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/cache/memory"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/cache/redis"
+	circuitbreakingcfg "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/config"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
@@ -27,10 +27,10 @@ const (
 type (
 	// Config is the configuration for the cache.
 	Config struct {
-		Redis          *redis.Config            `env:"init"     envPrefix:"REDIS_"            json:"redis"`
+		Redis          *redis.Config             `env:"init"     envPrefix:"REDIS_"            json:"redis"`
+		Provider       string                    `env:"PROVIDER" json:"provider"`
 		CircuitBreaker circuitbreakingcfg.Config `env:"init"     envPrefix:"CIRCUIT_BREAKING_" json:"circuitBreakerConfig"`
-		Provider       string                   `env:"PROVIDER" json:"provider"`
-		Expiry         time.Duration            `env:"EXPIRY"   envDefault:"1h"               json:"expiry"`
+		Expiry         time.Duration             `env:"EXPIRY"   envDefault:"1h"               json:"expiry"`
 	}
 )
 

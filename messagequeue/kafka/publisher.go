@@ -37,7 +37,6 @@ type (
 		publishedCounter  metrics.Int64Counter
 		publishErrCounter metrics.Int64Counter
 		latencyHist       metrics.Float64Histogram
-		topic             string
 	}
 )
 
@@ -125,9 +124,8 @@ func provideKafkaPublisher(logger logging.Logger, tracerProvider tracing.TracerP
 
 	return &kafkaPublisher{
 		writer:            writer,
-		topic:             topic,
 		encoder:           encoding.ProvideClientEncoder(logger, tracerProvider, encoding.ContentTypeJSON),
-		logger:            logging.EnsureLogger(logger),
+		logger:            logging.EnsureLogger(logger.WithValue("topic", topic)),
 		tracer:            tracing.NewNamedTracer(tracerProvider, fmt.Sprintf("%s_publisher", topic)),
 		publishedCounter:  publishedCounter,
 		publishErrCounter: publishErrCounter,

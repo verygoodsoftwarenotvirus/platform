@@ -8,8 +8,8 @@ import (
 
 // Config configures a Kafka-backed message queue.
 type Config struct {
-	Brokers []string `env:"BROKERS"   json:"brokers"`
-	GroupID string   `env:"GROUP_ID"  json:"groupId"`
+	GroupID string   `env:"GROUP_ID" json:"groupId"`
+	Brokers []string `env:"BROKERS"  json:"brokers"`
 }
 
 var _ validation.ValidatableWithContext = (*Config)(nil)

@@ -47,7 +47,7 @@ type Emailer struct {
 }
 
 // NewSESEmailer returns a new AWS SES-backed Emailer.
-func NewSESEmailer(cfg *Config, logger logging.Logger, tracerProvider tracing.TracerProvider, client *http.Client, circuitBreaker circuitbreaking.CircuitBreaker, metricsProvider metrics.Provider) (*Emailer, error) {
+func NewSESEmailer(ctx context.Context, cfg *Config, logger logging.Logger, tracerProvider tracing.TracerProvider, client *http.Client, circuitBreaker circuitbreaking.CircuitBreaker, metricsProvider metrics.Provider) (*Emailer, error) {
 	if cfg == nil {
 		return nil, ErrNilConfig
 	}
@@ -77,7 +77,7 @@ func NewSESEmailer(cfg *Config, logger logging.Logger, tracerProvider tracing.Tr
 		return nil, platformerrors.Wrap(err, "creating latency histogram")
 	}
 
-	awsCfg, err := awsconfig.LoadDefaultConfig(context.Background(),
+	awsCfg, err := awsconfig.LoadDefaultConfig(ctx,
 		awsconfig.WithRegion(cfg.Region),
 		awsconfig.WithHTTPClient(client),
 	)

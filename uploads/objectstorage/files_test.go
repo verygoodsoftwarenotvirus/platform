@@ -14,14 +14,25 @@ import (
 	"gocloud.dev/blob/memblob"
 )
 
-func noopUploaderMetrics(t *testing.T) (metrics.Int64Counter, metrics.Int64Counter, metrics.Int64Counter, metrics.Int64Counter, metrics.Float64Histogram) {
+func noopUploaderMetrics(t *testing.T) (saveCounter, readCounter, saveErrCounter, readErrCounter metrics.Int64Counter, latencyHist metrics.Float64Histogram) {
 	t.Helper()
 	mp := metrics.NewNoopMetricsProvider()
-	saveCounter, _ := mp.NewInt64Counter("test_saves")
-	readCounter, _ := mp.NewInt64Counter("test_reads")
-	saveErrCounter, _ := mp.NewInt64Counter("test_save_errors")
-	readErrCounter, _ := mp.NewInt64Counter("test_read_errors")
-	latencyHist, _ := mp.NewFloat64Histogram("test_latency")
+
+	saveCounter, err := mp.NewInt64Counter("test_saves")
+	require.NoError(t, err)
+
+	readCounter, err = mp.NewInt64Counter("test_reads")
+	require.NoError(t, err)
+
+	saveErrCounter, err = mp.NewInt64Counter("test_save_errors")
+	require.NoError(t, err)
+
+	readErrCounter, err = mp.NewInt64Counter("test_read_errors")
+	require.NoError(t, err)
+
+	latencyHist, err = mp.NewFloat64Histogram("test_latency")
+	require.NoError(t, err)
+
 	return saveCounter, readCounter, saveErrCounter, readErrCounter, latencyHist
 }
 

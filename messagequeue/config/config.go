@@ -40,13 +40,12 @@ type (
 
 	// MessageQueueConfig is used to indicate how the messaging provider should be configured.
 	MessageQueueConfig struct {
-		_ struct{} `json:"-"`
-
+		_        struct{}      `json:"-"`
+		Kafka    kafka.Config  `envPrefix:"KAFKA_"  json:"kafka"`
 		Provider provider      `env:"PROVIDER"      json:"provider,omitempty"`
 		SQS      sqs.Config    `envPrefix:"SQS_"    json:"sqs"`
 		PubSub   pubsub.Config `envPrefix:"PUBSUB_" json:"pubSub"`
 		Redis    redis.Config  `envPrefix:"REDIS_"  json:"redis"`
-		Kafka    kafka.Config  `envPrefix:"KAFKA_"  json:"kafka"`
 	}
 
 	// Config is used to indicate how the messaging provider should be configured.

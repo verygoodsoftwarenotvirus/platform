@@ -102,8 +102,8 @@ type consumerProvider struct {
 	tracerProvider  tracing.TracerProvider
 	metricsProvider metrics.Provider
 	consumerCache   map[string]messagequeue.Consumer
-	brokers         []string
 	groupID         string
+	brokers         []string
 	consumerCacheMu sync.RWMutex
 }
 

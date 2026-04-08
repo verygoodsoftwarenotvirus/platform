@@ -3,9 +3,10 @@ package objectstorage
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/uploads"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/uploads"
 
 	"github.com/samber/do/v2"
 )
@@ -18,6 +19,7 @@ func RegisterUploadManager(i do.Injector) {
 			do.MustInvoke[context.Context](i),
 			do.MustInvoke[logging.Logger](i),
 			do.MustInvoke[tracing.TracerProvider](i),
+			do.MustInvoke[metrics.Provider](i),
 			do.MustInvoke[*Config](i),
 		)
 	})

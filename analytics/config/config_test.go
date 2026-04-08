@@ -3,13 +3,13 @@ package analyticscfg
 import (
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/analytics/posthog"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/analytics/rudderstack"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/analytics/segment"
-	circuitbreakingcfg "github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/config"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/analytics/posthog"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/analytics/rudderstack"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/analytics/segment"
+	circuitbreakingcfg "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/config"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/stretchr/testify/require"
 )

@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/notifications/async"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/notifications/async"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,7 +34,7 @@ func TestNewNotifier(T *testing.T) {
 			Key:     "key",
 			Secret:  "secret",
 			Cluster: "us2",
-		}, logging.NewNoopLogger(), tracing.NewNoopTracerProvider())
+		}, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil)
 		require.NoError(t, err)
 		require.NotNil(t, n)
 	})
@@ -41,7 +42,7 @@ func TestNewNotifier(T *testing.T) {
 	T.Run("nil config", func(t *testing.T) {
 		t.Parallel()
 
-		n, err := NewNotifier(nil, logging.NewNoopLogger(), tracing.NewNoopTracerProvider())
+		n, err := NewNotifier(nil, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil)
 		assert.Error(t, err)
 		assert.Nil(t, n)
 	})
@@ -53,10 +54,16 @@ func TestNotifier_Publish(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
+		mp := metrics.NewNoopMetricsProvider()
+		sendCounter, _ := mp.NewInt64Counter("test_sends")
+		errorCounter, _ := mp.NewInt64Counter("test_errors")
+
 		var capturedChannel, capturedEvent string
 		n := &Notifier{
-			logger: logging.NewNoopLogger(),
-			tracer: tracing.NewTracerForTest("test"),
+			logger:       logging.NewNoopLogger(),
+			tracer:       tracing.NewTracerForTest("test"),
+			sendCounter:  sendCounter,
+			errorCounter: errorCounter,
 			client: &mockPusherClient{
 				triggerFn: func(channel, eventName string, data any) error {
 					capturedChannel = channel
@@ -78,9 +85,15 @@ func TestNotifier_Publish(T *testing.T) {
 	T.Run("trigger error", func(t *testing.T) {
 		t.Parallel()
 
+		mp := metrics.NewNoopMetricsProvider()
+		sendCounter, _ := mp.NewInt64Counter("test_sends")
+		errorCounter, _ := mp.NewInt64Counter("test_errors")
+
 		n := &Notifier{
-			logger: logging.NewNoopLogger(),
-			tracer: tracing.NewTracerForTest("test"),
+			logger:       logging.NewNoopLogger(),
+			tracer:       tracing.NewTracerForTest("test"),
+			sendCounter:  sendCounter,
+			errorCounter: errorCounter,
 			client: &mockPusherClient{
 				triggerFn: func(string, string, any) error {
 					return errors.New("pusher API error")

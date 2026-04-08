@@ -3,7 +3,7 @@ package noop
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/analytics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/analytics"
 )
 
 var _ analytics.EventReporter = (*eventReporter)(nil)

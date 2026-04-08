@@ -4,13 +4,17 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/ratelimiting"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/ratelimiting"
 )
 
 func ExampleNewInMemoryRateLimiter() {
-	limiter := ratelimiting.NewInMemoryRateLimiter(10.0, 5)
+	limiter, err := ratelimiting.NewInMemoryRateLimiter(nil, 10.0, 5)
+	if err != nil {
+		panic(err)
+	}
 
-	allowed, err := limiter.Allow(context.Background(), "user-123")
+	var allowed bool
+	allowed, err = limiter.Allow(context.Background(), "user-123")
 	if err != nil {
 		panic(err)
 	}

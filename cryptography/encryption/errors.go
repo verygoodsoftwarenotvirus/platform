@@ -1,7 +1,7 @@
 package encryption
 
 import (
-	"errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
 )
 
 var (

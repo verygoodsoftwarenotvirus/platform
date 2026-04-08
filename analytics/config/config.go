@@ -4,16 +4,16 @@ import (
 	"context"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/analytics"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/analytics/noop"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/analytics/posthog"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/analytics/rudderstack"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/analytics/segment"
-	circuitbreakingcfg "github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/config"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/analytics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/analytics/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/analytics/posthog"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/analytics/rudderstack"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/analytics/segment"
+	circuitbreakingcfg "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/config"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
@@ -107,17 +107,17 @@ func (cfg *SourceConfig) ProvideCollector(
 		if cfg.Segment == nil {
 			return nil, errors.New("segment provider configured but segment config is nil")
 		}
-		return segment.NewSegmentEventReporter(logger, tracerProvider, cfg.Segment.APIToken, cb)
+		return segment.NewSegmentEventReporter(logger, tracerProvider, metricsProvider, cfg.Segment.APIToken, cb)
 	case ProviderRudderstack:
 		if cfg.Rudderstack == nil {
 			return nil, errors.New("rudderstack provider configured but rudderstack config is nil")
 		}
-		return rudderstack.NewRudderstackEventReporter(logger, tracerProvider, cfg.Rudderstack, cb)
+		return rudderstack.NewRudderstackEventReporter(logger, tracerProvider, metricsProvider, cfg.Rudderstack, cb)
 	case ProviderPostHog:
 		if cfg.Posthog == nil {
 			return nil, errors.New("posthog provider configured but posthog config is nil")
 		}
-		return posthog.NewPostHogEventReporter(logger, tracerProvider, cfg.Posthog.APIKey, cb)
+		return posthog.NewPostHogEventReporter(logger, tracerProvider, metricsProvider, cfg.Posthog.APIKey, cb)
 	default:
 		logging.EnsureLogger(logger).WithValue("provider", cfg.Provider).Info("no analytics provider configured or unrecognized provider, using noop")
 		return noop.NewEventReporter(), nil

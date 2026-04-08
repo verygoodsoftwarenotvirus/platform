@@ -3,8 +3,8 @@ package metricscfg
 import (
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics/otelgrpc"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/otelgrpc"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -30,6 +30,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{
+			Enabled:  true,
 			Provider: ProviderOtel,
 			Otel: &otelgrpc.Config{
 				CollectorEndpoint:  t.Name(),

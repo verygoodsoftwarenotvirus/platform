@@ -1,9 +1,10 @@
 package asynccfg
 
 import (
-	"github.com/verygoodsoftwarenotvirus/platform/v4/notifications/async"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/notifications/async"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/samber/do/v2"
 )
@@ -15,6 +16,7 @@ func RegisterAsyncNotifier(i do.Injector) {
 			do.MustInvoke[*Config](i),
 			do.MustInvoke[logging.Logger](i),
 			do.MustInvoke[tracing.TracerProvider](i),
+			do.MustInvoke[metrics.Provider](i),
 		)
 	})
 }

@@ -3,7 +3,7 @@ package mock
 import (
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/llm"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/llm"
 
 	"github.com/stretchr/testify/require"
 )

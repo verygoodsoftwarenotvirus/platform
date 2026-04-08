@@ -7,7 +7,11 @@ import (
 )
 
 func TestNoopProvider_Completion(T *testing.T) {
+	T.Parallel()
+
 	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
 		ctx := t.Context()
 		provider := NewNoopProvider()
 

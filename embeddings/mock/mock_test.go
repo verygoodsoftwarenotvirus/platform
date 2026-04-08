@@ -3,7 +3,7 @@ package mock
 import (
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/embeddings"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/embeddings"
 
 	"github.com/stretchr/testify/require"
 )

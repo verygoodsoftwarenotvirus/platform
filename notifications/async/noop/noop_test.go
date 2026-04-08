@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/notifications/async"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/notifications/async"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

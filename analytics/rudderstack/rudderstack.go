@@ -2,12 +2,14 @@ package rudderstack
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/analytics"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking"
-	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/analytics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking"
+	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	rudderstack "github.com/rudderlabs/analytics-go/v4"
 )
@@ -31,12 +33,14 @@ type (
 		tracer         tracing.Tracer
 		logger         logging.Logger
 		client         rudderstack.Client
+		eventCounter   metrics.Int64Counter
+		errorCounter   metrics.Int64Counter
 		circuitBreaker circuitbreaking.CircuitBreaker
 	}
 )
 
 // NewRudderstackEventReporter returns a new Segment-backed EventReporter.
-func NewRudderstackEventReporter(logger logging.Logger, tracerProvider tracing.TracerProvider, cfg *Config, circuitBreaker circuitbreaking.CircuitBreaker) (analytics.EventReporter, error) {
+func NewRudderstackEventReporter(logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider, cfg *Config, circuitBreaker circuitbreaking.CircuitBreaker) (analytics.EventReporter, error) {
 	if cfg == nil {
 		return nil, ErrNilConfig
 	}
@@ -49,10 +53,24 @@ func NewRudderstackEventReporter(logger logging.Logger, tracerProvider tracing.T
 		return nil, ErrEmptyDataPlaneURL
 	}
 
+	mp := metrics.EnsureMetricsProvider(metricsProvider)
+
+	eventCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_events", name))
+	if err != nil {
+		return nil, platformerrors.Wrap(err, "creating event counter")
+	}
+
+	errorCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_errors", name))
+	if err != nil {
+		return nil, platformerrors.Wrap(err, "creating error counter")
+	}
+
 	c := &EventReporter{
 		tracer:         tracing.NewNamedTracer(tracerProvider, name),
 		logger:         logging.NewNamedLogger(logger, name),
 		client:         rudderstack.New(cfg.APIKey, cfg.DataPlaneURL),
+		eventCounter:   eventCounter,
+		errorCounter:   errorCounter,
 		circuitBreaker: circuitBreaker,
 	}
 
@@ -88,10 +106,12 @@ func (c *EventReporter) AddUser(ctx context.Context, userID string, properties m
 		Integrations: i,
 	})
 	if err != nil {
+		c.errorCounter.Add(ctx, 1)
 		c.circuitBreaker.Failed()
 		return err
 	}
 
+	c.eventCounter.Add(ctx, 1)
 	c.circuitBreaker.Succeeded()
 	return nil
 }
@@ -135,10 +155,12 @@ func (c *EventReporter) eventOccurred(ctx context.Context, event, userID string,
 	}
 
 	if err := c.client.Enqueue(track); err != nil {
+		c.errorCounter.Add(ctx, 1)
 		c.circuitBreaker.Failed()
 		return err
 	}
 
+	c.eventCounter.Add(ctx, 1)
 	c.circuitBreaker.Succeeded()
 	return nil
 }

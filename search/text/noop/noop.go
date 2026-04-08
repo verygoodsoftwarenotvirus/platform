@@ -3,7 +3,7 @@ package noop
 import (
 	"context"
 
-	textsearch "github.com/verygoodsoftwarenotvirus/platform/v4/search/text"
+	textsearch "github.com/verygoodsoftwarenotvirus/platform/v5/search/text"
 )
 
 var _ textsearch.Index[any] = (*indexManager[any])(nil)

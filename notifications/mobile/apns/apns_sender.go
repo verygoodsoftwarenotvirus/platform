@@ -4,10 +4,11 @@ import (
 	"context"
 	"regexp"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/sideshow/apns2"
 	"github.com/sideshow/apns2/payload"
@@ -32,14 +33,16 @@ type Config struct {
 
 // Sender sends push notifications to iOS devices via APNs.
 type Sender struct {
-	tracer tracing.Tracer
-	logger logging.Logger
-	client *apns2.Client
-	topic  string
+	tracer       tracing.Tracer
+	logger       logging.Logger
+	client       *apns2.Client
+	sendCounter  metrics.Int64Counter
+	errorCounter metrics.Int64Counter
+	topic        string
 }
 
 // NewSender creates an APNs sender from config.
-func NewSender(cfg *Config, tracerProvider tracing.TracerProvider, logger logging.Logger) (*Sender, error) {
+func NewSender(cfg *Config, tracerProvider tracing.TracerProvider, logger logging.Logger, metricsProvider metrics.Provider) (*Sender, error) {
 	if cfg == nil || cfg.AuthKeyPath == "" || cfg.KeyID == "" || cfg.TeamID == "" || cfg.BundleID == "" {
 		return nil, errors.New("apns: missing required config (authKeyPath, keyID, teamID, bundleID)")
 	}
@@ -65,11 +68,25 @@ func NewSender(cfg *Config, tracerProvider tracing.TracerProvider, logger loggin
 		client = client.Development()
 	}
 
+	mp := metrics.EnsureMetricsProvider(metricsProvider)
+
+	sendCounter, err := mp.NewInt64Counter(o11yName + "_sends")
+	if err != nil {
+		return nil, errors.Wrap(err, "apns: creating send counter")
+	}
+
+	errorCounter, err := mp.NewInt64Counter(o11yName + "_errors")
+	if err != nil {
+		return nil, errors.Wrap(err, "apns: creating error counter")
+	}
+
 	return &Sender{
-		client: client,
-		topic:  cfg.BundleID,
-		tracer: tracing.NewNamedTracer(tracerProvider, o11yName),
-		logger: logging.NewNamedLogger(logger, o11yName),
+		client:       client,
+		topic:        cfg.BundleID,
+		tracer:       tracing.NewNamedTracer(tracerProvider, o11yName),
+		logger:       logging.NewNamedLogger(logger, o11yName),
+		sendCounter:  sendCounter,
+		errorCounter: errorCounter,
 	}, nil
 }
 
@@ -102,10 +119,12 @@ func (s *Sender) Send(ctx context.Context, deviceToken, title, body string, badg
 
 	res, err := s.client.PushWithContext(ctx, n)
 	if err != nil {
+		s.errorCounter.Add(ctx, 1)
 		return errors.Wrap(err, "apns: push failed")
 	}
 
 	if !res.Sent() {
+		s.errorCounter.Add(ctx, 1)
 		err = errors.Newf("apns: %s (status %d)", res.Reason, res.StatusCode)
 		logger = logger.WithValue("statusCode", res.StatusCode).
 			WithValue("reason", res.Reason).
@@ -113,5 +132,6 @@ func (s *Sender) Send(ctx context.Context, deviceToken, title, body string, badg
 		return observability.PrepareAndLogError(err, logger, span, "sending apns notification")
 	}
 
+	s.sendCounter.Add(ctx, 1)
 	return nil
 }

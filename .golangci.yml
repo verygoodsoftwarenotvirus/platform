@@ -46,7 +46,7 @@ linters:
     - noctx
     - nolintlint
     - nosprintfhostport
-    # - paralleltest # TODO: enable this when we can verify integration tests can run in parallel.
+    - paralleltest
     - predeclared
     - promlinter
     - reassign

@@ -3,8 +3,8 @@ package profilingcfg
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/profiling"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/profiling"
 
 	"github.com/samber/do/v2"
 )

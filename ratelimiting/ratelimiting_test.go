@@ -14,7 +14,8 @@ func TestInMemoryRateLimiter_Allow(T *testing.T) {
 	T.Run("allows within burst", func(t *testing.T) {
 		t.Parallel()
 
-		limiter := NewInMemoryRateLimiter(10, 3)
+		limiter, err := NewInMemoryRateLimiter(nil, 10, 3)
+		require.NoError(t, err)
 		defer limiter.Close()
 
 		ctx := context.Background()
@@ -39,7 +40,8 @@ func TestInMemoryRateLimiter_Allow(T *testing.T) {
 	T.Run("different keys have independent limits", func(t *testing.T) {
 		t.Parallel()
 
-		limiter := NewInMemoryRateLimiter(10, 1)
+		limiter, err := NewInMemoryRateLimiter(nil, 10, 1)
+		require.NoError(t, err)
 		defer limiter.Close()
 
 		ctx := context.Background()
@@ -64,8 +66,9 @@ func TestInMemoryRateLimiter_Allow(T *testing.T) {
 	T.Run("Close is safe", func(t *testing.T) {
 		t.Parallel()
 
-		limiter := NewInMemoryRateLimiter(10, 1)
-		err := limiter.Close()
+		limiter, err := NewInMemoryRateLimiter(nil, 10, 1)
+		require.NoError(t, err)
+		err = limiter.Close()
 		require.NoError(t, err)
 	})
 }

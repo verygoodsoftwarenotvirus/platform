@@ -4,14 +4,19 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/featureflags/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/featureflags"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/featureflags/noop"
 )
 
 func ExampleNewFeatureFlagManager() {
 	mgr := noop.NewFeatureFlagManager()
-	defer mgr.Close()
+	defer func() { _ = mgr.Close() }()
 
-	canUse, err := mgr.CanUseFeature(context.Background(), "user-1", "dark-mode")
+	canUse, err := mgr.CanUseFeature(
+		context.Background(),
+		"dark-mode",
+		featureflags.EvaluationContext{TargetingKey: "user-1"},
+	)
 	if err != nil {
 		panic(err)
 	}

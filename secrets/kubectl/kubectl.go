@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/secrets"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/secrets"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,17 +51,17 @@ func NewKubectlSecretSource(ctx context.Context, cfg *Config, client SecretGette
 
 	lookupCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_lookups", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating lookup counter: %w", err)
+		return nil, errors.Wrap(err, "creating lookup counter")
 	}
 
 	errorCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_errors", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating error counter: %w", err)
+		return nil, errors.Wrap(err, "creating error counter")
 	}
 
 	latencyHist, err := mp.NewFloat64Histogram(fmt.Sprintf("%s_latency_ms", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating latency histogram: %w", err)
+		return nil, errors.Wrap(err, "creating latency histogram")
 	}
 
 	if client != nil {

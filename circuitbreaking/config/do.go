@@ -3,9 +3,9 @@ package circuitbreakingcfg
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 
 	"github.com/samber/do/v2"
 )

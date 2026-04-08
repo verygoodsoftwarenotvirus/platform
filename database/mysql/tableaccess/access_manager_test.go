@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/pointer"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/retry"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/pointer"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/retry"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"

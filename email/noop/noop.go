@@ -3,8 +3,8 @@ package noop
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/email"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/email"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 )
 
 var _ email.Emailer = (*emailer)(nil)

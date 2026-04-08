@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/database"
-	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v4/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/database"
+	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v5/errors"
 
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"

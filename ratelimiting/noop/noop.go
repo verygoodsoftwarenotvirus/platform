@@ -3,7 +3,7 @@ package noop
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/ratelimiting"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/ratelimiting"
 )
 
 var _ ratelimiting.RateLimiter = (*rateLimiter)(nil)

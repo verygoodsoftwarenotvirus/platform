@@ -4,8 +4,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -40,7 +41,7 @@ func TestNewUploadManager(T *testing.T) {
 			Provider:   MemoryProvider,
 		}
 
-		x, err := NewUploadManager(ctx, l, tracing.NewNoopTracerProvider(), cfg)
+		x, err := NewUploadManager(ctx, l, tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider(), cfg)
 		assert.NotNil(t, x)
 		assert.NoError(t, err)
 	})
@@ -51,7 +52,7 @@ func TestNewUploadManager(T *testing.T) {
 		ctx := t.Context()
 		l := logging.NewNoopLogger()
 
-		x, err := NewUploadManager(ctx, l, tracing.NewNoopTracerProvider(), nil)
+		x, err := NewUploadManager(ctx, l, tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider(), nil)
 		assert.Nil(t, x)
 		assert.Error(t, err)
 	})
@@ -63,7 +64,7 @@ func TestNewUploadManager(T *testing.T) {
 		l := logging.NewNoopLogger()
 		cfg := &Config{}
 
-		x, err := NewUploadManager(ctx, l, tracing.NewNoopTracerProvider(), cfg)
+		x, err := NewUploadManager(ctx, l, tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider(), cfg)
 		assert.Nil(t, x)
 		assert.Error(t, err)
 	})

@@ -10,15 +10,15 @@ import (
 	"strings"
 	"time"
 
-	encryptioncfg "github.com/verygoodsoftwarenotvirus/platform/v4/cryptography/encryption/config"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/database"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/database/mysql"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/database/postgres"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/database/sqlite"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	encryptioncfg "github.com/verygoodsoftwarenotvirus/platform/v5/cryptography/encryption/config"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/database"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/database/mysql"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/database/postgres"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/database/sqlite"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/XSAM/otelsql"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
@@ -173,18 +173,19 @@ func (cfg *Config) LoadConnectionDetailsFromURL(u string) error {
 	return cfg.ReadConnection.LoadFromURL(u)
 }
 
-func (cfg *Config) ConnectToDatabase() (*sql.DB, error) {
-	var driverName string
+func (cfg *Config) driverName() string {
 	switch strings.TrimSpace(strings.ToLower(cfg.Provider)) {
 	case ProviderMySQL:
-		driverName = "mysql"
+		return "mysql"
 	case ProviderSQLite:
-		driverName = "sqlite"
+		return "sqlite"
 	default:
-		driverName = "pgx"
+		return "pgx"
 	}
+}
 
-	db, err := otelsql.Open(driverName, cfg.GetReadConnectionString(), otelsql.WithAttributes(
+func (cfg *Config) connectToDatabase(connStr string) (*sql.DB, error) {
+	db, err := otelsql.Open(cfg.driverName(), connStr, otelsql.WithAttributes(
 		attribute.KeyValue{
 			Key:   semconv.ServiceNameKey,
 			Value: attribute.StringValue("database"),
@@ -199,6 +200,14 @@ func (cfg *Config) ConnectToDatabase() (*sql.DB, error) {
 	db.SetConnMaxLifetime(cfg.GetConnMaxLifetime())
 
 	return db, nil
+}
+
+func (cfg *Config) ConnectToReadDatabase() (*sql.DB, error) {
+	return cfg.connectToDatabase(cfg.GetReadConnectionString())
+}
+
+func (cfg *Config) ConnectToWriteDatabase() (*sql.DB, error) {
+	return cfg.connectToDatabase(cfg.GetWriteConnectionString())
 }
 
 // ValidateWithContext validates an DatabaseSettings struct.

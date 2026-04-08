@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/email"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/email/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/email"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/email/noop"
 )
 
 func ExampleNewEmailer() {

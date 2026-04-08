@@ -6,10 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/cache"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/cache"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 )
 
 const name = "in_memory_cache"
@@ -32,27 +33,27 @@ func NewInMemoryCache[T any](logger logging.Logger, tracerProvider tracing.Trace
 
 	cacheHitCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_cache_hits", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating cache hit counter: %w", err)
+		return nil, errors.Wrap(err, "creating cache hit counter")
 	}
 
 	cacheMissCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_cache_misses", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating cache miss counter: %w", err)
+		return nil, errors.Wrap(err, "creating cache miss counter")
 	}
 
 	cacheSetCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_cache_sets", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating cache set counter: %w", err)
+		return nil, errors.Wrap(err, "creating cache set counter")
 	}
 
 	cacheDelCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_cache_deletes", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating cache delete counter: %w", err)
+		return nil, errors.Wrap(err, "creating cache delete counter")
 	}
 
 	latencyHist, err := mp.NewFloat64Histogram(fmt.Sprintf("%s_cache_latency_ms", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating cache latency histogram: %w", err)
+		return nil, errors.Wrap(err, "creating cache latency histogram")
 	}
 
 	return &inMemoryCacheImpl[T]{

@@ -2,16 +2,18 @@ package launchdarkly
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking"
-	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/featureflags"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/keys"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking"
+	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/featureflags"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/keys"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	ld "github.com/launchdarkly/go-server-sdk/v6"
 	"github.com/launchdarkly/go-server-sdk/v6/ldcomponents"
@@ -38,11 +40,14 @@ type (
 		circuitBreaker circuitbreaking.CircuitBreaker
 		logger         logging.Logger
 		tracer         tracing.Tracer
+		evalCounter    metrics.Int64Counter
+		errorCounter   metrics.Int64Counter
+		latencyHist    metrics.Float64Histogram
 	}
 )
 
 // NewFeatureFlagManager constructs a new featureFlagManager backed by OpenFeature.
-func NewFeatureFlagManager(cfg *Config, logger logging.Logger, tracerProvider tracing.TracerProvider, httpClient *http.Client, circuitBreaker circuitbreaking.CircuitBreaker, configModifiers ...func(ld.Config) ld.Config) (featureflags.FeatureFlagManager, error) {
+func NewFeatureFlagManager(cfg *Config, logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider, httpClient *http.Client, circuitBreaker circuitbreaking.CircuitBreaker, configModifiers ...func(ld.Config) ld.Config) (featureflags.FeatureFlagManager, error) {
 	if httpClient == nil {
 		return nil, ErrMissingHTTPClient
 	}
@@ -50,8 +55,6 @@ func NewFeatureFlagManager(cfg *Config, logger logging.Logger, tracerProvider tr
 	if cfg == nil {
 		return nil, ErrNilConfig
 	}
-
-	cfg.CircuitBreakerConfig.EnsureDefaults()
 
 	if cfg.SDKKey == "" {
 		return nil, ErrMissingSDKKey
@@ -88,79 +91,170 @@ func NewFeatureFlagManager(cfg *Config, logger logging.Logger, tracerProvider tr
 
 	ofClient := openfeature.NewClient(clientDomain)
 
+	mp := metrics.EnsureMetricsProvider(metricsProvider)
+
+	evalCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_evaluations", serviceName))
+	if err != nil {
+		return nil, platformerrors.Wrap(err, "creating eval counter")
+	}
+
+	errorCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_errors", serviceName))
+	if err != nil {
+		return nil, platformerrors.Wrap(err, "creating error counter")
+	}
+
+	latencyHist, err := mp.NewFloat64Histogram(fmt.Sprintf("%s_latency_ms", serviceName))
+	if err != nil {
+		return nil, platformerrors.Wrap(err, "creating latency histogram")
+	}
+
 	ffm := &featureFlagManager{
-		logger:         logging.EnsureLogger(logger),
+		logger:         logging.NewNamedLogger(logging.EnsureLogger(logger), serviceName),
 		circuitBreaker: circuitBreaker,
 		tracer:         tracing.NewNamedTracer(tracerProvider, serviceName),
 		ldClient:       client,
 		ofClient:       ofClient,
+		evalCounter:    evalCounter,
+		errorCounter:   errorCounter,
+		latencyHist:    latencyHist,
 	}
 
 	return ffm, nil
 }
 
-// CanUseFeature returns whether a user can use a feature or not.
-func (f *featureFlagManager) CanUseFeature(ctx context.Context, userID, feature string) (bool, error) {
+// toOpenFeatureContext converts a featureflags.EvaluationContext into the SDK's
+// own representation. It is the only place this provider crosses the boundary
+// between the platform-owned type and the OpenFeature type.
+func toOpenFeatureContext(evalCtx featureflags.EvaluationContext) openfeature.EvaluationContext {
+	return openfeature.NewEvaluationContext(evalCtx.TargetingKey, evalCtx.Attributes)
+}
+
+// CanUseFeature returns whether the supplied evaluation context is permitted to use
+// the named feature.
+func (f *featureFlagManager) CanUseFeature(ctx context.Context, feature string, evalCtx featureflags.EvaluationContext) (bool, error) {
 	_, span := f.tracer.StartSpan(ctx)
 	defer span.End()
 
-	logger := f.logger.WithValue(keys.UserIDKey, userID).WithValue("feature", feature)
+	logger := f.logger.WithValue(keys.UserIDKey, evalCtx.TargetingKey).WithValue("feature", feature)
 
 	if !f.circuitBreaker.CanProceed() {
 		return false, circuitbreaking.ErrCircuitBroken
 	}
 
-	evalCtx := openfeature.NewEvaluationContext(userID, nil)
-	result, err := f.ofClient.BooleanValue(ctx, feature, false, evalCtx)
+	startTime := time.Now()
+	result, err := f.ofClient.BooleanValue(ctx, feature, false, toOpenFeatureContext(evalCtx))
+	f.latencyHist.Record(ctx, float64(time.Since(startTime).Milliseconds()))
 	if err != nil {
+		f.errorCounter.Add(ctx, 1)
 		f.circuitBreaker.Failed()
 		return false, observability.PrepareAndLogError(err, logger, span, "checking feature flag variation")
 	}
 
+	f.evalCounter.Add(ctx, 1)
 	f.circuitBreaker.Succeeded()
 	return result, nil
 }
 
-// GetStringValue returns the string value of a feature flag for a user.
-func (f *featureFlagManager) GetStringValue(ctx context.Context, userID, feature string) (string, error) {
+// GetStringValue returns the string value of a feature flag, falling back to
+// defaultValue on error.
+func (f *featureFlagManager) GetStringValue(ctx context.Context, feature, defaultValue string, evalCtx featureflags.EvaluationContext) (string, error) {
 	_, span := f.tracer.StartSpan(ctx)
 	defer span.End()
 
-	logger := f.logger.WithValue(keys.UserIDKey, userID).WithValue("feature", feature)
+	logger := f.logger.WithValue(keys.UserIDKey, evalCtx.TargetingKey).WithValue("feature", feature)
 
 	if !f.circuitBreaker.CanProceed() {
-		return "", circuitbreaking.ErrCircuitBroken
+		return defaultValue, circuitbreaking.ErrCircuitBroken
 	}
 
-	evalCtx := openfeature.NewEvaluationContext(userID, nil)
-	result, err := f.ofClient.StringValue(ctx, feature, "", evalCtx)
+	startTime := time.Now()
+	result, err := f.ofClient.StringValue(ctx, feature, defaultValue, toOpenFeatureContext(evalCtx))
+	f.latencyHist.Record(ctx, float64(time.Since(startTime).Milliseconds()))
 	if err != nil {
+		f.errorCounter.Add(ctx, 1)
 		f.circuitBreaker.Failed()
-		return "", observability.PrepareAndLogError(err, logger, span, "checking feature flag string variation")
+		return defaultValue, observability.PrepareAndLogError(err, logger, span, "checking feature flag string variation")
 	}
 
+	f.evalCounter.Add(ctx, 1)
 	f.circuitBreaker.Succeeded()
 	return result, nil
 }
 
-// GetInt64Value returns the int64 value of a feature flag for a user.
-func (f *featureFlagManager) GetInt64Value(ctx context.Context, userID, feature string) (int64, error) {
+// GetInt64Value returns the int64 value of a feature flag, falling back to
+// defaultValue on error.
+func (f *featureFlagManager) GetInt64Value(ctx context.Context, feature string, defaultValue int64, evalCtx featureflags.EvaluationContext) (int64, error) {
 	_, span := f.tracer.StartSpan(ctx)
 	defer span.End()
 
-	logger := f.logger.WithValue(keys.UserIDKey, userID).WithValue("feature", feature)
+	logger := f.logger.WithValue(keys.UserIDKey, evalCtx.TargetingKey).WithValue("feature", feature)
 
 	if !f.circuitBreaker.CanProceed() {
-		return 0, circuitbreaking.ErrCircuitBroken
+		return defaultValue, circuitbreaking.ErrCircuitBroken
 	}
 
-	evalCtx := openfeature.NewEvaluationContext(userID, nil)
-	result, err := f.ofClient.IntValue(ctx, feature, 0, evalCtx)
+	startTime := time.Now()
+	result, err := f.ofClient.IntValue(ctx, feature, defaultValue, toOpenFeatureContext(evalCtx))
+	f.latencyHist.Record(ctx, float64(time.Since(startTime).Milliseconds()))
 	if err != nil {
+		f.errorCounter.Add(ctx, 1)
 		f.circuitBreaker.Failed()
-		return 0, observability.PrepareAndLogError(err, logger, span, "checking feature flag int variation")
+		return defaultValue, observability.PrepareAndLogError(err, logger, span, "checking feature flag int variation")
 	}
 
+	f.evalCounter.Add(ctx, 1)
+	f.circuitBreaker.Succeeded()
+	return result, nil
+}
+
+// GetFloat64Value returns the float64 value of a feature flag, falling back to
+// defaultValue on error.
+func (f *featureFlagManager) GetFloat64Value(ctx context.Context, feature string, defaultValue float64, evalCtx featureflags.EvaluationContext) (float64, error) {
+	_, span := f.tracer.StartSpan(ctx)
+	defer span.End()
+
+	logger := f.logger.WithValue(keys.UserIDKey, evalCtx.TargetingKey).WithValue("feature", feature)
+
+	if !f.circuitBreaker.CanProceed() {
+		return defaultValue, circuitbreaking.ErrCircuitBroken
+	}
+
+	startTime := time.Now()
+	result, err := f.ofClient.FloatValue(ctx, feature, defaultValue, toOpenFeatureContext(evalCtx))
+	f.latencyHist.Record(ctx, float64(time.Since(startTime).Milliseconds()))
+	if err != nil {
+		f.errorCounter.Add(ctx, 1)
+		f.circuitBreaker.Failed()
+		return defaultValue, observability.PrepareAndLogError(err, logger, span, "checking feature flag float variation")
+	}
+
+	f.evalCounter.Add(ctx, 1)
+	f.circuitBreaker.Succeeded()
+	return result, nil
+}
+
+// GetObjectValue returns the object (JSON) value of a feature flag, falling back
+// to defaultValue on error.
+func (f *featureFlagManager) GetObjectValue(ctx context.Context, feature string, defaultValue any, evalCtx featureflags.EvaluationContext) (any, error) {
+	_, span := f.tracer.StartSpan(ctx)
+	defer span.End()
+
+	logger := f.logger.WithValue(keys.UserIDKey, evalCtx.TargetingKey).WithValue("feature", feature)
+
+	if !f.circuitBreaker.CanProceed() {
+		return defaultValue, circuitbreaking.ErrCircuitBroken
+	}
+
+	startTime := time.Now()
+	result, err := f.ofClient.ObjectValue(ctx, feature, defaultValue, toOpenFeatureContext(evalCtx))
+	f.latencyHist.Record(ctx, float64(time.Since(startTime).Milliseconds()))
+	if err != nil {
+		f.errorCounter.Add(ctx, 1)
+		f.circuitBreaker.Failed()
+		return defaultValue, observability.PrepareAndLogError(err, logger, span, "checking feature flag object variation")
+	}
+
+	f.evalCounter.Add(ctx, 1)
 	f.circuitBreaker.Succeeded()
 	return result, nil
 }

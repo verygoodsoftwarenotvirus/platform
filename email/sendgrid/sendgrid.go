@@ -6,13 +6,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/email"
-	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/email"
+	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/sendgrid/rest"
 	"github.com/sendgrid/sendgrid-go"
@@ -43,6 +43,7 @@ type (
 		latencyHist    metrics.Float64Histogram
 		circuitBreaker circuitbreaking.CircuitBreaker
 		client         *sendgrid.Client
+		restClient     *rest.Client
 		config         Config
 	}
 )
@@ -65,22 +66,18 @@ func NewSendGridEmailer(cfg *Config, logger logging.Logger, tracerProvider traci
 
 	sendCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_sends", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating send counter: %w", err)
+		return nil, platformerrors.Wrap(err, "creating send counter")
 	}
 
 	errorCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_errors", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating error counter: %w", err)
+		return nil, platformerrors.Wrap(err, "creating error counter")
 	}
 
 	latencyHist, err := mp.NewFloat64Histogram(fmt.Sprintf("%s_latency_ms", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating latency histogram: %w", err)
+		return nil, platformerrors.Wrap(err, "creating latency histogram")
 	}
-
-	// this line causes data races when the unit tests in this package are run in parallel.
-	// that sucks, but I also basically can't do anything about it because of how SendGrid's dogshit client works.
-	sendgrid.DefaultClient = &rest.Client{HTTPClient: client}
 
 	e := &Emailer{
 		logger:         logging.NewNamedLogger(logger, name),
@@ -89,6 +86,7 @@ func NewSendGridEmailer(cfg *Config, logger logging.Logger, tracerProvider traci
 		errorCounter:   errorCounter,
 		latencyHist:    latencyHist,
 		client:         sendgrid.NewSendClient(cfg.APIToken),
+		restClient:     &rest.Client{HTTPClient: client},
 		config:         *cfg,
 		circuitBreaker: circuitBreaker,
 	}
@@ -119,7 +117,9 @@ func (e *Emailer) SendEmail(ctx context.Context, details *email.OutboundEmailMes
 	from := mail.NewEmail(details.FromName, details.FromAddress)
 	message := mail.NewSingleEmail(from, details.Subject, to, "", details.HTMLContent)
 
-	res, err := e.client.SendWithContext(ctx, message)
+	req := e.client.Request
+	req.Body = mail.GetRequestBody(message)
+	res, err := e.restClient.SendWithContext(ctx, req)
 	if err != nil {
 		e.errorCounter.Add(ctx, 1)
 		return observability.PrepareError(err, span, "sending email")
@@ -163,7 +163,7 @@ func (e *Emailer) sendDynamicTemplateEmail(ctx context.Context, to, from *mail.E
 
 	request.Body = mail.GetRequestBody(m)
 
-	res, err := sendgrid.MakeRequestWithContext(ctx, request)
+	res, err := e.restClient.SendWithContext(ctx, request)
 	if err != nil {
 		return observability.PrepareError(err, span, "sending dynamic email")
 	}

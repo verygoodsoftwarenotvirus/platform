@@ -3,7 +3,7 @@ package mocksearch
 import (
 	"context"
 
-	textsearch "github.com/verygoodsoftwarenotvirus/platform/v4/search/text"
+	textsearch "github.com/verygoodsoftwarenotvirus/platform/v5/search/text"
 
 	"github.com/stretchr/testify/mock"
 )

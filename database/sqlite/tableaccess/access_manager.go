@@ -3,8 +3,8 @@ package tableaccess
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/database"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/database"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
 )
 
 // ErrNotSupported is returned for operations that SQLite does not support.

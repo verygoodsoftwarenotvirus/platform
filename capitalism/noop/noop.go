@@ -3,7 +3,7 @@ package noop
 import (
 	"net/http"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/capitalism"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/capitalism"
 )
 
 var _ capitalism.PaymentManager = (*paymentManager)(nil)

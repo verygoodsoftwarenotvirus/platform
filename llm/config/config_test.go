@@ -3,13 +3,17 @@ package llmcfg
 import (
 	"testing"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/llm/openai"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/llm/openai"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestConfig_ProvideLLMProvider_Empty(T *testing.T) {
+	T.Parallel()
+
 	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
 		ctx := t.Context()
 		cfg := &Config{Provider: ""}
 
@@ -20,7 +24,11 @@ func TestConfig_ProvideLLMProvider_Empty(T *testing.T) {
 }
 
 func TestConfig_ProvideLLMProvider_OpenAI(T *testing.T) {
+	T.Parallel()
+
 	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
 		ctx := t.Context()
 		cfg := &Config{
 			Provider: ProviderOpenAI,

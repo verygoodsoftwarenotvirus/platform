@@ -8,11 +8,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/cache"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/cache"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking"
+	circuitbreakingcfg "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/config"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/go-redis/redis/v8"
 )
@@ -36,41 +38,42 @@ type redisCacheImpl[T any] struct {
 	cacheErrCounter  metrics.Int64Counter
 	latencyHist      metrics.Float64Histogram
 	client           redisClient
+	circuitBreaker   circuitbreaking.CircuitBreaker
 	expiration       time.Duration
 }
 
 // NewRedisCache builds a new redis-backed cache.
-func NewRedisCache[T any](cfg *Config, expiration time.Duration, logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider) (cache.Cache[T], error) {
+func NewRedisCache[T any](cfg *Config, expiration time.Duration, logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider, cb circuitbreaking.CircuitBreaker) (cache.Cache[T], error) {
 	mp := metrics.EnsureMetricsProvider(metricsProvider)
 
 	cacheHitCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_cache_hits", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating cache hit counter: %w", err)
+		return nil, errors.Wrap(err, "creating cache hit counter")
 	}
 
 	cacheMissCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_cache_misses", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating cache miss counter: %w", err)
+		return nil, errors.Wrap(err, "creating cache miss counter")
 	}
 
 	cacheSetCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_cache_sets", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating cache set counter: %w", err)
+		return nil, errors.Wrap(err, "creating cache set counter")
 	}
 
 	cacheDelCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_cache_deletes", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating cache delete counter: %w", err)
+		return nil, errors.Wrap(err, "creating cache delete counter")
 	}
 
 	cacheErrCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_cache_errors", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating cache error counter: %w", err)
+		return nil, errors.Wrap(err, "creating cache error counter")
 	}
 
 	latencyHist, err := mp.NewFloat64Histogram(fmt.Sprintf("%s_cache_latency_ms", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating cache latency histogram: %w", err)
+		return nil, errors.Wrap(err, "creating cache latency histogram")
 	}
 
 	return &redisCacheImpl[T]{
@@ -83,6 +86,7 @@ func NewRedisCache[T any](cfg *Config, expiration time.Duration, logger logging.
 		cacheErrCounter:  cacheErrCounter,
 		latencyHist:      latencyHist,
 		client:           buildRedisClient(cfg),
+		circuitBreaker:   circuitbreakingcfg.EnsureCircuitBreaker(cb),
 		expiration:       expiration,
 	}, nil
 }
@@ -90,6 +94,11 @@ func NewRedisCache[T any](cfg *Config, expiration time.Duration, logger logging.
 func (i *redisCacheImpl[T]) Get(ctx context.Context, key string) (*T, error) {
 	_, span := i.tracer.StartSpan(ctx)
 	defer span.End()
+
+	if i.circuitBreaker.CannotProceed() {
+		i.cacheMissCounter.Add(ctx, 1)
+		return nil, cache.ErrNotFound
+	}
 
 	startTime := time.Now()
 	defer func() {
@@ -100,6 +109,7 @@ func (i *redisCacheImpl[T]) Get(ctx context.Context, key string) (*T, error) {
 	if err != nil {
 		i.logger.Error("getting from cache", err)
 		i.cacheErrCounter.Add(ctx, 1)
+		i.circuitBreaker.Failed()
 		return nil, err
 	}
 
@@ -116,6 +126,7 @@ func (i *redisCacheImpl[T]) Get(ctx context.Context, key string) (*T, error) {
 		return nil, cache.ErrNotFound
 	}
 
+	i.circuitBreaker.Succeeded()
 	i.cacheHitCounter.Add(ctx, 1)
 
 	return x, nil
@@ -124,6 +135,10 @@ func (i *redisCacheImpl[T]) Get(ctx context.Context, key string) (*T, error) {
 func (i *redisCacheImpl[T]) Set(ctx context.Context, key string, value *T) error {
 	_, span := i.tracer.StartSpan(ctx)
 	defer span.End()
+
+	if i.circuitBreaker.CannotProceed() {
+		return nil
+	}
 
 	startTime := time.Now()
 	defer func() {
@@ -138,9 +153,11 @@ func (i *redisCacheImpl[T]) Set(ctx context.Context, key string, value *T) error
 
 	if setErr := i.client.Set(ctx, key, b.String(), i.expiration).Err(); setErr != nil {
 		i.cacheErrCounter.Add(ctx, 1)
+		i.circuitBreaker.Failed()
 		return setErr
 	}
 
+	i.circuitBreaker.Succeeded()
 	i.cacheSetCounter.Add(ctx, 1)
 
 	return nil
@@ -150,6 +167,10 @@ func (i *redisCacheImpl[T]) Delete(ctx context.Context, key string) error {
 	_, span := i.tracer.StartSpan(ctx)
 	defer span.End()
 
+	if i.circuitBreaker.CannotProceed() {
+		return nil
+	}
+
 	startTime := time.Now()
 	defer func() {
 		i.latencyHist.Record(ctx, float64(time.Since(startTime).Milliseconds()))
@@ -157,9 +178,11 @@ func (i *redisCacheImpl[T]) Delete(ctx context.Context, key string) error {
 
 	if err := i.client.Del(ctx, key).Err(); err != nil {
 		i.cacheErrCounter.Add(ctx, 1)
+		i.circuitBreaker.Failed()
 		return err
 	}
 
+	i.circuitBreaker.Succeeded()
 	i.cacheDelCounter.Add(ctx, 1)
 
 	return nil
@@ -178,6 +201,7 @@ func buildRedisClient(cfg *Config) redisClient {
 			Username:     cfg.Username,
 			Password:     cfg.Password,
 			DialTimeout:  1 * time.Second,
+			ReadTimeout:  1 * time.Second,
 			WriteTimeout: 1 * time.Second,
 		})
 	} else if len(cfg.QueueAddresses) == 1 {
@@ -186,6 +210,7 @@ func buildRedisClient(cfg *Config) redisClient {
 			Username:     cfg.Username,
 			Password:     cfg.Password,
 			DialTimeout:  1 * time.Second,
+			ReadTimeout:  1 * time.Second,
 			WriteTimeout: 1 * time.Second,
 		})
 	}

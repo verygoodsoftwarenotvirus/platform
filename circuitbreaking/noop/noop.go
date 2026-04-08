@@ -1,7 +1,7 @@
 package noop
 
 import (
-	"github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking"
 )
 
 var _ circuitbreaking.CircuitBreaker = (*circuitBreaker)(nil)

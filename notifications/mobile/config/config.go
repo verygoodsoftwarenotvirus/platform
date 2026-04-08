@@ -4,12 +4,13 @@ import (
 	"context"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/notifications/mobile"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/notifications/mobile/apns"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/notifications/mobile/fcm"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/notifications/mobile/noop"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/notifications/mobile"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/notifications/mobile/apns"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/notifications/mobile/fcm"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/notifications/mobile/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
@@ -72,6 +73,7 @@ func (cfg *Config) ProvidePushSender(
 	ctx context.Context,
 	logger logging.Logger,
 	tracerProvider tracing.TracerProvider,
+	metricsProvider metrics.Provider,
 ) (mobile.PushNotificationSender, error) {
 	switch strings.ToLower(strings.TrimSpace(cfg.Provider)) {
 	case ProviderAPNsFCM:
@@ -84,7 +86,7 @@ func (cfg *Config) ProvidePushSender(
 				BundleID:    cfg.APNs.BundleID,
 				Production:  cfg.APNs.Production,
 			}
-			s, err := apns.NewSender(apnsCfg, tracerProvider, logger)
+			s, err := apns.NewSender(apnsCfg, tracerProvider, logger, metricsProvider)
 			if err != nil {
 				logger.WithValue("error", err).Debug("push notifications: APNs sender init failed, iOS push disabled")
 			} else {
@@ -95,7 +97,7 @@ func (cfg *Config) ProvidePushSender(
 		var fcmSender *fcm.Sender
 		if cfg.FCM != nil {
 			fcmCfg := &fcm.Config{CredentialsPath: cfg.FCM.CredentialsPath}
-			s, err := fcm.NewSender(ctx, fcmCfg, tracerProvider, logger)
+			s, err := fcm.NewSender(ctx, fcmCfg, tracerProvider, logger, metricsProvider)
 			if err != nil {
 				logger.WithValue("error", err).Debug("push notifications: FCM sender init failed, Android push disabled")
 			} else {

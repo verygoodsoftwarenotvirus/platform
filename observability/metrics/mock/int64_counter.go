@@ -3,7 +3,7 @@ package mockmetrics
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 
 	"github.com/stretchr/testify/mock"
 	"go.opentelemetry.io/otel/metric"

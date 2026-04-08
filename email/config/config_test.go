@@ -1,18 +1,19 @@
 package emailcfg
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
 
-	cbnoop "github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/noop"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/email/mailgun"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/email/mailjet"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/email/postmark"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/email/resend"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/email/sendgrid"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	cbnoop "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/email/mailgun"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/email/mailjet"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/email/postmark"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/email/resend"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/email/sendgrid"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -69,7 +70,7 @@ func TestConfig_ProvideEmailer(T *testing.T) {
 				Postmark: &postmark.Config{ServerToken: t.Name()},
 			}
 
-			actual, err := cfg.ProvideEmailer(logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
+			actual, err := cfg.ProvideEmailer(context.Background(), logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
 			assert.NotNil(t, actual)
 			assert.NoError(t, err)
 		})
@@ -83,7 +84,7 @@ func TestConfig_ProvideEmailer(T *testing.T) {
 			Provider: "",
 		}
 
-		actual, err := cfg.ProvideEmailer(logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
+		actual, err := cfg.ProvideEmailer(context.Background(), logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
 		assert.NotNil(t, actual)
 		assert.NoError(t, err)
 	})

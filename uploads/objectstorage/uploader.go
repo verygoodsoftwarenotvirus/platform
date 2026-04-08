@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"strings"
 
-	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking"
+	circuitbreakingcfg "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/config"
+	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -34,23 +37,29 @@ var (
 type (
 	// Uploader implements our UploadManager struct.
 	Uploader struct {
-		bucket *blob.Bucket
-		logger logging.Logger
-		tracer tracing.Tracer
+		bucket         *blob.Bucket
+		logger         logging.Logger
+		tracer         tracing.Tracer
+		circuitBreaker circuitbreaking.CircuitBreaker
+		saveCounter    metrics.Int64Counter
+		readCounter    metrics.Int64Counter
+		saveErrCounter metrics.Int64Counter
+		readErrCounter metrics.Int64Counter
+		latencyHist    metrics.Float64Histogram
 	}
 
 	// Config configures our UploadManager.
 	Config struct {
-		_ struct{} `json:"-"`
-
-		FilesystemConfig  *FilesystemConfig `env:"init"                envPrefix:"FILESYSTEM_"            json:"filesystem,omitempty"`
-		S3Config          *S3Config         `env:"init"                envPrefix:"S3_"                    json:"s3,omitempty"`
-		GCP               *GCPConfig        `env:"init"                envPrefix:"GCP_"                   json:"gcpConfig,omitempty"`
-		R2Config          *R2Config         `env:"init"                envPrefix:"R2_"                    json:"r2,omitempty"`
-		BucketPrefix      string            `env:"BUCKET_PREFIX"       json:"bucketPrefix,omitempty"`
-		BucketName        string            `env:"BUCKET_NAME"         json:"bucketName,omitempty"`
-		UploadFilenameKey string            `env:"UPLOAD_FILENAME_KEY" json:"uploadFilenameKey,omitempty"`
-		Provider          string            `env:"PROVIDER"            json:"provider,omitempty"`
+		_                 struct{}                  `json:"-"`
+		FilesystemConfig  *FilesystemConfig         `env:"init"                envPrefix:"FILESYSTEM_"            json:"filesystem,omitempty"`
+		S3Config          *S3Config                 `env:"init"                envPrefix:"S3_"                    json:"s3,omitempty"`
+		GCP               *GCPConfig                `env:"init"                envPrefix:"GCP_"                   json:"gcpConfig,omitempty"`
+		R2Config          *R2Config                 `env:"init"                envPrefix:"R2_"                    json:"r2,omitempty"`
+		BucketPrefix      string                    `env:"BUCKET_PREFIX"       json:"bucketPrefix,omitempty"`
+		BucketName        string                    `env:"BUCKET_NAME"         json:"bucketName,omitempty"`
+		UploadFilenameKey string                    `env:"UPLOAD_FILENAME_KEY" json:"uploadFilenameKey,omitempty"`
+		Provider          string                    `env:"PROVIDER"            json:"provider,omitempty"`
+		CircuitBreaker    circuitbreakingcfg.Config `env:"init"                envPrefix:"CIRCUIT_BREAKING_"      json:"circuitBreakerConfig"`
 	}
 )
 
@@ -69,22 +78,61 @@ func (c *Config) ValidateWithContext(ctx context.Context) error {
 }
 
 // NewUploadManager provides a new uploads.UploadManager.
-func NewUploadManager(ctx context.Context, logger logging.Logger, tracerProvider tracing.TracerProvider, cfg *Config) (*Uploader, error) {
+func NewUploadManager(ctx context.Context, logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider, cfg *Config) (*Uploader, error) {
 	if cfg == nil {
 		return nil, ErrNilConfig
 	}
 
-	serviceName := fmt.Sprintf("%s_uploader", cfg.BucketName)
-	u := &Uploader{
-		logger: logging.NewNamedLogger(logger, serviceName),
-		tracer: tracing.NewNamedTracer(tracerProvider, serviceName),
+	cb, err := cfg.CircuitBreaker.ProvideCircuitBreaker(ctx, logger, metricsProvider)
+	if err != nil {
+		return nil, platformerrors.Wrap(err, "initializing upload manager circuit breaker")
 	}
 
-	if err := cfg.ValidateWithContext(ctx); err != nil {
+	serviceName := fmt.Sprintf("%s_uploader", cfg.BucketName)
+
+	mp := metrics.EnsureMetricsProvider(metricsProvider)
+
+	saveCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_saves", serviceName))
+	if err != nil {
+		return nil, platformerrors.Wrap(err, "creating save counter")
+	}
+
+	readCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_reads", serviceName))
+	if err != nil {
+		return nil, platformerrors.Wrap(err, "creating read counter")
+	}
+
+	saveErrCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_save_errors", serviceName))
+	if err != nil {
+		return nil, platformerrors.Wrap(err, "creating save error counter")
+	}
+
+	readErrCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_read_errors", serviceName))
+	if err != nil {
+		return nil, platformerrors.Wrap(err, "creating read error counter")
+	}
+
+	latencyHist, err := mp.NewFloat64Histogram(fmt.Sprintf("%s_latency_ms", serviceName))
+	if err != nil {
+		return nil, platformerrors.Wrap(err, "creating latency histogram")
+	}
+
+	u := &Uploader{
+		logger:         logging.NewNamedLogger(logger, serviceName),
+		tracer:         tracing.NewNamedTracer(tracerProvider, serviceName),
+		circuitBreaker: circuitbreakingcfg.EnsureCircuitBreaker(cb),
+		saveCounter:    saveCounter,
+		readCounter:    readCounter,
+		saveErrCounter: saveErrCounter,
+		readErrCounter: readErrCounter,
+		latencyHist:    latencyHist,
+	}
+
+	if err = cfg.ValidateWithContext(ctx); err != nil {
 		return nil, platformerrors.Wrap(err, "upload manager provided invalid config")
 	}
 
-	if err := u.selectBucket(ctx, cfg); err != nil {
+	if err = u.selectBucket(ctx, cfg); err != nil {
 		return nil, platformerrors.Wrap(err, "initializing bucket")
 	}
 

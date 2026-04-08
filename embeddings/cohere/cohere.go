@@ -9,10 +9,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/embeddings"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/embeddings"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 )
 
 const (
@@ -125,7 +125,7 @@ func (e *embedder) GenerateEmbedding(ctx context.Context, input *embeddings.Inpu
 		if readErr != nil {
 			return nil, errors.Wrap(readErr, "reading cohere error response body")
 		}
-		err = fmt.Errorf("cohere embedding API returned status %d: %s", resp.StatusCode, string(body))
+		err = errors.Errorf("cohere embedding API returned status %d: %s", resp.StatusCode, string(body))
 		tracing.AttachErrorToSpan(span, "unexpected status code", err)
 		e.logger.Error("unexpected status code", err)
 		return nil, err

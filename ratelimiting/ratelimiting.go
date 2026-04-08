@@ -4,8 +4,13 @@ import (
 	"context"
 	"sync"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+
 	"golang.org/x/time/rate"
 )
+
+const inMemoryName = "in_memory_rate_limiter"
 
 // RateLimiter limits the rate of operations per key.
 type RateLimiter interface {
@@ -14,22 +19,44 @@ type RateLimiter interface {
 }
 
 type inMemoryRateLimiter struct {
-	limiters       sync.Map
-	requestsPerSec float64
-	burstSize      int
+	allowedCounter  metrics.Int64Counter
+	rejectedCounter metrics.Int64Counter
+	limiters        sync.Map
+	requestsPerSec  float64
+	burstSize       int
 }
 
 // NewInMemoryRateLimiter returns a RateLimiter that uses per-key limiters in memory.
-func NewInMemoryRateLimiter(requestsPerSec float64, burstSize int) RateLimiter {
-	return &inMemoryRateLimiter{
-		requestsPerSec: requestsPerSec,
-		burstSize:      burstSize,
+func NewInMemoryRateLimiter(metricsProvider metrics.Provider, requestsPerSec float64, burstSize int) (RateLimiter, error) {
+	mp := metrics.EnsureMetricsProvider(metricsProvider)
+
+	allowedCounter, err := mp.NewInt64Counter(inMemoryName + "_allowed")
+	if err != nil {
+		return nil, errors.Wrap(err, "creating allowed counter")
 	}
+
+	rejectedCounter, err := mp.NewInt64Counter(inMemoryName + "_rejected")
+	if err != nil {
+		return nil, errors.Wrap(err, "creating rejected counter")
+	}
+
+	return &inMemoryRateLimiter{
+		requestsPerSec:  requestsPerSec,
+		burstSize:       burstSize,
+		allowedCounter:  allowedCounter,
+		rejectedCounter: rejectedCounter,
+	}, nil
 }
 
 func (r *inMemoryRateLimiter) Allow(ctx context.Context, key string) (bool, error) {
 	limiter := r.getOrCreateLimiter(ctx, key)
-	return limiter.Allow(), nil
+	allowed := limiter.Allow()
+	if allowed {
+		r.allowedCounter.Add(ctx, 1)
+	} else {
+		r.rejectedCounter.Add(ctx, 1)
+	}
+	return allowed, nil
 }
 
 func (r *inMemoryRateLimiter) getOrCreateLimiter(_ context.Context, key string) *rate.Limiter {

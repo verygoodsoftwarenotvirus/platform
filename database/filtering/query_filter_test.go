@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	textsearch "github.com/verygoodsoftwarenotvirus/platform/v4/search/text"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	textsearch "github.com/verygoodsoftwarenotvirus/platform/v5/search/text"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

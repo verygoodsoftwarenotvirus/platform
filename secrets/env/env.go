@@ -6,10 +6,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/secrets"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/secrets"
 )
 
 const name = "env_secret_source"
@@ -27,12 +28,12 @@ func NewEnvSecretSource(logger logging.Logger, tracerProvider tracing.TracerProv
 
 	lookupCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_lookups", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating lookup counter: %w", err)
+		return nil, errors.Wrap(err, "creating lookup counter")
 	}
 
 	latencyHist, err := mp.NewFloat64Histogram(fmt.Sprintf("%s_latency_ms", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating latency histogram: %w", err)
+		return nil, errors.Wrap(err, "creating latency histogram")
 	}
 
 	return &envSecretSource{

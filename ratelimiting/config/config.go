@@ -4,9 +4,11 @@ import (
 	"context"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/ratelimiting"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/ratelimiting/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/ratelimiting"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/ratelimiting/noop"
+	redisrl "github.com/verygoodsoftwarenotvirus/platform/v5/ratelimiting/redis"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
@@ -14,6 +16,7 @@ import (
 const (
 	ProviderMemory = "memory"
 	ProviderNoop   = "noop"
+	ProviderRedis  = "redis"
 
 	defaultRequestsPerSec = 10.0
 	defaultBurstSize      = 20
@@ -21,9 +24,10 @@ const (
 
 // Config configures rate limiting.
 type Config struct {
-	Provider       string  `env:"PROVIDER"         json:"provider"`
-	RequestsPerSec float64 `env:"REQUESTS_PER_SEC" json:"requestsPerSecond"`
-	BurstSize      int     `env:"BURST_SIZE"       json:"burstSize"`
+	Provider       string         `env:"PROVIDER"         json:"provider"`
+	Redis          redisrl.Config `env:"init"             envPrefix:"REDIS_"       json:"redis"`
+	RequestsPerSec float64        `env:"REQUESTS_PER_SEC" json:"requestsPerSecond"`
+	BurstSize      int            `env:"BURST_SIZE"       json:"burstSize"`
 }
 
 var _ validation.ValidatableWithContext = (*Config)(nil)
@@ -47,7 +51,7 @@ func (cfg *Config) ValidateWithContext(ctx context.Context) error {
 }
 
 // ProvideRateLimiter returns a RateLimiter from config.
-func (cfg *Config) ProvideRateLimiter() (ratelimiting.RateLimiter, error) {
+func (cfg *Config) ProvideRateLimiter(metricsProvider metrics.Provider) (ratelimiting.RateLimiter, error) {
 	if cfg == nil {
 		return noop.NewRateLimiter(), nil
 	}
@@ -57,18 +61,20 @@ func (cfg *Config) ProvideRateLimiter() (ratelimiting.RateLimiter, error) {
 	case "", ProviderNoop:
 		return noop.NewRateLimiter(), nil
 	case ProviderMemory:
-		return ratelimiting.NewInMemoryRateLimiter(cfg.RequestsPerSec, cfg.BurstSize), nil
+		return ratelimiting.NewInMemoryRateLimiter(metricsProvider, cfg.RequestsPerSec, cfg.BurstSize)
+	case ProviderRedis:
+		return redisrl.NewRedisRateLimiter(cfg.Redis, metricsProvider, cfg.RequestsPerSec)
 	default:
 		return nil, errors.Newf("unknown rate limiter provider: %q", cfg.Provider)
 	}
 }
 
 // ProvideRateLimiterFromConfig provides a RateLimiter from config.
-func ProvideRateLimiterFromConfig(cfg *Config) (ratelimiting.RateLimiter, error) {
+func ProvideRateLimiterFromConfig(cfg *Config, metricsProvider metrics.Provider) (ratelimiting.RateLimiter, error) {
 	if cfg == nil {
 		return noop.NewRateLimiter(), nil
 	}
-	limiter, err := cfg.ProvideRateLimiter()
+	limiter, err := cfg.ProvideRateLimiter(metricsProvider)
 	if err != nil {
 		return nil, errors.Wrap(err, "provide rate limiter")
 	}

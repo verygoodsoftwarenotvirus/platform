@@ -3,8 +3,8 @@ package observability
 import (
 	"testing"
 
-	tracingcfg "github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing/config"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing/oteltrace"
+	tracingcfg "github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing/config"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing/oteltrace"
 
 	"github.com/stretchr/testify/assert"
 )

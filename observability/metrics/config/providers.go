@@ -3,8 +3,8 @@ package metricscfg
 import (
 	"context"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 )
 
 // ProvideMetricsProvider provides a metrics.Provider from config.

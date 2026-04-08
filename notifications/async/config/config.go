@@ -4,15 +4,16 @@ import (
 	"context"
 	"strings"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/notifications/async"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/notifications/async/ably"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/notifications/async/noop"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/notifications/async/pusher"
-	asyncsse "github.com/verygoodsoftwarenotvirus/platform/v4/notifications/async/sse"
-	asyncws "github.com/verygoodsoftwarenotvirus/platform/v4/notifications/async/websocket"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/notifications/async"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/notifications/async/ably"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/notifications/async/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/notifications/async/pusher"
+	asyncsse "github.com/verygoodsoftwarenotvirus/platform/v5/notifications/async/sse"
+	asyncws "github.com/verygoodsoftwarenotvirus/platform/v5/notifications/async/websocket"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
@@ -54,12 +55,12 @@ func (cfg *Config) ValidateWithContext(ctx context.Context) error {
 }
 
 // ProvideAsyncNotifier provides an AsyncNotifier based on configuration.
-func (cfg *Config) ProvideAsyncNotifier(logger logging.Logger, tracerProvider tracing.TracerProvider) (async.AsyncNotifier, error) {
+func (cfg *Config) ProvideAsyncNotifier(logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider) (async.AsyncNotifier, error) {
 	switch strings.TrimSpace(strings.ToLower(cfg.Provider)) {
 	case ProviderPusher:
-		return pusher.NewNotifier(cfg.Pusher, logger, tracerProvider)
+		return pusher.NewNotifier(cfg.Pusher, logger, tracerProvider, metricsProvider)
 	case ProviderAbly:
-		return ably.NewNotifier(cfg.Ably, logger, tracerProvider)
+		return ably.NewNotifier(cfg.Ably, logger, tracerProvider, metricsProvider)
 	case ProviderWebSocket:
 		return asyncws.NewNotifier(cfg.WebSocket, logger, tracerProvider)
 	case ProviderSSE:

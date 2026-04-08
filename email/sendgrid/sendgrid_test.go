@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	cbnoop "github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/noop"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/email"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	cbnoop "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/email"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
@@ -31,7 +31,11 @@ func TestNewSendGridEmailer(T *testing.T) {
 }
 
 func TestSendGridEmailer_SendEmail(T *testing.T) {
+	T.Parallel()
+
 	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
 		logger := logging.NewNoopLogger()
 
 		ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
@@ -58,6 +62,8 @@ func TestSendGridEmailer_SendEmail(T *testing.T) {
 	})
 
 	T.Run("with error executing request", func(t *testing.T) {
+		t.Parallel()
+
 		logger := logging.NewNoopLogger()
 
 		ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
@@ -87,6 +93,8 @@ func TestSendGridEmailer_SendEmail(T *testing.T) {
 	})
 
 	T.Run("with invalid response code", func(t *testing.T) {
+		t.Parallel()
+
 		logger := logging.NewNoopLogger()
 
 		ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
@@ -115,7 +123,11 @@ func TestSendGridEmailer_SendEmail(T *testing.T) {
 }
 
 func TestSendGridEmailer_sendDynamicTemplateEmail(T *testing.T) {
+	T.Parallel()
+
 	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
 		logger := logging.NewNoopLogger()
 
 		ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {

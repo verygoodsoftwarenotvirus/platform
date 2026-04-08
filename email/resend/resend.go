@@ -2,17 +2,17 @@ package resend
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/email"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/email"
+	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/resend/resend-go/v3"
 )
@@ -25,11 +25,11 @@ var (
 	_ email.Emailer = (*Emailer)(nil)
 
 	// ErrNilConfig indicates a nil config was provided.
-	ErrNilConfig = errors.New("resend config is nil")
+	ErrNilConfig = platformerrors.New("resend config is nil")
 	// ErrEmptyAPIToken indicates an empty API token was provided.
-	ErrEmptyAPIToken = errors.New("empty Resend API token")
+	ErrEmptyAPIToken = platformerrors.New("empty Resend API token")
 	// ErrNilHTTPClient indicates a nil HTTP client was provided.
-	ErrNilHTTPClient = errors.New("nil HTTP client")
+	ErrNilHTTPClient = platformerrors.New("nil HTTP client")
 )
 
 type (
@@ -63,17 +63,17 @@ func NewResendEmailer(cfg *Config, logger logging.Logger, tracerProvider tracing
 
 	sendCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_sends", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating send counter: %w", err)
+		return nil, platformerrors.Wrap(err, "creating send counter")
 	}
 
 	errorCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_errors", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating error counter: %w", err)
+		return nil, platformerrors.Wrap(err, "creating error counter")
 	}
 
 	latencyHist, err := mp.NewFloat64Histogram(fmt.Sprintf("%s_latency_ms", name))
 	if err != nil {
-		return nil, fmt.Errorf("creating latency histogram: %w", err)
+		return nil, platformerrors.Wrap(err, "creating latency histogram")
 	}
 
 	e := &Emailer{

@@ -1,0 +1,194 @@
+package kafka
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"sync"
+	"time"
+
+	"github.com/verygoodsoftwarenotvirus/platform/v5/encoding"
+	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/messagequeue"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
+
+	"github.com/segmentio/kafka-go"
+)
+
+var (
+	// ErrEmptyInputProvided indicates empty input was provided in an unacceptable context.
+	ErrEmptyInputProvided = platformerrors.New("empty input provided")
+)
+
+type (
+	kafkaWriter interface {
+		WriteMessages(ctx context.Context, msgs ...kafka.Message) error
+		Close() error
+	}
+
+	kafkaPublisher struct {
+		tracer            tracing.Tracer
+		encoder           encoding.ClientEncoder
+		logger            logging.Logger
+		writer            kafkaWriter
+		publishedCounter  metrics.Int64Counter
+		publishErrCounter metrics.Int64Counter
+		latencyHist       metrics.Float64Histogram
+	}
+)
+
+var _ messagequeue.Publisher = (*kafkaPublisher)(nil)
+
+// Stop closes the underlying Kafka writer.
+func (p *kafkaPublisher) Stop() {
+	if err := p.writer.Close(); err != nil {
+		p.logger.Error("closing kafka writer", err)
+	}
+}
+
+// Publish publishes a message to a Kafka topic.
+func (p *kafkaPublisher) Publish(ctx context.Context, data any) error {
+	_, span := p.tracer.StartSpan(ctx)
+	defer span.End()
+
+	startTime := time.Now()
+
+	var b bytes.Buffer
+	if err := p.encoder.Encode(ctx, &b, data); err != nil {
+		p.publishErrCounter.Add(ctx, 1)
+		return observability.PrepareAndLogError(err, p.logger, span, "encoding topic message")
+	}
+
+	if err := p.writer.WriteMessages(ctx, kafka.Message{Value: b.Bytes()}); err != nil {
+		p.publishErrCounter.Add(ctx, 1)
+		return observability.PrepareAndLogError(err, p.logger, span, "publishing message")
+	}
+
+	p.publishedCounter.Add(ctx, 1)
+	p.latencyHist.Record(ctx, float64(time.Since(startTime).Milliseconds()))
+
+	return nil
+}
+
+// PublishAsync publishes a message to a Kafka topic without waiting for acknowledgement.
+func (p *kafkaPublisher) PublishAsync(ctx context.Context, data any) {
+	_, span := p.tracer.StartSpan(ctx)
+	defer span.End()
+
+	startTime := time.Now()
+
+	var b bytes.Buffer
+	if err := p.encoder.Encode(ctx, &b, data); err != nil {
+		p.publishErrCounter.Add(ctx, 1)
+		observability.AcknowledgeError(err, p.logger, span, "encoding topic message")
+		return
+	}
+
+	go func() {
+		if err := p.writer.WriteMessages(context.WithoutCancel(ctx), kafka.Message{Value: b.Bytes()}); err != nil {
+			p.publishErrCounter.Add(ctx, 1)
+			observability.AcknowledgeError(err, p.logger, span, "publishing message async")
+			return
+		}
+		p.publishedCounter.Add(ctx, 1)
+		p.latencyHist.Record(ctx, float64(time.Since(startTime).Milliseconds()))
+	}()
+}
+
+func provideKafkaPublisher(logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider, brokers []string, topic string) *kafkaPublisher {
+	mp := metrics.EnsureMetricsProvider(metricsProvider)
+
+	publishedCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_published", topic))
+	if err != nil {
+		panic(fmt.Sprintf("creating published counter: %v", err))
+	}
+
+	publishErrCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_publish_errors", topic))
+	if err != nil {
+		panic(fmt.Sprintf("creating publish error counter: %v", err))
+	}
+
+	latencyHist, err := mp.NewFloat64Histogram(fmt.Sprintf("%s_publish_latency_ms", topic))
+	if err != nil {
+		panic(fmt.Sprintf("creating publish latency histogram: %v", err))
+	}
+
+	writer := &kafka.Writer{
+		Addr:                   kafka.TCP(brokers...),
+		Topic:                  topic,
+		AllowAutoTopicCreation: true,
+	}
+
+	return &kafkaPublisher{
+		writer:            writer,
+		encoder:           encoding.ProvideClientEncoder(logger, tracerProvider, encoding.ContentTypeJSON),
+		logger:            logging.EnsureLogger(logger.WithValue("topic", topic)),
+		tracer:            tracing.NewNamedTracer(tracerProvider, fmt.Sprintf("%s_publisher", topic)),
+		publishedCounter:  publishedCounter,
+		publishErrCounter: publishErrCounter,
+		latencyHist:       latencyHist,
+	}
+}
+
+type publisherProvider struct {
+	logger            logging.Logger
+	publisherCache    map[string]messagequeue.Publisher
+	tracerProvider    tracing.TracerProvider
+	metricsProvider   metrics.Provider
+	brokers           []string
+	publisherCacheHat sync.RWMutex
+}
+
+var _ messagequeue.PublisherProvider = (*publisherProvider)(nil)
+
+// ProvideKafkaPublisherProvider returns a PublisherProvider backed by Kafka.
+func ProvideKafkaPublisherProvider(logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider, cfg Config) messagequeue.PublisherProvider {
+	logger.WithValue("brokers", cfg.Brokers).Info("setting up kafka publisher")
+
+	return &publisherProvider{
+		logger:          logging.EnsureLogger(logger),
+		brokers:         cfg.Brokers,
+		publisherCache:  map[string]messagequeue.Publisher{},
+		tracerProvider:  tracerProvider,
+		metricsProvider: metricsProvider,
+	}
+}
+
+// ProvidePublisher returns a Publisher for the given topic.
+func (p *publisherProvider) ProvidePublisher(_ context.Context, topic string) (messagequeue.Publisher, error) {
+	if topic == "" {
+		return nil, messagequeue.ErrEmptyTopicName
+	}
+
+	p.publisherCacheHat.Lock()
+	defer p.publisherCacheHat.Unlock()
+	if cached, ok := p.publisherCache[topic]; ok {
+		return cached, nil
+	}
+
+	pub := provideKafkaPublisher(p.logger, p.tracerProvider, p.metricsProvider, p.brokers, topic)
+	p.publisherCache[topic] = pub
+
+	return pub, nil
+}
+
+// Ping checks connectivity by attempting to dial a broker.
+func (p *publisherProvider) Ping(ctx context.Context) error {
+	conn, err := kafka.DialContext(ctx, "tcp", p.brokers[0])
+	if err != nil {
+		return err
+	}
+	return conn.Close()
+}
+
+// Close closes all cached publishers.
+func (p *publisherProvider) Close() {
+	p.publisherCacheHat.Lock()
+	defer p.publisherCacheHat.Unlock()
+	for _, pub := range p.publisherCache {
+		pub.Stop()
+	}
+}

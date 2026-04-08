@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/bitmask"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/bitmask"
 )
 
 type Permission uint8

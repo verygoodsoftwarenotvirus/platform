@@ -8,18 +8,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking"
-	circuitbreakingcfg "github.com/verygoodsoftwarenotvirus/platform/v4/circuitbreaking/config"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/email"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/email/mailgun"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/email/mailjet"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/email/noop"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/email/postmark"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/email/resend"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/email/sendgrid"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/metrics"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking"
+	circuitbreakingcfg "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/config"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/email"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/email/mailgun"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/email/mailjet"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/email/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/email/postmark"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/email/resend"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/email/sendgrid"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/email/ses"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/matcornic/hermes/v2"
@@ -36,6 +37,8 @@ const (
 	ProviderResend = "resend"
 	// ProviderPostmark represents Postmark.
 	ProviderPostmark = "postmark"
+	// ProviderSES represents AWS SES.
+	ProviderSES = "ses"
 )
 
 type (
@@ -46,6 +49,7 @@ type (
 		Mailjet                             *mailjet.Config           `env:"init"                                    envPrefix:"MAILJET_"                       json:"mailjet"`
 		Resend                              *resend.Config            `env:"init"                                    envPrefix:"RESEND_"                        json:"resend"`
 		Postmark                            *postmark.Config          `env:"init"                                    envPrefix:"POSTMARK_"                      json:"postmark"`
+		SES                                 *ses.Config               `env:"init"                                    envPrefix:"SES_"                           json:"ses"`
 		Provider                            string                    `env:"PROVIDER"                                json:"provider"`
 		BaseURL                             template.URL              `env:"BASE_URL"                                json:"baseURL"`
 		OutboundInvitesEmailAddress         string                    `env:"OUTBOUND_INVITES_EMAIL_ADDRESS"          json:"outboundInvitesEmailAddress"`
@@ -90,11 +94,12 @@ func (cfg *Config) ValidateWithContext(ctx context.Context) error {
 		validation.Field(&cfg.Mailjet, validation.When(cfg.Provider == ProviderMailjet, validation.Required)),
 		validation.Field(&cfg.Resend, validation.When(cfg.Provider == ProviderResend, validation.Required)),
 		validation.Field(&cfg.Postmark, validation.When(cfg.Provider == ProviderPostmark, validation.Required)),
+		validation.Field(&cfg.SES, validation.When(cfg.Provider == ProviderSES, validation.Required)),
 	)
 }
 
 // ProvideEmailer provides an outbound_emailer.
-func (cfg *Config) ProvideEmailer(logger logging.Logger, tracerProvider tracing.TracerProvider, client *http.Client, circuitBreaker circuitbreaking.CircuitBreaker, metricsProvider metrics.Provider) (email.Emailer, error) {
+func (cfg *Config) ProvideEmailer(ctx context.Context, logger logging.Logger, tracerProvider tracing.TracerProvider, client *http.Client, circuitBreaker circuitbreaking.CircuitBreaker, metricsProvider metrics.Provider) (email.Emailer, error) {
 	switch strings.ToLower(strings.TrimSpace(cfg.Provider)) {
 	case ProviderSendgrid:
 		return sendgrid.NewSendGridEmailer(cfg.Sendgrid, logger, tracerProvider, client, circuitBreaker, metricsProvider)
@@ -106,6 +111,8 @@ func (cfg *Config) ProvideEmailer(logger logging.Logger, tracerProvider tracing.
 		return resend.NewResendEmailer(cfg.Resend, logger, tracerProvider, client, circuitBreaker, metricsProvider)
 	case ProviderPostmark:
 		return postmark.NewPostmarkEmailer(cfg.Postmark, logger, tracerProvider, client, circuitBreaker, metricsProvider)
+	case ProviderSES:
+		return ses.NewSESEmailer(ctx, cfg.SES, logger, tracerProvider, client, circuitBreaker, metricsProvider)
 	default:
 		logger.Debug("providing noop outbound_emailer")
 		return noop.NewEmailer()

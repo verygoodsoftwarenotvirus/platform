@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/profiling"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/profiling/pprof"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/profiling/pyroscope"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/profiling"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/profiling/pprof"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/profiling/pyroscope"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )

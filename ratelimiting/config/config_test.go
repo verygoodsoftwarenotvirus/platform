@@ -42,7 +42,7 @@ func TestConfig_ProvideRateLimiter(T *testing.T) {
 		t.Parallel()
 
 		var cfg *Config
-		limiter, err := cfg.ProvideRateLimiter()
+		limiter, err := cfg.ProvideRateLimiter(nil)
 		require.NoError(t, err)
 		require.NotNil(t, limiter)
 
@@ -55,7 +55,7 @@ func TestConfig_ProvideRateLimiter(T *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ""}
-		limiter, err := cfg.ProvideRateLimiter()
+		limiter, err := cfg.ProvideRateLimiter(nil)
 		require.NoError(t, err)
 		require.NotNil(t, limiter)
 
@@ -68,7 +68,7 @@ func TestConfig_ProvideRateLimiter(T *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ProviderNoop}
-		limiter, err := cfg.ProvideRateLimiter()
+		limiter, err := cfg.ProvideRateLimiter(nil)
 		require.NoError(t, err)
 		require.NotNil(t, limiter)
 
@@ -85,7 +85,7 @@ func TestConfig_ProvideRateLimiter(T *testing.T) {
 			RequestsPerSec: 1,
 			BurstSize:      1,
 		}
-		limiter, err := cfg.ProvideRateLimiter()
+		limiter, err := cfg.ProvideRateLimiter(nil)
 		require.NoError(t, err)
 		require.NotNil(t, limiter)
 
@@ -102,7 +102,7 @@ func TestConfig_ProvideRateLimiter(T *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: "unknown"}
-		limiter, err := cfg.ProvideRateLimiter()
+		limiter, err := cfg.ProvideRateLimiter(nil)
 		require.Error(t, err)
 		assert.Nil(t, limiter)
 		assert.Contains(t, err.Error(), "unknown")

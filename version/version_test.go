@@ -6,10 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGet(T *testing.T) {
-	// Not parallel: mutates package-level vars.
-
-	T.Run("returns unknown when vars are unset", func(t *testing.T) {
+func TestGet(T *testing.T) { //nolint:paralleltest // mutates package-level vars; subtests must run sequentially
+	T.Run("returns unknown when vars are unset", func(t *testing.T) { //nolint:paralleltest // mutates package-level vars; subtests must run sequentially
 		origVersion, origHash, origCTime, origBTime := Version, CommitHash, CommitTime, BuildTime
 		Version, CommitHash, CommitTime, BuildTime = "", "", "", ""
 		t.Cleanup(func() {
@@ -23,7 +21,7 @@ func TestGet(T *testing.T) {
 		assert.Equal(t, "unknown", info.BuildTime)
 	})
 
-	T.Run("returns set values when vars are populated", func(t *testing.T) {
+	T.Run("returns set values when vars are populated", func(t *testing.T) { //nolint:paralleltest // mutates package-level vars; subtests must run sequentially
 		origVersion, origHash, origCTime, origBTime := Version, CommitHash, CommitTime, BuildTime
 		Version = "v1.2.3"
 		CommitHash = "abc123"

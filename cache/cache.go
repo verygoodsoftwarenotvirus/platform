@@ -2,7 +2,8 @@ package cache
 
 import (
 	"context"
-	"errors"
+
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
 )
 
 var (

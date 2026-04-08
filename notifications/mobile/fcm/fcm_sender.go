@@ -4,10 +4,11 @@ import (
 	"context"
 	"os"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/errors"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/logging"
-	"github.com/verygoodsoftwarenotvirus/platform/v4/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	firebase "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/messaging"
@@ -27,13 +28,15 @@ type Config struct {
 
 // Sender sends push notifications to Android devices via FCM.
 type Sender struct {
-	client *messaging.Client
-	tracer tracing.Tracer
-	logger logging.Logger
+	client       *messaging.Client
+	tracer       tracing.Tracer
+	logger       logging.Logger
+	sendCounter  metrics.Int64Counter
+	errorCounter metrics.Int64Counter
 }
 
 // NewSender creates an FCM sender from config.
-func NewSender(ctx context.Context, cfg *Config, tracerProvider tracing.TracerProvider, logger logging.Logger) (*Sender, error) {
+func NewSender(ctx context.Context, cfg *Config, tracerProvider tracing.TracerProvider, logger logging.Logger, metricsProvider metrics.Provider) (*Sender, error) {
 	if cfg == nil {
 		return nil, errors.New("fcm: config is required")
 	}
@@ -58,10 +61,24 @@ func NewSender(ctx context.Context, cfg *Config, tracerProvider tracing.TracerPr
 		return nil, errors.Wrap(err, "fcm: creating messaging client")
 	}
 
+	mp := metrics.EnsureMetricsProvider(metricsProvider)
+
+	sendCounter, err := mp.NewInt64Counter(o11yName + "_sends")
+	if err != nil {
+		return nil, errors.Wrap(err, "fcm: creating send counter")
+	}
+
+	errorCounter, err := mp.NewInt64Counter(o11yName + "_errors")
+	if err != nil {
+		return nil, errors.Wrap(err, "fcm: creating error counter")
+	}
+
 	return &Sender{
-		client: client,
-		logger: logging.NewNamedLogger(logger, o11yName),
-		tracer: tracing.NewNamedTracer(tracerProvider, o11yName),
+		client:       client,
+		logger:       logging.NewNamedLogger(logger, o11yName),
+		tracer:       tracing.NewNamedTracer(tracerProvider, o11yName),
+		sendCounter:  sendCounter,
+		errorCounter: errorCounter,
 	}, nil
 }
 
@@ -81,8 +98,10 @@ func (s *Sender) Send(ctx context.Context, deviceToken, title, body string) erro
 	}
 
 	if _, err := s.client.Send(ctx, msg); err != nil {
+		s.errorCounter.Add(ctx, 1)
 		return observability.PrepareAndLogError(err, logger, span, "sending fcm message")
 	}
 
+	s.sendCounter.Add(ctx, 1)
 	return nil
 }

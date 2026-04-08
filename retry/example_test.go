@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/verygoodsoftwarenotvirus/platform/v4/retry"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/retry"
 )
 
 func ExampleNewExponentialBackoffPolicy() {

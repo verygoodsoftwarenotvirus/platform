@@ -1,15 +1,11 @@
 ---
 on:
   # gollum:
-  pull_request:
-#    paths:
-#      - '**/*.go'
-  # TODO: re-enable once verified on PRs
-  # push:
-  #   branches:
-  #     - main
-  #   paths:
-  #     - '**/*.go'
+   push:
+     branches:
+       - main
+     paths:
+       - '**/*.go'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

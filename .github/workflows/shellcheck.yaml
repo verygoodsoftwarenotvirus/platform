@@ -1,10 +1,9 @@
 ---
 on:
-  # temporarily disabled while testing codecov workflow in isolation
   workflow_dispatch:
-  # pull_request:
-  #   paths:
-  #     - .scripts/**/*.sh
+  pull_request:
+    paths:
+      - .scripts/**/*.sh
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

@@ -1,6 +1,6 @@
 # platform
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/verygoodsoftwarenotvirus/platform/v4.svg)](https://pkg.go.dev/github.com/verygoodsoftwarenotvirus/platform/v5)
+[![Go Reference](https://pkg.go.dev/badge/github.com/verygoodsoftwarenotvirus/platform/v4.svg)](https://pkg.go.dev/github.com/verygoodsoftwarenotvirus/platform/v5) [![codecov](https://codecov.io/github/verygoodsoftwarenotvirus/platform/graph/badge.svg?token=69RLLWLJ39)](https://codecov.io/github/verygoodsoftwarenotvirus/platform)
 
 A Go library providing infrastructure abstractions for cloud-native services. Each package defines a stable interface with multiple provider implementations, selected at runtime via config. All packages instrument with OpenTelemetry where applicable.
 

@@ -10,7 +10,7 @@ SCRIPTS_DIR   := .scripts
 COVERAGE_OUT  := $(ARTIFACTS_DIR)/coverage.out
 
 # COMPUTED
-TOTAL_PACKAGE_LIST := `go list $(THIS)/...`
+TOTAL_PACKAGE_LIST := $(shell go list $(THIS)/...)
 
 # CONTAINER VERSIONS
 LINTER_IMAGE     := golangci/golangci-lint:v2.10.1

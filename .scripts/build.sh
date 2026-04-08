@@ -34,7 +34,9 @@ if [[ "${1:-}" == "-o" ]]; then
 	LDFLAGS="-s -w -X ${VERSION_PKG}.CommitHash=${COMMIT_HASH} -X ${VERSION_PKG}.BuildTime=${BUILD_TIME} -X ${VERSION_PKG}.CommitTime=${COMMIT_TIME}"
 	go build -trimpath -ldflags "$LDFLAGS" -o "$OUT" "$PACKAGE"
 else
-	PACKAGE_LIST="${1:?missing package list}"
-	# shellcheck disable=SC2086
-	go build ${PACKAGE_LIST}
+	if [[ $# -lt 1 ]]; then
+		echo "missing package list" >&2
+		exit 1
+	fi
+	go build "$@"
 fi

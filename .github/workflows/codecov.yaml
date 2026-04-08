@@ -2,8 +2,8 @@
 on:
   # gollum:
   pull_request:
-    paths:
-      - '**/*.go'
+#    paths:
+#      - '**/*.go'
   # TODO: re-enable once verified on PRs
   # push:
   #   branches:
@@ -35,10 +35,7 @@ jobs:
           cache-dependency-path: go.sum
 
       - name: run tests with coverage
-        run: |
-          # shellcheck disable=SC2046
-          CGO_ENABLED=1 go test -race -covermode=atomic -coverprofile=coverage.out \
-            $(go list github.com/verygoodsoftwarenotvirus/platform/... | grep -Ev '(cmd|integration|mock|fakes|converters|utils|generated)')
+        run: ./.scripts/coverage.sh coverage.out
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5

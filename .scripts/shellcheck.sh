@@ -6,7 +6,7 @@ set -euo pipefail
 
 CONTAINER_RUNNER="${1:-docker}"
 SHELLCHECK_IMAGE="${2:-koalaman/shellcheck:stable}"
-SCRIPTS_DIR="${3:-scripts}"
+SCRIPTS_DIR="${3:-.scripts}"
 
 # Get the project root directory (where Makefile is)
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

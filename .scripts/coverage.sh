@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Run tests with coverage
+# Usage: coverage.sh [output_file]
+
+OUTPUT_FILE="${1:-coverage.out}"
+
+# shellcheck disable=SC2086,SC2046
+CGO_ENABLED=1 go test -race -covermode=atomic -coverprofile="${OUTPUT_FILE}" $(go list github.com/verygoodsoftwarenotvirus/platform/... | grep -Ev '(cmd|integration|mock|fakes|converters|utils|generated)')

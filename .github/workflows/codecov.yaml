@@ -1,22 +1,24 @@
 ---
 on:
-  workflow_dispatch:
-  pull_request:
-    paths:
-      - '**/*.go'
+  # gollum:
+   push:
+     branches:
+       - main
+     paths:
+       - '**/*.go'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-name: formatting
+name: codecov
 jobs:
-  golang:
-    timeout-minutes: 10
-    runs-on: ubuntu-latest
+  coverage:
+    timeout-minutes: 25
     strategy:
       matrix:
         go-version: ['1.26.x']
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -28,5 +30,12 @@ jobs:
           cache: true
           cache-dependency-path: go.sum
 
-      - name: check formatting
-        run: if [ $(gofmt -l . | grep -Ev '^vendor\/' | head -c1 | wc -c) -ne 0 ]; then exit 1; fi
+      - name: run tests with coverage
+        run: ./.scripts/coverage.sh coverage.out
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.out
+          fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}

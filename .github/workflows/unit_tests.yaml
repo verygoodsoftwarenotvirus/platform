@@ -1,6 +1,6 @@
 ---
 on:
-  # gollum:
+  workflow_dispatch:
   pull_request:
     paths:
       - '**/*.go'

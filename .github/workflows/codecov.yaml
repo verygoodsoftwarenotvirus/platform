@@ -1,0 +1,48 @@
+---
+on:
+  # gollum:
+  pull_request:
+    paths:
+      - '**/*.go'
+  # TODO: re-enable once verified on PRs
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - '**/*.go'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+name: codecov
+jobs:
+  coverage:
+    timeout-minutes: 25
+    strategy:
+      matrix:
+        go-version: ['1.26.x']
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: run tests with coverage
+        run: |
+          # shellcheck disable=SC2046
+          CGO_ENABLED=1 go test -race -covermode=atomic -coverprofile=coverage.out \
+            $(go list github.com/verygoodsoftwarenotvirus/platform/... | grep -Ev '(cmd|integration|mock|fakes|converters|utils|generated)')
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.out
+          fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}

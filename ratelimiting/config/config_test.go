@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	redisrl "github.com/verygoodsoftwarenotvirus/platform/v5/ratelimiting/redis"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -98,6 +100,20 @@ func TestConfig_ProvideRateLimiter(T *testing.T) {
 		assert.False(t, allowed)
 	})
 
+	T.Run("redis provider returns redis limiter", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{
+			Provider:       ProviderRedis,
+			Redis:          redisrl.Config{Addresses: []string{"127.0.0.1:6379"}},
+			RequestsPerSec: 1,
+			BurstSize:      1,
+		}
+		limiter, err := cfg.ProvideRateLimiter(nil)
+		require.NoError(t, err)
+		assert.NotNil(t, limiter)
+	})
+
 	T.Run("unknown provider returns error", func(t *testing.T) {
 		t.Parallel()
 
@@ -106,6 +122,37 @@ func TestConfig_ProvideRateLimiter(T *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, limiter)
 		assert.Contains(t, err.Error(), "unknown")
+	})
+}
+
+func TestProvideRateLimiterFromConfig(T *testing.T) {
+	T.Parallel()
+
+	T.Run("nil config returns noop", func(t *testing.T) {
+		t.Parallel()
+
+		limiter, err := ProvideRateLimiterFromConfig(nil, nil)
+		require.NoError(t, err)
+		require.NotNil(t, limiter)
+	})
+
+	T.Run("noop provider returns noop", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{Provider: ProviderNoop}
+		limiter, err := ProvideRateLimiterFromConfig(cfg, nil)
+		require.NoError(t, err)
+		require.NotNil(t, limiter)
+	})
+
+	T.Run("unknown provider wraps error", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{Provider: "unknown"}
+		limiter, err := ProvideRateLimiterFromConfig(cfg, nil)
+		require.Error(t, err)
+		assert.Nil(t, limiter)
+		assert.Contains(t, err.Error(), "provide rate limiter")
 	})
 }
 

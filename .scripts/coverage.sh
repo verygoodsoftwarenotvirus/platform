@@ -7,4 +7,4 @@ set -euo pipefail
 OUTPUT_FILE="${1:-coverage.out}"
 
 # shellcheck disable=SC2086,SC2046
-CGO_ENABLED=1 go test -shuffle=on -race -vet=all -failfast -covermode=atomic -coverprofile="${OUTPUT_FILE}" $(go list github.com/verygoodsoftwarenotvirus/platform/... | grep -Ev '(mock)')
+CGO_ENABLED=1 go test -shuffle=on -race -vet=all -failfast -covermode=atomic -coverprofile="${OUTPUT_FILE}" $(go list github.com/verygoodsoftwarenotvirus/platform/... | grep -Ev '(mock|testutils)')

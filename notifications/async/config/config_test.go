@@ -156,3 +156,31 @@ func TestConfig_ProvideAsyncNotifier(T *testing.T) {
 		assert.Error(t, err)
 	})
 }
+
+func TestProvideAsyncNotifierFromConfig(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{
+			Provider: ProviderNoop,
+		}
+
+		actual, err := ProvideAsyncNotifierFromConfig(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil)
+		assert.NoError(t, err)
+		assert.NotNil(t, actual)
+	})
+
+	T.Run("with unknown provider", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{
+			Provider: "unknown",
+		}
+
+		actual, err := ProvideAsyncNotifierFromConfig(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil)
+		assert.Nil(t, actual)
+		assert.Error(t, err)
+	})
+}

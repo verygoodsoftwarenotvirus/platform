@@ -77,4 +77,14 @@ func TestProvideSecretSourceFromConfig(T *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, value, got)
 	})
+
+	T.Run("provider error is wrapped", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{Provider: "vault"}
+		source, err := ProvideSecretSourceFromConfig(context.Background(), cfg, nil, nil, nil)
+		require.Error(t, err)
+		require.Nil(t, source)
+		require.Contains(t, err.Error(), "provide secret source")
+	})
 }

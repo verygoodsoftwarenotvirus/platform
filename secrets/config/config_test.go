@@ -245,4 +245,34 @@ func TestConfig_ProvideSecretSource(T *testing.T) {
 		assert.Nil(t, source)
 		assert.Contains(t, err.Error(), "unknown")
 	})
+
+	T.Run("gcp provider with nil gcp config returns error", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{Provider: ProviderGCP}
+		source, err := cfg.ProvideSecretSource(context.Background(), nil, nil, nil)
+		require.Error(t, err)
+		assert.Nil(t, source)
+		assert.Contains(t, err.Error(), "gcp")
+	})
+
+	T.Run("ssm provider with nil ssm config returns error", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{Provider: ProviderSSM}
+		source, err := cfg.ProvideSecretSource(context.Background(), nil, nil, nil)
+		require.Error(t, err)
+		assert.Nil(t, source)
+		assert.Contains(t, err.Error(), "ssm")
+	})
+
+	T.Run("kubectl provider with nil kubectl config returns error", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{Provider: ProviderKubectl}
+		source, err := cfg.ProvideSecretSource(context.Background(), nil, nil, nil)
+		require.Error(t, err)
+		assert.Nil(t, source)
+		assert.Contains(t, err.Error(), "kubectl")
+	})
 }

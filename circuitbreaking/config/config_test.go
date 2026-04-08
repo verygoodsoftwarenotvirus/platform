@@ -12,6 +12,7 @@ import (
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/reflection"
 
+	circuit "github.com/rubyist/circuitbreaker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.opentelemetry.io/otel/metric"
@@ -262,6 +263,39 @@ func TestBaseImplementation(T *testing.T) {
 		assert.NoError(t, err)
 
 		assert.False(t, cb.CannotProceed())
+	})
+}
+
+//nolint:paralleltest // race condition in the core circuit breaker library, I think?
+func TestHandleCircuitBreakerEvents(T *testing.T) {
+	T.Run("handles all event types and exits on channel close", func(t *testing.T) {
+		ctx := t.Context()
+
+		i64Counter := &mockmetrics.Int64Counter{}
+		i64Counter.On("Add", mock.Anything, int64(1), []metric.AddOption(nil)).Return()
+
+		mp := &mockmetrics.MetricsProvider{}
+		mp.On(reflection.GetMethodName(mp.NewInt64Counter), "failure", []metric.Int64CounterOption(nil)).Return(i64Counter, nil)
+		mp.On(reflection.GetMethodName(mp.NewInt64Counter), "reset", []metric.Int64CounterOption(nil)).Return(i64Counter, nil)
+		mp.On(reflection.GetMethodName(mp.NewInt64Counter), "broken", []metric.Int64CounterOption(nil)).Return(i64Counter, nil)
+
+		failure, err := mp.NewInt64Counter("failure")
+		assert.NoError(t, err)
+		reset, err := mp.NewInt64Counter("reset")
+		assert.NoError(t, err)
+		broken, err := mp.NewInt64Counter("broken")
+		assert.NoError(t, err)
+
+		events := make(chan circuit.BreakerEvent, 4)
+		events <- circuit.BreakerTripped
+		events <- circuit.BreakerReset
+		events <- circuit.BreakerFail
+		events <- circuit.BreakerReady
+		close(events)
+
+		handleCircuitBreakerEvents(ctx, logging.NewNoopLogger(), events, failure, reset, broken)
+
+		mock.AssertExpectationsForObjects(t, i64Counter, mp)
 	})
 }
 

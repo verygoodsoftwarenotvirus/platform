@@ -9,8 +9,78 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestConfig_ValidateWithContext(T *testing.T) {
+	T.Parallel()
+
+	T.Run("empty provider is valid", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{Provider: ""}
+		assert.NoError(t, cfg.ValidateWithContext(t.Context()))
+	})
+
+	T.Run("with invalid provider", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{Provider: "invalid"}
+		assert.Error(t, cfg.ValidateWithContext(t.Context()))
+	})
+
+	T.Run("openai provider with config", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{
+			Provider: ProviderOpenAI,
+			OpenAI:   &openai.Config{APIKey: t.Name()},
+		}
+		assert.NoError(t, cfg.ValidateWithContext(t.Context()))
+	})
+
+	T.Run("openai provider requires config", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{Provider: ProviderOpenAI}
+		assert.Error(t, cfg.ValidateWithContext(t.Context()))
+	})
+
+	T.Run("ollama provider with config", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{
+			Provider: ProviderOllama,
+			Ollama:   &ollama.Config{},
+		}
+		assert.NoError(t, cfg.ValidateWithContext(t.Context()))
+	})
+
+	T.Run("ollama provider requires config", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{Provider: ProviderOllama}
+		assert.Error(t, cfg.ValidateWithContext(t.Context()))
+	})
+
+	T.Run("cohere provider with config", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{
+			Provider: ProviderCohere,
+			Cohere:   &cohere.Config{APIKey: t.Name()},
+		}
+		assert.NoError(t, cfg.ValidateWithContext(t.Context()))
+	})
+
+	T.Run("cohere provider requires config", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{Provider: ProviderCohere}
+		assert.Error(t, cfg.ValidateWithContext(t.Context()))
+	})
+}
 
 func TestConfig_ProvideEmbedder_Empty(T *testing.T) {
 	T.Parallel()

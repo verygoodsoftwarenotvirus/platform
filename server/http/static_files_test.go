@@ -85,4 +85,19 @@ func TestRootLevelAssetsHandler(T *testing.T) {
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
 	})
+
+	T.Run("blocks single-segment traversal", func(t *testing.T) {
+		t.Parallel()
+
+		dir := t.TempDir()
+		handler := RootLevelAssetsHandler(dir)
+
+		req := httptest.NewRequest(http.MethodGet, "/x", http.NoBody)
+		req.URL.Path = "/.."
+		w := httptest.NewRecorder()
+
+		handler.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusNotFound, w.Code)
+	})
 }

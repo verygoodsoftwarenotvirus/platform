@@ -1,0 +1,35 @@
+package grpc
+
+import (
+	"testing"
+
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
+
+	"github.com/samber/do/v2"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+)
+
+func TestRegisterGRPCServer(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		i := do.New()
+		do.ProvideValue(i, &Config{Port: 0})
+		do.ProvideValue(i, logging.NewNoopLogger())
+		do.ProvideValue(i, tracing.NewNoopTracerProvider())
+		do.ProvideValue(i, []grpc.UnaryServerInterceptor(nil))
+		do.ProvideValue(i, []grpc.StreamServerInterceptor(nil))
+		do.ProvideValue(i, []RegistrationFunc(nil))
+
+		RegisterGRPCServer(i)
+
+		srv, err := do.Invoke[*Server](i)
+		require.NoError(t, err)
+		assert.NotNil(t, srv)
+	})
+}

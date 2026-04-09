@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -118,9 +117,7 @@ func (s *server) Serve() {
 		// returns ErrServerClosed on graceful close.
 		if err := s.httpServer.ListenAndServeTLS(s.config.SSLCertificateFile, s.config.SSLCertificateKeyFile); err != nil {
 			if errors.Is(err, http.ErrServerClosed) {
-				// NOTE: there is a chance that next line won't have time to run,
-				// as main() doesn't wait for this goroutine to stop.
-				os.Exit(0)
+				return
 			}
 
 			s.logger.Error("shutting server down", err)
@@ -130,9 +127,7 @@ func (s *server) Serve() {
 		// returns ErrServerClosed on graceful close.
 		if err := s.httpServer.ListenAndServe(); err != nil {
 			if errors.Is(err, http.ErrServerClosed) {
-				// NOTE: there is a chance that next line won't have time to run,
-				// as main() doesn't wait for this goroutine to stop.
-				os.Exit(0)
+				return
 			}
 
 			s.logger.Error("shutting server down", err)

@@ -2,14 +2,79 @@ package grpc
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
+	"errors"
+	"math/big"
+	"net"
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 	"google.golang.org/grpc"
 )
+
+type mockTracerProvider struct {
+	noop.TracerProvider
+	mock.Mock
+}
+
+func (m *mockTracerProvider) Tracer(name string, opts ...trace.TracerOption) trace.Tracer {
+	return noop.NewTracerProvider().Tracer(name, opts...)
+}
+
+func (m *mockTracerProvider) ForceFlush(ctx context.Context) error {
+	return m.Called(ctx).Error(0)
+}
+
+func generateTestTLSCerts(t *testing.T) (certFile, keyFile string) {
+	t.Helper()
+
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	template := x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject:      pkix.Name{Organization: []string{"Test"}},
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().Add(time.Hour),
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	}
+
+	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
+	require.NoError(t, err)
+
+	dir := t.TempDir()
+
+	certPath := filepath.Join(dir, "cert.pem")
+	certOut, err := os.Create(certPath)
+	require.NoError(t, err)
+	require.NoError(t, pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: certDER}))
+	require.NoError(t, certOut.Close())
+
+	keyDER, err := x509.MarshalECPrivateKey(key)
+	require.NoError(t, err)
+	keyPath := filepath.Join(dir, "key.pem")
+	keyOut, err := os.Create(keyPath)
+	require.NoError(t, err)
+	require.NoError(t, pem.Encode(keyOut, &pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER}))
+	require.NoError(t, keyOut.Close())
+
+	return certPath, keyPath
+}
 
 func TestNewGRPCServer(T *testing.T) {
 	T.Parallel()
@@ -62,6 +127,23 @@ func TestNewGRPCServer(T *testing.T) {
 
 		assert.Nil(t, server)
 		assert.Error(t, err)
+	})
+
+	T.Run("succeeds with valid TLS files", func(t *testing.T) {
+		t.Parallel()
+
+		certFile, keyFile := generateTestTLSCerts(t)
+
+		cfg := &Config{
+			Port:                  0,
+			HTTPSCertificateFile:  certFile,
+			TLSCertificateKeyFile: keyFile,
+		}
+
+		server, err := NewGRPCServer(cfg, logging.NewNoopLogger(), nil, nil, nil)
+
+		require.NoError(t, err)
+		assert.NotNil(t, server)
 	})
 }
 
@@ -129,6 +211,21 @@ func TestServer_Shutdown(T *testing.T) {
 
 		server.Shutdown(context.Background())
 	})
+
+	T.Run("logs error when ForceFlush fails", func(t *testing.T) {
+		t.Parallel()
+
+		mtp := &mockTracerProvider{}
+		mtp.On("ForceFlush", mock.Anything).Return(errors.New("flush failed"))
+
+		cfg := &Config{Port: 0}
+		srv, err := NewGRPCServer(cfg, logging.NewNoopLogger(), mtp, nil, nil)
+		require.NoError(t, err)
+
+		srv.Shutdown(context.Background())
+
+		mock.AssertExpectationsForObjects(t, mtp)
+	})
 }
 
 func TestNewGRPCServer_withInterceptors(T *testing.T) {
@@ -185,7 +282,39 @@ func TestServer_Serve(T *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Port: 0}
-		_, err := NewGRPCServer(cfg, logging.NewNoopLogger(), nil, nil, nil)
+		srv, err := NewGRPCServer(cfg, logging.NewNoopLogger(), nil, nil, nil)
 		require.NoError(t, err)
+
+		ctx, cancel := context.WithCancel(t.Context())
+
+		done := make(chan struct{})
+		go func() {
+			srv.Serve(ctx)
+			close(done)
+		}()
+
+		// Give the server a moment to start listening, then stop it.
+		time.Sleep(50 * time.Millisecond)
+		srv.grpcServer.GracefulStop()
+		cancel()
+		<-done
+	})
+
+	T.Run("returns when listen fails", func(t *testing.T) {
+		t.Parallel()
+
+		// Occupy a port so the server's Listen call fails with "address already in use".
+		lis, err := new(net.ListenConfig).Listen(t.Context(), "tcp", ":0")
+		require.NoError(t, err)
+		defer lis.Close()
+
+		port := lis.Addr().(*net.TCPAddr).Port
+
+		cfg := &Config{Port: uint16(port)}
+		srv, err := NewGRPCServer(cfg, logging.NewNoopLogger(), nil, nil, nil)
+		require.NoError(t, err)
+
+		// Should return immediately because the port is already in use.
+		srv.Serve(t.Context())
 	})
 }

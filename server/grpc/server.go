@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os"
 	"time"
 
 	perrors "github.com/verygoodsoftwarenotvirus/platform/v5/errors"
@@ -118,15 +117,13 @@ func (s *Server) Serve(ctx context.Context) {
 	lis, err := lc.Listen(ctx, "tcp", fmt.Sprintf(":%d", s.config.Port))
 	if err != nil {
 		s.logger.Error("failed to listen", err)
-		os.Exit(1)
+		return
 	}
 
 	s.logger.WithValue("port", s.config.Port).Info("Listening for GRPC requests")
 	if err = s.grpcServer.Serve(lis); err != nil {
 		if errors.Is(err, http.ErrServerClosed) {
-			// NOTE: there is a chance that next line won't have tim  e to run,
-			// as main() doesn't wait for this goroutine to stop.
-			os.Exit(0)
+			return
 		}
 	}
 }

@@ -32,12 +32,12 @@ type (
 
 var _ messagequeue.Consumer = (*kafkaConsumer)(nil)
 
-func provideKafkaConsumer(logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider, brokers []string, groupID, topic string, handlerFunc func(context.Context, []byte) error) *kafkaConsumer {
+func provideKafkaConsumer(logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider, brokers []string, groupID, topic string, handlerFunc func(context.Context, []byte) error) (*kafkaConsumer, error) {
 	mp := metrics.EnsureMetricsProvider(metricsProvider)
 
 	consumedCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_consumed", topic))
 	if err != nil {
-		panic(fmt.Sprintf("creating consumed counter: %v", err))
+		return nil, fmt.Errorf("creating consumed counter: %w", err)
 	}
 
 	reader := kafka.NewReader(kafka.ReaderConfig{
@@ -52,7 +52,7 @@ func provideKafkaConsumer(logger logging.Logger, tracerProvider tracing.TracerPr
 		logger:          logging.EnsureLogger(logger),
 		tracer:          tracing.NewNamedTracer(tracerProvider, fmt.Sprintf("%s_consumer", topic)),
 		consumedCounter: consumedCounter,
-	}
+	}, nil
 }
 
 // Consume reads messages from Kafka and applies the handler to their payloads.
@@ -135,7 +135,11 @@ func (p *consumerProvider) ProvideConsumer(_ context.Context, topic string, hand
 		return cached, nil
 	}
 
-	c := provideKafkaConsumer(p.logger, p.tracerProvider, p.metricsProvider, p.brokers, p.groupID, topic, handlerFunc)
+	c, err := provideKafkaConsumer(p.logger, p.tracerProvider, p.metricsProvider, p.brokers, p.groupID, topic, handlerFunc)
+	if err != nil {
+		return nil, err
+	}
+
 	p.consumerCache[topic] = c
 
 	return c, nil

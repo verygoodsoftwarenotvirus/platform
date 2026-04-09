@@ -98,22 +98,22 @@ func (p *kafkaPublisher) PublishAsync(ctx context.Context, data any) {
 	}()
 }
 
-func provideKafkaPublisher(logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider, brokers []string, topic string) *kafkaPublisher {
+func provideKafkaPublisher(logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider, brokers []string, topic string) (*kafkaPublisher, error) {
 	mp := metrics.EnsureMetricsProvider(metricsProvider)
 
 	publishedCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_published", topic))
 	if err != nil {
-		panic(fmt.Sprintf("creating published counter: %v", err))
+		return nil, fmt.Errorf("creating published counter: %w", err)
 	}
 
 	publishErrCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_publish_errors", topic))
 	if err != nil {
-		panic(fmt.Sprintf("creating publish error counter: %v", err))
+		return nil, fmt.Errorf("creating publish error counter: %w", err)
 	}
 
 	latencyHist, err := mp.NewFloat64Histogram(fmt.Sprintf("%s_publish_latency_ms", topic))
 	if err != nil {
-		panic(fmt.Sprintf("creating publish latency histogram: %v", err))
+		return nil, fmt.Errorf("creating publish latency histogram: %w", err)
 	}
 
 	writer := &kafka.Writer{
@@ -130,7 +130,7 @@ func provideKafkaPublisher(logger logging.Logger, tracerProvider tracing.TracerP
 		publishedCounter:  publishedCounter,
 		publishErrCounter: publishErrCounter,
 		latencyHist:       latencyHist,
-	}
+	}, nil
 }
 
 type publisherProvider struct {
@@ -169,7 +169,11 @@ func (p *publisherProvider) ProvidePublisher(_ context.Context, topic string) (m
 		return cached, nil
 	}
 
-	pub := provideKafkaPublisher(p.logger, p.tracerProvider, p.metricsProvider, p.brokers, topic)
+	pub, err := provideKafkaPublisher(p.logger, p.tracerProvider, p.metricsProvider, p.brokers, topic)
+	if err != nil {
+		return nil, err
+	}
+
 	p.publisherCache[topic] = pub
 
 	return pub, nil

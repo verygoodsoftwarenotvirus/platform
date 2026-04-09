@@ -1,12 +1,28 @@
 package databasecfg
 
 import (
+	"context"
+	"database/sql"
 	"testing"
 	"time"
+
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type stubMigrator struct {
+	err    error
+	called bool
+}
+
+func (m *stubMigrator) Migrate(_ context.Context, _ *sql.DB) error {
+	m.called = true
+	return m.err
+}
 
 func TestConfig_ValidateWithContext(T *testing.T) {
 	T.Parallel()
@@ -64,6 +80,14 @@ func TestConnectionDetails_LoadFromURL(T *testing.T) {
 		d := &ConnectionDetails{}
 
 		assert.Error(t, d.LoadFromURL("://not-a-url"))
+	})
+
+	T.Run("with missing port", func(t *testing.T) {
+		t.Parallel()
+
+		d := &ConnectionDetails{}
+
+		assert.Error(t, d.LoadFromURL("postgres://dbuser:hunter2@pgdatabase/database"))
 	})
 
 	T.Run("without sslmode disable", func(t *testing.T) {
@@ -491,6 +515,101 @@ func TestConfig_GetWriteConnectionString_ProviderAware(T *testing.T) {
 	})
 }
 
+func TestConfig_driverName(T *testing.T) {
+	T.Parallel()
+
+	T.Run("postgres default", func(t *testing.T) {
+		t.Parallel()
+		cfg := &Config{Provider: ProviderPostgres}
+		assert.Equal(t, "pgx", cfg.driverName())
+	})
+
+	T.Run("mysql", func(t *testing.T) {
+		t.Parallel()
+		cfg := &Config{Provider: ProviderMySQL}
+		assert.Equal(t, "mysql", cfg.driverName())
+	})
+
+	T.Run("sqlite", func(t *testing.T) {
+		t.Parallel()
+		cfg := &Config{Provider: ProviderSQLite}
+		assert.Equal(t, "sqlite", cfg.driverName())
+	})
+
+	T.Run("unknown falls back to pgx", func(t *testing.T) {
+		t.Parallel()
+		cfg := &Config{Provider: "unknown"}
+		assert.Equal(t, "pgx", cfg.driverName())
+	})
+}
+
+func TestConfig_ConnectToReadDatabase(T *testing.T) {
+	T.Parallel()
+
+	T.Run("sqlite in-memory", func(t *testing.T) {
+		t.Parallel()
+		cfg := &Config{
+			Provider: ProviderSQLite,
+			ReadConnection: ConnectionDetails{
+				Database: ":memory:",
+			},
+		}
+
+		db, err := cfg.ConnectToReadDatabase()
+		require.NoError(t, err)
+		require.NotNil(t, db)
+		require.NoError(t, db.Close())
+	})
+
+	T.Run("postgres lazy open", func(t *testing.T) {
+		t.Parallel()
+		cfg := &Config{
+			Provider: ProviderPostgres,
+			ReadConnection: ConnectionDetails{
+				Host:     "localhost",
+				Port:     5432,
+				Username: "user",
+				Password: "pass",
+				Database: "db",
+			},
+		}
+
+		db, err := cfg.ConnectToReadDatabase()
+		require.NoError(t, err)
+		require.NotNil(t, db)
+		require.NoError(t, db.Close())
+	})
+
+	T.Run("mysql with bogus DSN returns error", func(t *testing.T) {
+		t.Parallel()
+		cfg := &Config{
+			Provider: ProviderMySQL,
+		}
+		db, err := cfg.connectToDatabase("not a valid mysql dsn")
+		assert.Nil(t, db)
+		assert.Error(t, err)
+	})
+}
+
+func TestConfig_ConnectToWriteDatabase(T *testing.T) {
+	T.Parallel()
+
+	T.Run("sqlite in-memory", func(t *testing.T) {
+		t.Parallel()
+		cfg := &Config{
+			Provider: ProviderSQLite,
+			WriteConnection: ConnectionDetails{
+				Database: ":memory:",
+			},
+		}
+
+		db, err := cfg.ConnectToWriteDatabase()
+		require.NoError(t, err)
+		require.NotNil(t, db)
+		require.NoError(t, db.Close())
+	})
+}
+
 func TestProvideDatabase(T *testing.T) {
 	T.Parallel()
 
@@ -505,5 +624,173 @@ func TestProvideDatabase(T *testing.T) {
 		assert.Nil(t, client)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid database provider")
+	})
+
+	T.Run("postgres lazy open", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{
+			Provider: ProviderPostgres,
+			ReadConnection: ConnectionDetails{
+				Host:     "localhost",
+				Port:     5432,
+				Username: "user",
+				Password: "pass",
+				Database: "db",
+			},
+			WriteConnection: ConnectionDetails{
+				Host:     "localhost",
+				Port:     5432,
+				Username: "user",
+				Password: "pass",
+				Database: "db",
+			},
+		}
+
+		client, err := ProvideDatabase(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), cfg, nil, nil)
+		require.NoError(t, err)
+		require.NotNil(t, client)
+	})
+
+	T.Run("mysql lazy open", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{
+			Provider: ProviderMySQL,
+			ReadConnection: ConnectionDetails{
+				Host:     "localhost",
+				Port:     3306,
+				Username: "user",
+				Password: "pass",
+				Database: "db",
+			},
+			WriteConnection: ConnectionDetails{
+				Host:     "localhost",
+				Port:     3306,
+				Username: "user",
+				Password: "pass",
+				Database: "db",
+			},
+		}
+
+		client, err := ProvideDatabase(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), cfg, nil, nil)
+		require.NoError(t, err)
+		require.NotNil(t, client)
+	})
+
+	T.Run("sqlite in-memory", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{
+			Provider: ProviderSQLite,
+			ReadConnection: ConnectionDetails{
+				Database: ":memory:",
+			},
+			WriteConnection: ConnectionDetails{
+				Database: ":memory:",
+			},
+		}
+
+		client, err := ProvideDatabase(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), cfg, nil, nil)
+		require.NoError(t, err)
+		require.NotNil(t, client)
+	})
+
+	T.Run("sqlite with enable database metrics and nil metrics provider", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{
+			Provider:              ProviderSQLite,
+			EnableDatabaseMetrics: true,
+			ReadConnection: ConnectionDetails{
+				Database: ":memory:",
+			},
+			WriteConnection: ConnectionDetails{
+				Database: ":memory:",
+			},
+		}
+
+		client, err := ProvideDatabase(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), cfg, nil, nil)
+		require.NoError(t, err)
+		require.NotNil(t, client)
+	})
+
+	T.Run("sqlite with enable database metrics and noop metrics provider", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{
+			Provider:              ProviderSQLite,
+			EnableDatabaseMetrics: true,
+			ReadConnection: ConnectionDetails{
+				Database: ":memory:",
+			},
+			WriteConnection: ConnectionDetails{
+				Database: ":memory:",
+			},
+		}
+
+		client, err := ProvideDatabase(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), cfg, nil, metrics.NewNoopMetricsProvider())
+		require.NoError(t, err)
+		require.NotNil(t, client)
+	})
+
+	T.Run("sqlite with migrations", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{
+			Provider:      ProviderSQLite,
+			RunMigrations: true,
+			ReadConnection: ConnectionDetails{
+				Database: ":memory:",
+			},
+			WriteConnection: ConnectionDetails{
+				Database: ":memory:",
+			},
+		}
+
+		migrator := &stubMigrator{}
+		client, err := ProvideDatabase(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), cfg, migrator, nil)
+		require.NoError(t, err)
+		require.NotNil(t, client)
+		assert.True(t, migrator.called)
+	})
+
+	T.Run("sqlite with bad path returns error", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{
+			Provider: ProviderSQLite,
+			ReadConnection: ConnectionDetails{
+				Database: "/nonexistent/directory/that/cannot/exist/foo.db",
+			},
+			WriteConnection: ConnectionDetails{
+				Database: "/nonexistent/directory/that/cannot/exist/foo.db",
+			},
+		}
+
+		client, err := ProvideDatabase(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), cfg, nil, nil)
+		assert.Nil(t, client)
+		assert.Error(t, err)
+	})
+
+	T.Run("sqlite with migrations error", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{
+			Provider:      ProviderSQLite,
+			RunMigrations: true,
+			ReadConnection: ConnectionDetails{
+				Database: ":memory:",
+			},
+			WriteConnection: ConnectionDetails{
+				Database: ":memory:",
+			},
+		}
+
+		migrator := &stubMigrator{err: assert.AnError}
+		client, err := ProvideDatabase(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), cfg, migrator, nil)
+		assert.Nil(t, client)
+		assert.Error(t, err)
+		assert.True(t, migrator.called)
 	})
 }

@@ -1,18 +1,24 @@
 package featureflagscfg
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 	"testing"
 
+	circuitbreakingcfg "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/config"
 	cbnoop "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/noop"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/featureflags/launchdarkly"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/featureflags/posthog"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/reflection"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/metric"
 )
 
 func TestConfig_ValidateWithContext(T *testing.T) {
@@ -169,12 +175,12 @@ func TestConfig_ProvideFeatureFlagManager(T *testing.T) {
 	})
 }
 
+// TestProvideFeatureFlagManager is not parallel because it uses the circuit breaker subsystem
+// which has a known race condition in the core library.
+//
+//nolint:paralleltest // see comment above
 func TestProvideFeatureFlagManager(T *testing.T) {
-	T.Parallel()
-
 	T.Run("with noop provider", func(t *testing.T) {
-		t.Parallel()
-
 		ctx := t.Context()
 		cfg := &Config{
 			Provider: "",
@@ -183,5 +189,24 @@ func TestProvideFeatureFlagManager(T *testing.T) {
 		ffm, err := ProvideFeatureFlagManager(ctx, cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider(), http.DefaultClient)
 		require.NoError(t, err)
 		require.NotNil(t, ffm)
+	})
+
+	T.Run("with circuit breaker error", func(t *testing.T) {
+		ctx := t.Context()
+		cbCfg := circuitbreakingcfg.Config{}
+		cbCfg.EnsureDefaults()
+
+		i64Counter := &mockmetrics.Int64Counter{}
+		mp := &mockmetrics.MetricsProvider{}
+		mp.On(reflection.GetMethodName(mp.NewInt64Counter), fmt.Sprintf("%s_circuit_breaker_tripped", cbCfg.Name), []metric.Int64CounterOption(nil)).Return(i64Counter, errors.New("arbitrary"))
+
+		cfg := &Config{
+			Provider:       "",
+			CircuitBreaker: cbCfg,
+		}
+
+		ffm, err := ProvideFeatureFlagManager(ctx, cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, http.DefaultClient)
+		require.Error(t, err)
+		require.Nil(t, ffm)
 	})
 }

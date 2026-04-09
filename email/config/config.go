@@ -112,7 +112,7 @@ func (cfg *Config) ProvideEmailer(ctx context.Context, logger logging.Logger, tr
 	case ProviderPostmark:
 		return postmark.NewPostmarkEmailer(cfg.Postmark, logger, tracerProvider, client, circuitBreaker, metricsProvider)
 	case ProviderSES:
-		return ses.NewSESEmailer(ctx, cfg.SES, logger, tracerProvider, client, circuitBreaker, metricsProvider)
+		return ses.NewSESEmailer(ctx, cfg.SES, logger, tracerProvider, client, circuitBreaker, metricsProvider, nil)
 	default:
 		logger.Debug("providing noop outbound_emailer")
 		return noop.NewEmailer()

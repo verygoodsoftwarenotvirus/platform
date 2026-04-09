@@ -14,6 +14,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestDefaultQueryFilter(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		qf := DefaultQueryFilter()
+
+		require.NotNil(t, qf)
+		require.NotNil(t, qf.MaxResponseSize)
+		assert.Equal(t, uint8(DefaultQueryFilterLimit), *qf.MaxResponseSize)
+		require.NotNil(t, qf.SortBy)
+		assert.Equal(t, SortAscending, qf.SortBy)
+	})
+}
+
 func TestQueryFilter_AttachToLogger(T *testing.T) {
 	T.Parallel()
 
@@ -100,6 +116,16 @@ func TestQueryFilter_SetCursor(T *testing.T) {
 		qf.SetCursor(&expected)
 
 		assert.Equal(t, expected, *qf.Cursor)
+	})
+
+	T.Run("with nil", func(t *testing.T) {
+		t.Parallel()
+
+		original := t.Name()
+		qf := &QueryFilter{Cursor: &original}
+		qf.SetCursor(nil)
+
+		assert.Equal(t, original, *qf.Cursor)
 	})
 }
 

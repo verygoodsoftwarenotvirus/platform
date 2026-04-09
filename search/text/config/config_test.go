@@ -2,15 +2,19 @@ package textsearchcfg
 
 import (
 	"context"
+	"errors"
 	"testing"
 
+	circuitbreakingcfg "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/config"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/search/text/algolia"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/search/text/elasticsearch"
 
 	"github.com/stretchr/testify/assert"
+	"go.opentelemetry.io/otel/metric"
 )
 
 func TestConfig_ValidateWithContext(T *testing.T) {
@@ -272,6 +276,34 @@ func TestConfig_ProvideIndex(T *testing.T) {
 		index, err := ProvideIndex[testStruct](ctx, logger, tracerProvider, metricsProvider, cfg, "test-index")
 		assert.NoError(t, err)
 		assert.NotNil(t, index)
+	})
+
+	T.Run("circuit breaker init failure", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		cfg := &Config{
+			Provider: "",
+			CircuitBreaker: circuitbreakingcfg.Config{
+				Name:                   "test-breaker",
+				ErrorRate:              50,
+				MinimumSampleThreshold: 10,
+			},
+		}
+
+		mp := &mockmetrics.MetricsProvider{}
+		// Force the very first counter creation to fail so ProvideCircuitBreaker
+		// returns an error, which is wrapped by ProvideIndex.
+		mp.On("NewInt64Counter", "test-breaker_circuit_breaker_tripped", []metric.Int64CounterOption(nil)).
+			Return(&mockmetrics.Int64Counter{}, errors.New("counter init failure"))
+
+		logger := logging.NewNoopLogger()
+		tracerProvider := tracing.NewNoopTracerProvider()
+		index, err := ProvideIndex[testStruct](ctx, logger, tracerProvider, mp, cfg, "test-index")
+		assert.Error(t, err)
+		assert.Nil(t, index)
+		assert.Contains(t, err.Error(), "circuit breaker")
+		mp.AssertExpectations(t)
 	})
 }
 

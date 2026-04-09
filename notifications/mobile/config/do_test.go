@@ -1,0 +1,54 @@
+package config
+
+import (
+	"context"
+	"testing"
+
+	"github.com/verygoodsoftwarenotvirus/platform/v5/notifications/mobile"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
+
+	"github.com/samber/do/v2"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestRegisterPushSender(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		i := do.New()
+		do.ProvideValue[context.Context](i, t.Context())
+		do.ProvideValue(i, logging.NewNoopLogger())
+		do.ProvideValue(i, tracing.NewNoopTracerProvider())
+		do.ProvideValue[metrics.Provider](i, nil)
+		do.ProvideValue(i, Config{Provider: ProviderNoop})
+
+		RegisterPushSender(i)
+
+		sender, err := do.Invoke[mobile.PushNotificationSender](i)
+		require.NoError(t, err)
+		assert.NotNil(t, sender)
+	})
+}
+
+func TestProvidePushSender(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		sender, err := ProvidePushSender(
+			t.Context(),
+			Config{Provider: ProviderNoop},
+			logging.NewNoopLogger(),
+			tracing.NewNoopTracerProvider(),
+			nil,
+		)
+		require.NoError(t, err)
+		assert.NotNil(t, sender)
+	})
+}

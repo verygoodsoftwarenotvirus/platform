@@ -1,9 +1,11 @@
 package reflection
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type exampleStruct struct {
@@ -11,7 +13,28 @@ type exampleStruct struct {
 	Field2 string `json:"field2"`
 }
 
-func TestGetTagNameByFieldName(T *testing.T) {
+type embeddedParent struct {
+	exampleStruct
+	Field3 string `json:"field3"`
+}
+
+type pointerEmbeddedParent struct {
+	*exampleStruct
+	Field3 string `json:"field3"`
+}
+
+type nestedStruct struct {
+	Inner    exampleStruct  `json:"inner"`
+	InnerPtr *exampleStruct `json:"inner_ptr"`
+	Name     string         `json:"name"`
+}
+
+type unexportedFieldStruct struct {
+	unexported string
+	Exported   string `json:"exported"`
+}
+
+func TestGetTagNameByValue(T *testing.T) {
 	T.Parallel()
 
 	T.Run("with pointer", func(t *testing.T) {
@@ -34,5 +57,277 @@ func TestGetTagNameByFieldName(T *testing.T) {
 		actual, err := GetTagNameByValue(x, x.Field1, "json")
 		assert.NoError(t, err)
 		assert.Equal(t, expected, actual)
+	})
+
+	T.Run("with nil value", func(t *testing.T) {
+		t.Parallel()
+
+		actual, err := GetTagNameByValue(nil, "blah", "json")
+		assert.Error(t, err)
+		assert.Empty(t, actual)
+	})
+
+	T.Run("with nil pointer", func(t *testing.T) {
+		t.Parallel()
+
+		var x *exampleStruct
+
+		actual, err := GetTagNameByValue(x, "blah", "json")
+		assert.Error(t, err)
+		assert.Empty(t, actual)
+	})
+
+	T.Run("with non-struct value", func(t *testing.T) {
+		t.Parallel()
+
+		actual, err := GetTagNameByValue("not a struct", "blah", "json")
+		assert.Error(t, err)
+		assert.Empty(t, actual)
+	})
+
+	T.Run("with no matching field", func(t *testing.T) {
+		t.Parallel()
+
+		x := exampleStruct{
+			Field1: "value1",
+			Field2: "value2",
+		}
+
+		actual, err := GetTagNameByValue(x, "nonexistent", "json")
+		assert.Error(t, err)
+		assert.Empty(t, actual)
+	})
+
+	T.Run("with embedded struct", func(t *testing.T) {
+		t.Parallel()
+
+		x := embeddedParent{
+			exampleStruct: exampleStruct{
+				Field1: "unique_value",
+			},
+			Field3: "field3_value",
+		}
+
+		actual, err := GetTagNameByValue(x, "unique_value", "json")
+		assert.NoError(t, err)
+		assert.Equal(t, "field1", actual)
+	})
+
+	T.Run("with pointer-embedded struct", func(t *testing.T) {
+		t.Parallel()
+
+		x := pointerEmbeddedParent{
+			exampleStruct: &exampleStruct{
+				Field1: "unique_ptr_value",
+			},
+			Field3: "field3_value",
+		}
+
+		actual, err := GetTagNameByValue(x, "unique_ptr_value", "json")
+		assert.NoError(t, err)
+		assert.Equal(t, "field1", actual)
+	})
+
+	T.Run("with nil pointer-embedded struct", func(t *testing.T) {
+		t.Parallel()
+
+		x := pointerEmbeddedParent{
+			exampleStruct: nil,
+			Field3:        "unique_nil_embed",
+		}
+
+		actual, err := GetTagNameByValue(x, "unique_nil_embed", "json")
+		assert.NoError(t, err)
+		assert.Equal(t, "field3", actual)
+	})
+
+	T.Run("with second field match", func(t *testing.T) {
+		t.Parallel()
+
+		x := exampleStruct{
+			Field1: "aaa",
+			Field2: "bbb",
+		}
+
+		actual, err := GetTagNameByValue(x, "bbb", "json")
+		assert.NoError(t, err)
+		assert.Equal(t, "field2", actual)
+	})
+
+	T.Run("with unexported fields", func(t *testing.T) {
+		t.Parallel()
+
+		x := unexportedFieldStruct{
+			Exported: "unique_exported_val",
+		}
+
+		actual, err := GetTagNameByValue(x, "unique_exported_val", "json")
+		assert.NoError(t, err)
+		assert.Equal(t, "exported", actual)
+	})
+
+	T.Run("with pointer to non-struct", func(t *testing.T) {
+		t.Parallel()
+
+		s := "hello"
+		actual, err := GetTagNameByValue(&s, "hello", "json")
+		assert.Error(t, err)
+		assert.Empty(t, actual)
+	})
+}
+
+func TestGetMethodName(T *testing.T) {
+	T.Parallel()
+
+	T.Run("with a function", func(t *testing.T) {
+		t.Parallel()
+
+		actual := GetMethodName(TestGetMethodName)
+		assert.Equal(t, "TestGetMethodName", actual)
+	})
+
+	T.Run("with a method", func(t *testing.T) {
+		t.Parallel()
+
+		// exampleStruct has no exported methods, so use a known interface method
+		r := reflect.TypeFor[*exampleStruct]()
+		actual := GetMethodName(r.Kind)
+		assert.Equal(t, "Kind", actual)
+	})
+
+	T.Run("with non-function value", func(t *testing.T) {
+		t.Parallel()
+
+		actual := GetMethodName("not a function")
+		assert.Empty(t, actual)
+	})
+
+	T.Run("with anonymous function", func(t *testing.T) {
+		t.Parallel()
+
+		fn := func() {}
+		actual := GetMethodName(fn)
+		assert.NotEmpty(t, actual)
+	})
+}
+
+func TestGetFieldTypes(T *testing.T) {
+	T.Parallel()
+
+	T.Run("with struct value", func(t *testing.T) {
+		t.Parallel()
+
+		x := exampleStruct{}
+		result, err := GetFieldTypes(x)
+		require.NoError(t, err)
+
+		assert.Equal(t, "string", result["Field1"])
+		assert.Equal(t, "string", result["Field2"])
+	})
+
+	T.Run("with pointer to struct", func(t *testing.T) {
+		t.Parallel()
+
+		x := &exampleStruct{}
+		result, err := GetFieldTypes(x)
+		require.NoError(t, err)
+
+		assert.Equal(t, "string", result["Field1"])
+		assert.Equal(t, "string", result["Field2"])
+	})
+
+	T.Run("with nil pointer to struct", func(t *testing.T) {
+		t.Parallel()
+
+		var x *exampleStruct
+		result, err := GetFieldTypes(x)
+		require.NoError(t, err)
+
+		assert.Equal(t, "string", result["Field1"])
+		assert.Equal(t, "string", result["Field2"])
+	})
+
+	T.Run("with nil value", func(t *testing.T) {
+		t.Parallel()
+
+		result, err := GetFieldTypes(nil)
+		assert.Error(t, err)
+		assert.Nil(t, result)
+	})
+
+	T.Run("with non-struct value", func(t *testing.T) {
+		t.Parallel()
+
+		result, err := GetFieldTypes("not a struct")
+		assert.Error(t, err)
+		assert.Nil(t, result)
+	})
+
+	T.Run("with reflect.Type directly", func(t *testing.T) {
+		t.Parallel()
+
+		result, err := GetFieldTypes(reflect.TypeFor[exampleStruct]())
+		require.NoError(t, err)
+
+		assert.Equal(t, "string", result["Field1"])
+		assert.Equal(t, "string", result["Field2"])
+	})
+
+	T.Run("with reflect.Type of pointer", func(t *testing.T) {
+		t.Parallel()
+
+		result, err := GetFieldTypes(reflect.TypeFor[exampleStruct]())
+		require.NoError(t, err)
+
+		assert.Equal(t, "string", result["Field1"])
+		assert.Equal(t, "string", result["Field2"])
+	})
+
+	T.Run("with nested struct", func(t *testing.T) {
+		t.Parallel()
+
+		x := nestedStruct{}
+		result, err := GetFieldTypes(x)
+		require.NoError(t, err)
+
+		innerMap, ok := result["Inner"].(map[string]any)
+		require.True(t, ok)
+		assert.Equal(t, "string", innerMap["Field1"])
+		assert.Equal(t, "string", innerMap["Field2"])
+
+		innerPtrMap, ok := result["InnerPtr"].(map[string]any)
+		require.True(t, ok)
+		assert.Equal(t, "string", innerPtrMap["Field1"])
+
+		assert.Equal(t, "string", result["Name"])
+	})
+
+	T.Run("with unexported fields skipped", func(t *testing.T) {
+		t.Parallel()
+
+		x := unexportedFieldStruct{Exported: "val"}
+		result, err := GetFieldTypes(x)
+		require.NoError(t, err)
+
+		assert.Equal(t, "string", result["Exported"])
+		_, hasUnexported := result["unexported"]
+		assert.False(t, hasUnexported)
+	})
+
+	T.Run("with non-struct reflect.Type", func(t *testing.T) {
+		t.Parallel()
+
+		result, err := GetFieldTypes(reflect.TypeFor[string]())
+		assert.Error(t, err)
+		assert.Nil(t, result)
+	})
+
+	T.Run("with pointer reflect.Type", func(t *testing.T) {
+		t.Parallel()
+
+		result, err := GetFieldTypes(reflect.TypeFor[*exampleStruct]())
+		require.NoError(t, err)
+
+		assert.Equal(t, "string", result["Field1"])
 	})
 }

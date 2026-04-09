@@ -28,4 +28,13 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 
 		assert.NoError(t, cfg.ValidateWithContext(ctx))
 	})
+
+	T.Run("with empty storage", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		cfg := &Config{}
+
+		assert.NoError(t, cfg.ValidateWithContext(ctx))
+	})
 }

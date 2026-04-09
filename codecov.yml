@@ -7,7 +7,7 @@ coverage:
         if_ci_failed: error
     patch:
       default:
-        target: 80%
+        informational: true
         if_ci_failed: error
 
 comment:

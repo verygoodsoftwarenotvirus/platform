@@ -1,19 +1,38 @@
 package distributedlockcfg
 
 import (
+	"context"
+	"database/sql"
+	"fmt"
 	"testing"
 	"time"
 
+	circuitbreakingcfg "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/config"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/database"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/distributedlock"
 	pglock "github.com/verygoodsoftwarenotvirus/platform/v5/distributedlock/postgres"
 	redislock "github.com/verygoodsoftwarenotvirus/platform/v5/distributedlock/redis"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/metric"
 )
+
+// stubDBClient is a minimal database.Client for constructing a postgres locker
+// without requiring a real database connection. The locker constructor stores
+// the client but does not use it until a lock is acquired.
+type stubDBClient struct{}
+
+func (c *stubDBClient) WriteDB() *sql.DB       { return nil }
+func (c *stubDBClient) ReadDB() *sql.DB        { return nil }
+func (c *stubDBClient) Close() error           { return nil }
+func (c *stubDBClient) CurrentTime() time.Time { return time.Now() }
+func (c *stubDBClient) RollbackTransaction(_ context.Context, _ database.SQLQueryExecutorAndTransactionManager) {
+}
 
 func TestConfig_ValidateWithContext(T *testing.T) {
 	T.Parallel()
@@ -163,5 +182,71 @@ func TestProvideLocker(T *testing.T) {
 		)
 		require.NoError(t, err)
 		require.NotNil(t, l)
+	})
+
+	T.Run("redis provider", func(t *testing.T) {
+		t.Parallel()
+		l, err := ProvideLocker(
+			t.Context(),
+			&Config{
+				Provider: RedisProvider,
+				Redis: &redislock.Config{
+					Addresses: []string{"localhost:6379"},
+					KeyPrefix: "lock:",
+				},
+			},
+			logging.NewNoopLogger(),
+			tracing.NewNoopTracerProvider(),
+			metrics.NewNoopMetricsProvider(),
+			nil,
+		)
+		require.NoError(t, err)
+		require.NotNil(t, l)
+	})
+
+	T.Run("postgres provider", func(t *testing.T) {
+		t.Parallel()
+		l, err := ProvideLocker(
+			t.Context(),
+			&Config{
+				Provider: PostgresProvider,
+				Postgres: &pglock.Config{},
+			},
+			logging.NewNoopLogger(),
+			tracing.NewNoopTracerProvider(),
+			metrics.NewNoopMetricsProvider(),
+			&stubDBClient{},
+		)
+		require.NoError(t, err)
+		require.NotNil(t, l)
+	})
+
+	T.Run("circuit breaker init failure", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{
+			CircuitBreaker: circuitbreakingcfg.Config{
+				Name:                   "dlock-breaker",
+				ErrorRate:              50,
+				MinimumSampleThreshold: 10,
+			},
+		}
+
+		mp := &mockmetrics.MetricsProvider{}
+		mp.On("NewInt64Counter", "dlock-breaker_circuit_breaker_tripped", []metric.Int64CounterOption(nil)).
+			Return(&mockmetrics.Int64Counter{}, fmt.Errorf("counter init failure"))
+
+		l, err := ProvideLocker(
+			t.Context(),
+			cfg,
+			logging.NewNoopLogger(),
+			tracing.NewNoopTracerProvider(),
+			mp,
+			nil,
+		)
+		require.Error(t, err)
+		assert.Nil(t, l)
+		assert.Contains(t, err.Error(), "distributedlock circuit breaker")
+		mp.AssertExpectations(t)
 	})
 }

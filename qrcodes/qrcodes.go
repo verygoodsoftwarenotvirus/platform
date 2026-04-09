@@ -32,6 +32,9 @@ type (
 	builder struct {
 		tracer     tracing.Tracer
 		totpIssuer Issuer
+		qrEncode   func(content string, level qr.ErrorCorrectionLevel, mode qr.Encoding) (barcode.Barcode, error)
+		scale      func(bc barcode.Barcode, width, height int) (barcode.Barcode, error)
+		pngEncode  func(b *bytes.Buffer, img barcode.Barcode) error
 	}
 )
 
@@ -40,6 +43,11 @@ func NewBuilder(issuer Issuer, tracerProvider tracing.TracerProvider, _ logging.
 	return &builder{
 		tracer:     tracing.NewNamedTracer(tracerProvider, o11yName),
 		totpIssuer: issuer,
+		qrEncode:   qr.Encode,
+		scale:      barcode.Scale,
+		pngEncode: func(b *bytes.Buffer, img barcode.Barcode) error {
+			return png.Encode(b, img)
+		},
 	}
 }
 
@@ -58,20 +66,20 @@ func (s *builder) BuildQRCode(ctx context.Context, username, twoFactorSecret str
 	)
 
 	// encode two factor secret as authenticator-friendly QR code
-	qrCode, err := qr.Encode(otpString, qr.L, qr.Auto)
+	qrCode, err := s.qrEncode(otpString, qr.L, qr.Auto)
 	if err != nil {
 		return "", observability.PrepareError(err, span, "encoding OTP string")
 	}
 
 	// scale the QR code so that it's not a PNG for ants.
-	qrCode, err = barcode.Scale(qrCode, 256, 256)
+	qrCode, err = s.scale(qrCode, 256, 256)
 	if err != nil {
 		return "", observability.PrepareError(err, span, "scaling QR code")
 	}
 
 	// encode the QR code to PNG.
 	var b bytes.Buffer
-	if err = png.Encode(&b, qrCode); err != nil {
+	if err = s.pngEncode(&b, qrCode); err != nil {
 		return "", observability.PrepareError(err, span, "encoding QR code to PNG")
 	}
 

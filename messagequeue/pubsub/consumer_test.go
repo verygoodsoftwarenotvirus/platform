@@ -3,10 +3,13 @@ package pubsub
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v5/identifiers"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/messagequeue"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
@@ -22,23 +25,30 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+var runningContainerTests = strings.ToLower(os.Getenv("RUN_CONTAINER_TESTS")) == "true"
+
 type pubsubTestInfra struct {
 	client    *pubsub.Client
 	shutdown  func(context.Context) error
-	topicName string
+	projectID string
 }
 
-func buildPubSubTestInfra(t *testing.T, ctx context.Context) *pubsubTestInfra {
+// buildPubSubTestInfra boots a single Pub/Sub emulator container and returns a
+// client + project ID that can be reused across many subtests. Subtests should
+// call (*pubsubTestInfra).newTopic to get a unique topic + subscription within
+// the shared project, mirroring the qdrant/pgvector pattern.
+func buildPubSubTestInfra(t *testing.T) *pubsubTestInfra {
 	t.Helper()
+
+	ctx := t.Context()
 
 	randomID, err := random.GenerateHexEncodedString(ctx, 8)
 	require.NoError(t, err)
 	projectID := "project-" + randomID
-	topicID := "topic-" + randomID
 
 	pubsubContainer, err := tcpubsub.Run(
 		ctx,
-		"google/cloud-sdk:latest",
+		"gcr.io/google.com/cloudsdktool/cloud-sdk:emulators",
 		tcpubsub.WithProjectID(projectID),
 	)
 	require.NoError(t, err)
@@ -52,24 +62,36 @@ func buildPubSubTestInfra(t *testing.T, ctx context.Context) *pubsubTestInfra {
 	require.NoError(t, err)
 	require.NotNil(t, client)
 
-	topicName := fmt.Sprintf("projects/%s/topics/%s", projectID, topicID)
-	pubSubTopic, err := client.TopicAdminClient.CreateTopic(ctx, &pubsubpb.Topic{Name: topicName})
+	return &pubsubTestInfra{
+		client:    client,
+		projectID: projectID,
+		shutdown:  func(ctx context.Context) error { return pubsubContainer.Terminate(ctx) },
+	}
+}
+
+// newTopic creates a fresh topic + subscription with a unique name inside the
+// shared project and returns the fully qualified topic name. The subscription
+// name is derived via subscriptionNameForTopic so that consumer.Consume can
+// resolve it without extra plumbing.
+func (i *pubsubTestInfra) newTopic(t *testing.T) string {
+	t.Helper()
+
+	ctx := t.Context()
+
+	topicName := fmt.Sprintf("projects/%s/topics/topic-%s", i.projectID, identifiers.New())
+
+	pubSubTopic, err := i.client.TopicAdminClient.CreateTopic(ctx, &pubsubpb.Topic{Name: topicName})
 	require.NoError(t, err)
 	require.NotNil(t, pubSubTopic)
 
-	subName := subscriptionNameForTopic(pubSubTopic.GetName())
-	subscription, err := client.SubscriptionAdminClient.CreateSubscription(ctx, &pubsubpb.Subscription{
-		Name:  subName,
+	subscription, err := i.client.SubscriptionAdminClient.CreateSubscription(ctx, &pubsubpb.Subscription{
+		Name:  subscriptionNameForTopic(pubSubTopic.GetName()),
 		Topic: pubSubTopic.GetName(),
 	})
 	require.NoError(t, err)
 	require.NotNil(t, subscription)
 
-	return &pubsubTestInfra{
-		client:    client,
-		topicName: pubSubTopic.GetName(),
-		shutdown:  func(ctx context.Context) error { return pubsubContainer.Terminate(ctx) },
-	}
+	return pubSubTopic.GetName()
 }
 
 func TestSubscriptionNameForTopic(T *testing.T) {
@@ -129,48 +151,80 @@ func TestPubSubConsumerProvider_ProvideConsumer(T *testing.T) {
 		assert.Nil(t, consumer)
 		assert.ErrorIs(t, err, messagequeue.ErrEmptyTopicName)
 	})
+}
 
-	T.Run("caches consumers for same topic", func(t *testing.T) {
+// TestPubSub_Container holds every pubsub subtest that needs a real emulator
+// container. They all share one container so we pay the pull/start cost once
+// per package run, mirroring the qdrant/pgvector pattern. Each subtest creates
+// its own topic + subscription via infra.newTopic to stay isolated.
+func TestPubSub_Container(T *testing.T) {
+	T.Parallel()
+
+	if !runningContainerTests {
+		T.SkipNow()
+	}
+
+	infra := buildPubSubTestInfra(T)
+	T.Cleanup(func() { _ = infra.shutdown(context.Background()) })
+
+	T.Run("publisher publishes message", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		infra := buildPubSubTestInfra(t, ctx)
-		t.Cleanup(func() { require.NoError(t, infra.shutdown(context.Background())) })
+		topicName := infra.newTopic(t)
+
+		logger := logging.NewNoopLogger()
+		provider := ProvidePubSubPublisherProvider(logger, tracing.NewNoopTracerProvider(), nil, infra.client, infra.projectID)
+		require.NotNil(t, provider)
+
+		publisher, err := provider.ProvidePublisher(ctx, topicName)
+		require.NoError(t, err)
+		require.NotNil(t, publisher)
+
+		inputData := &struct {
+			Name string `json:"name"`
+		}{
+			Name: t.Name(),
+		}
+
+		assert.NoError(t, publisher.Publish(ctx, inputData))
+	})
+
+	T.Run("consumer provider caches consumers for same topic", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		topicName := infra.newTopic(t)
 
 		logger := logging.NewNoopLogger()
 		provider := ProvidePubSubConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil, infra.client)
 
 		handler := func(_ context.Context, _ []byte) error { return nil }
 
-		c1, err := provider.ProvideConsumer(ctx, infra.topicName, handler)
+		c1, err := provider.ProvideConsumer(ctx, topicName, handler)
 		require.NoError(t, err)
 		require.NotNil(t, c1)
 
-		c2, err := provider.ProvideConsumer(ctx, infra.topicName, handler)
+		c2, err := provider.ProvideConsumer(ctx, topicName, handler)
 		require.NoError(t, err)
 		assert.Equal(t, c1, c2)
 	})
-}
 
-func TestPubSubConsumer_Consume(T *testing.T) {
-	T.Parallel()
-
-	T.Run("receives published message", func(t *testing.T) {
+	T.Run("consumer receives published message", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		infra := buildPubSubTestInfra(t, ctx)
-		t.Cleanup(func() { require.NoError(t, infra.shutdown(context.Background())) })
+		topicName := infra.newTopic(t)
 
 		var called atomic.Bool
-		handler := func(_ context.Context, payload []byte) error {
+		handler := func(_ context.Context, _ []byte) error {
 			called.Store(true)
 			return nil
 		}
 
 		logger := logging.NewNoopLogger()
 		provider := ProvidePubSubConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil, infra.client)
-		consumer, err := provider.ProvideConsumer(ctx, infra.topicName, handler)
+		consumer, err := provider.ProvideConsumer(ctx, topicName, handler)
 		require.NoError(t, err)
 
 		stopChan := make(chan bool, 1)
@@ -178,7 +232,7 @@ func TestPubSubConsumer_Consume(T *testing.T) {
 		go consumer.Consume(ctx, stopChan, errChan)
 
 		// Publish a message.
-		publisher := infra.client.Publisher(infra.topicName)
+		publisher := infra.client.Publisher(topicName)
 		result := publisher.Publish(ctx, &pubsub.Message{Data: []byte(`{"name":"test"}`)})
 		<-result.Ready()
 		_, err = result.Get(ctx)
@@ -196,12 +250,11 @@ func TestPubSubConsumer_Consume(T *testing.T) {
 		}
 	})
 
-	T.Run("handler error is sent to error channel", func(t *testing.T) {
+	T.Run("consumer handler error is sent to error channel", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		infra := buildPubSubTestInfra(t, ctx)
-		t.Cleanup(func() { require.NoError(t, infra.shutdown(context.Background())) })
+		topicName := infra.newTopic(t)
 
 		expectedErr := fmt.Errorf("handler failure")
 		handler := func(_ context.Context, _ []byte) error {
@@ -210,7 +263,7 @@ func TestPubSubConsumer_Consume(T *testing.T) {
 
 		logger := logging.NewNoopLogger()
 		provider := ProvidePubSubConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil, infra.client)
-		consumer, err := provider.ProvideConsumer(ctx, infra.topicName, handler)
+		consumer, err := provider.ProvideConsumer(ctx, topicName, handler)
 		require.NoError(t, err)
 
 		stopChan := make(chan bool, 1)
@@ -218,7 +271,7 @@ func TestPubSubConsumer_Consume(T *testing.T) {
 		go consumer.Consume(ctx, stopChan, errChan)
 
 		// Publish a message.
-		publisher := infra.client.Publisher(infra.topicName)
+		publisher := infra.client.Publisher(topicName)
 		result := publisher.Publish(ctx, &pubsub.Message{Data: []byte(`{"name":"test"}`)})
 		<-result.Ready()
 		_, err = result.Get(ctx)
@@ -235,18 +288,17 @@ func TestPubSubConsumer_Consume(T *testing.T) {
 		stopChan <- true
 	})
 
-	T.Run("stops when stop channel is signaled", func(t *testing.T) {
+	T.Run("consumer stops when stop channel is signaled", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		infra := buildPubSubTestInfra(t, ctx)
-		t.Cleanup(func() { require.NoError(t, infra.shutdown(context.Background())) })
+		topicName := infra.newTopic(t)
 
 		handler := func(_ context.Context, _ []byte) error { return nil }
 
 		logger := logging.NewNoopLogger()
 		provider := ProvidePubSubConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil, infra.client)
-		consumer, err := provider.ProvideConsumer(ctx, infra.topicName, handler)
+		consumer, err := provider.ProvideConsumer(ctx, topicName, handler)
 		require.NoError(t, err)
 
 		stopChan := make(chan bool, 1)
@@ -268,12 +320,11 @@ func TestPubSubConsumer_Consume(T *testing.T) {
 		}
 	})
 
-	T.Run("nil stop channel does not panic", func(t *testing.T) {
+	T.Run("consumer with nil stop channel does not panic", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		infra := buildPubSubTestInfra(t, ctx)
-		t.Cleanup(func() { require.NoError(t, infra.shutdown(context.Background())) })
+		topicName := infra.newTopic(t)
 
 		var called atomic.Bool
 		handler := func(_ context.Context, _ []byte) error {
@@ -283,7 +334,7 @@ func TestPubSubConsumer_Consume(T *testing.T) {
 
 		logger := logging.NewNoopLogger()
 		provider := ProvidePubSubConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil, infra.client)
-		consumer, err := provider.ProvideConsumer(ctx, infra.topicName, handler)
+		consumer, err := provider.ProvideConsumer(ctx, topicName, handler)
 		require.NoError(t, err)
 
 		errChan := make(chan error, 1)
@@ -296,7 +347,7 @@ func TestPubSubConsumer_Consume(T *testing.T) {
 		}()
 
 		// Publish a message to verify it still works.
-		publisher := infra.client.Publisher(infra.topicName)
+		publisher := infra.client.Publisher(topicName)
 		result := publisher.Publish(ctx, &pubsub.Message{Data: []byte(`{"name":"test"}`)})
 		<-result.Ready()
 		_, err = result.Get(ctx)

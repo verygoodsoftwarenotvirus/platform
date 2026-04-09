@@ -1,0 +1,179 @@
+package ses
+
+import (
+	"context"
+	"errors"
+	"net/http"
+	"testing"
+
+	cbnoop "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/noop"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/email"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
+
+	"github.com/aws/aws-sdk-go-v2/service/sesv2"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+type mockSESClient struct {
+	output *sesv2.SendEmailOutput
+	err    error
+}
+
+func (m *mockSESClient) SendEmail(_ context.Context, _ *sesv2.SendEmailInput, _ ...func(*sesv2.Options)) (*sesv2.SendEmailOutput, error) {
+	return m.output, m.err
+}
+
+func TestNewSESEmailer(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{Region: "us-east-1"}
+		mock := &mockSESClient{}
+
+		client, err := NewSESEmailer(t.Context(), cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker(), nil, mock)
+		require.NoError(t, err)
+		require.NotNil(t, client)
+	})
+
+	T.Run("with nil config", func(t *testing.T) {
+		t.Parallel()
+
+		client, err := NewSESEmailer(t.Context(), nil, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker(), nil, &mockSESClient{})
+		require.Error(t, err)
+		assert.Nil(t, client)
+		assert.ErrorIs(t, err, ErrNilConfig)
+	})
+
+	T.Run("with empty region", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{}
+
+		client, err := NewSESEmailer(t.Context(), cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker(), nil, &mockSESClient{})
+		require.Error(t, err)
+		assert.Nil(t, client)
+		assert.ErrorIs(t, err, ErrEmptyRegion)
+	})
+
+	T.Run("with nil HTTP client and nil SES client", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{Region: "us-east-1"}
+
+		client, err := NewSESEmailer(t.Context(), cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker(), nil, nil)
+		require.Error(t, err)
+		assert.Nil(t, client)
+		assert.ErrorIs(t, err, ErrNilHTTPClient)
+	})
+
+	T.Run("with HTTP client and nil SES client", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{Region: "us-east-1"}
+
+		client, err := NewSESEmailer(t.Context(), cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil, nil)
+		require.NoError(t, err)
+		require.NotNil(t, client)
+	})
+}
+
+func TestEmailer_SendEmail(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		mock := &mockSESClient{output: &sesv2.SendEmailOutput{}}
+		cfg := &Config{Region: "us-east-1"}
+
+		e, err := NewSESEmailer(t.Context(), cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker(), nil, mock)
+		require.NoError(t, err)
+
+		details := &email.OutboundEmailMessage{
+			ToAddress:   "to@example.com",
+			ToName:      t.Name(),
+			FromAddress: "from@example.com",
+			FromName:    t.Name(),
+			Subject:     t.Name(),
+			HTMLContent: t.Name(),
+		}
+
+		require.NoError(t, e.SendEmail(t.Context(), details))
+	})
+
+	T.Run("without names", func(t *testing.T) {
+		t.Parallel()
+
+		mock := &mockSESClient{output: &sesv2.SendEmailOutput{}}
+		cfg := &Config{Region: "us-east-1"}
+
+		e, err := NewSESEmailer(t.Context(), cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker(), nil, mock)
+		require.NoError(t, err)
+
+		details := &email.OutboundEmailMessage{
+			ToAddress:   "to@example.com",
+			FromAddress: "from@example.com",
+			Subject:     t.Name(),
+			HTMLContent: t.Name(),
+		}
+
+		require.NoError(t, e.SendEmail(t.Context(), details))
+	})
+
+	T.Run("with error from SES", func(t *testing.T) {
+		t.Parallel()
+
+		mock := &mockSESClient{err: errors.New("ses send error")}
+		cfg := &Config{Region: "us-east-1"}
+
+		e, err := NewSESEmailer(t.Context(), cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker(), nil, mock)
+		require.NoError(t, err)
+
+		details := &email.OutboundEmailMessage{
+			ToAddress:   "to@example.com",
+			ToName:      t.Name(),
+			FromAddress: "from@example.com",
+			FromName:    t.Name(),
+			Subject:     t.Name(),
+			HTMLContent: t.Name(),
+		}
+
+		err = e.SendEmail(t.Context(), details)
+		require.Error(t, err)
+	})
+
+	T.Run("with broken circuit breaker", func(t *testing.T) {
+		t.Parallel()
+
+		mock := &mockSESClient{output: &sesv2.SendEmailOutput{}}
+		cfg := &Config{Region: "us-east-1"}
+
+		e, err := NewSESEmailer(t.Context(), cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker(), nil, mock)
+		require.NoError(t, err)
+
+		e.circuitBreaker = &brokenCircuitBreaker{}
+
+		details := &email.OutboundEmailMessage{
+			ToAddress:   "to@example.com",
+			ToName:      t.Name(),
+			FromAddress: "from@example.com",
+			FromName:    t.Name(),
+			Subject:     t.Name(),
+			HTMLContent: t.Name(),
+		}
+
+		err = e.SendEmail(t.Context(), details)
+		require.Error(t, err)
+	})
+}
+
+type brokenCircuitBreaker struct{}
+
+func (*brokenCircuitBreaker) Failed()             {}
+func (*brokenCircuitBreaker) Succeeded()          {}
+func (*brokenCircuitBreaker) CanProceed() bool    { return false }
+func (*brokenCircuitBreaker) CannotProceed() bool { return true }

@@ -35,6 +35,11 @@ var (
 	ErrNilHTTPClient = platformerrors.New("nil HTTP client")
 )
 
+// SendEmailAPI abstracts the SES v2 SendEmail call for testability.
+type SendEmailAPI interface {
+	SendEmail(ctx context.Context, params *sesv2.SendEmailInput, optFns ...func(*sesv2.Options)) (*sesv2.SendEmailOutput, error)
+}
+
 // Emailer uses AWS SES v2 to send email.
 type Emailer struct {
 	logger         logging.Logger
@@ -42,12 +47,14 @@ type Emailer struct {
 	sendCounter    metrics.Int64Counter
 	errorCounter   metrics.Int64Counter
 	latencyHist    metrics.Float64Histogram
-	client         *sesv2.Client
+	client         SendEmailAPI
 	circuitBreaker circuitbreaking.CircuitBreaker
 }
 
 // NewSESEmailer returns a new AWS SES-backed Emailer.
-func NewSESEmailer(ctx context.Context, cfg *Config, logger logging.Logger, tracerProvider tracing.TracerProvider, client *http.Client, circuitBreaker circuitbreaking.CircuitBreaker, metricsProvider metrics.Provider) (*Emailer, error) {
+// If sesClient is non-nil it is used directly; otherwise a new SES v2 client
+// is created from the default AWS credential chain using the provided HTTP client.
+func NewSESEmailer(ctx context.Context, cfg *Config, logger logging.Logger, tracerProvider tracing.TracerProvider, httpClient *http.Client, circuitBreaker circuitbreaking.CircuitBreaker, metricsProvider metrics.Provider, sesClient SendEmailAPI) (*Emailer, error) {
 	if cfg == nil {
 		return nil, ErrNilConfig
 	}
@@ -56,7 +63,7 @@ func NewSESEmailer(ctx context.Context, cfg *Config, logger logging.Logger, trac
 		return nil, ErrEmptyRegion
 	}
 
-	if client == nil {
+	if sesClient == nil && httpClient == nil {
 		return nil, ErrNilHTTPClient
 	}
 
@@ -77,9 +84,21 @@ func NewSESEmailer(ctx context.Context, cfg *Config, logger logging.Logger, trac
 		return nil, platformerrors.Wrap(err, "creating latency histogram")
 	}
 
+	if sesClient != nil {
+		return &Emailer{
+			logger:         logging.NewNamedLogger(logger, name),
+			tracer:         tracing.NewNamedTracer(tracerProvider, name),
+			sendCounter:    sendCounter,
+			errorCounter:   errorCounter,
+			latencyHist:    latencyHist,
+			client:         sesClient,
+			circuitBreaker: circuitBreaker,
+		}, nil
+	}
+
 	awsCfg, err := awsconfig.LoadDefaultConfig(ctx,
 		awsconfig.WithRegion(cfg.Region),
-		awsconfig.WithHTTPClient(client),
+		awsconfig.WithHTTPClient(httpClient),
 	)
 	if err != nil {
 		return nil, platformerrors.Wrap(err, "loading AWS config")

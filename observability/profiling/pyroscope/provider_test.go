@@ -1,0 +1,132 @@
+package pyroscope
+
+import (
+	"testing"
+	"time"
+
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/profiling"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestProvideProfilingProvider(T *testing.T) {
+	T.Parallel()
+
+	T.Run("with nil config", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		logger := logging.NewNoopLogger()
+
+		p, err := ProvideProfilingProvider(ctx, logger, "test-service", nil)
+		require.NoError(t, err)
+		assert.NotNil(t, p)
+	})
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		logger := logging.NewNoopLogger()
+		cfg := &Config{
+			ServerAddress: "http://localhost:99999",
+			UploadRate:    15 * time.Second,
+		}
+
+		p, err := ProvideProfilingProvider(ctx, logger, "test-service", cfg)
+		require.NoError(t, err)
+		require.NotNil(t, p)
+
+		require.NoError(t, p.Shutdown(ctx))
+	})
+
+	T.Run("with mutex and block profiles", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		logger := logging.NewNoopLogger()
+		cfg := &Config{
+			ServerAddress:      "http://localhost:99999",
+			UploadRate:         15 * time.Second,
+			EnableMutexProfile: true,
+			EnableBlockProfile: true,
+		}
+
+		p, err := ProvideProfilingProvider(ctx, logger, "test-service", cfg)
+		require.NoError(t, err)
+		require.NotNil(t, p)
+
+		require.NoError(t, p.Shutdown(ctx))
+	})
+
+	T.Run("with tags", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		logger := logging.NewNoopLogger()
+		cfg := &Config{
+			ServerAddress: "http://localhost:99999",
+			UploadRate:    15 * time.Second,
+			Tags:          map[string]string{"env": "test", "region": "us-east-1"},
+		}
+
+		p, err := ProvideProfilingProvider(ctx, logger, "test-service", cfg)
+		require.NoError(t, err)
+		require.NotNil(t, p)
+
+		require.NoError(t, p.Shutdown(ctx))
+	})
+}
+
+func TestProvider_Start(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		logger := logging.NewNoopLogger()
+		cfg := &Config{
+			ServerAddress: "http://localhost:99999",
+			UploadRate:    15 * time.Second,
+		}
+
+		p, err := ProvideProfilingProvider(ctx, logger, "test-service", cfg)
+		require.NoError(t, err)
+
+		assert.NoError(t, p.Start(ctx))
+		require.NoError(t, p.Shutdown(ctx))
+	})
+}
+
+func TestProvider_Shutdown(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		logger := logging.NewNoopLogger()
+		cfg := &Config{
+			ServerAddress: "http://localhost:99999",
+			UploadRate:    15 * time.Second,
+		}
+
+		p, err := ProvideProfilingProvider(ctx, logger, "test-service", cfg)
+		require.NoError(t, err)
+
+		assert.NoError(t, p.Shutdown(ctx))
+	})
+}
+
+func TestProvider_InterfaceCompliance(T *testing.T) {
+	T.Parallel()
+
+	T.Run("implements profiling.Provider", func(t *testing.T) {
+		t.Parallel()
+
+		var _ profiling.Provider = (*provider)(nil)
+	})
+}

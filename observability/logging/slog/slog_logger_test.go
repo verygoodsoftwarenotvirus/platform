@@ -21,6 +21,24 @@ func TestNewLogger(T *testing.T) {
 
 		assert.NotNil(t, NewSlogLogger(logging.DebugLevel))
 	})
+
+	T.Run("with info level", func(t *testing.T) {
+		t.Parallel()
+
+		assert.NotNil(t, NewSlogLogger(logging.InfoLevel))
+	})
+
+	T.Run("with warn level", func(t *testing.T) {
+		t.Parallel()
+
+		assert.NotNil(t, NewSlogLogger(logging.WarnLevel))
+	})
+
+	T.Run("with error level", func(t *testing.T) {
+		t.Parallel()
+
+		assert.NotNil(t, NewSlogLogger(logging.ErrorLevel))
+	})
 }
 
 func Test_zerologLogger_WithName(T *testing.T) {
@@ -46,6 +64,14 @@ func Test_zerologLogger_SetRequestIDFunc(T *testing.T) {
 		l.SetRequestIDFunc(func(*http.Request) string {
 			return ""
 		})
+	})
+
+	T.Run("with nil function", func(t *testing.T) {
+		t.Parallel()
+
+		l := NewSlogLogger(logging.DebugLevel)
+
+		l.SetRequestIDFunc(nil)
 	})
 }
 
@@ -82,6 +108,14 @@ func Test_zerologLogger_Error(T *testing.T) {
 		l := NewSlogLogger(logging.DebugLevel)
 
 		l.Error(t.Name(), errors.New("blah"))
+	})
+
+	T.Run("with nil error", func(t *testing.T) {
+		t.Parallel()
+
+		l := NewSlogLogger(logging.DebugLevel)
+
+		l.Error(t.Name(), nil)
 	})
 }
 
@@ -161,12 +195,20 @@ func Test_zerologLogger_WithRequest(T *testing.T) {
 			return t.Name()
 		}
 
-		u, err := url.ParseRequestURI("https://whatever.whocares.gov?things=stuff")
+		u, err := url.ParseRequestURI("https://whatever.whocares.gov/path?things=stuff")
 		require.NoError(t, err)
 
 		assert.NotNil(t, l.WithRequest(&http.Request{
 			URL: u,
 		}))
+	})
+
+	T.Run("with nil request", func(t *testing.T) {
+		t.Parallel()
+
+		l := NewSlogLogger(logging.DebugLevel)
+
+		assert.NotNil(t, l.WithRequest(nil))
 	})
 }
 
@@ -179,5 +221,13 @@ func Test_zerologLogger_WithResponse(T *testing.T) {
 		l := NewSlogLogger(logging.DebugLevel)
 
 		assert.NotNil(t, l.WithResponse(&http.Response{}))
+	})
+
+	T.Run("with nil response", func(t *testing.T) {
+		t.Parallel()
+
+		l := NewSlogLogger(logging.DebugLevel)
+
+		assert.NotNil(t, l.WithResponse(nil))
 	})
 }

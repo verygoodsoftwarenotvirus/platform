@@ -27,6 +27,14 @@ func TestNewCompressor(T *testing.T) {
 		require.NotNil(t, comp)
 	})
 
+	T.Run("s2", func(t *testing.T) {
+		t.Parallel()
+
+		comp, err := NewCompressor(algoS2)
+		require.NoError(t, err)
+		require.NotNil(t, comp)
+	})
+
 	T.Run("invalid algo", func(t *testing.T) {
 		t.Parallel()
 
@@ -156,6 +164,28 @@ func Test_compressor_DecompressBytes(T *testing.T) {
 		comp.(*compressor).algo = "invalid"
 
 		decompressed, err := comp.DecompressBytes(compressed)
+		assert.Error(t, err)
+		assert.Nil(t, decompressed)
+	})
+
+	T.Run("with invalid zstd data", func(t *testing.T) {
+		t.Parallel()
+
+		comp, err := NewCompressor(algoZstd)
+		require.NoError(t, err)
+
+		decompressed, err := comp.DecompressBytes([]byte("not valid zstd data"))
+		assert.Error(t, err)
+		assert.Nil(t, decompressed)
+	})
+
+	T.Run("with invalid s2 data", func(t *testing.T) {
+		t.Parallel()
+
+		comp, err := NewCompressor(algoS2)
+		require.NoError(t, err)
+
+		decompressed, err := comp.DecompressBytes([]byte("not valid s2 data"))
 		assert.Error(t, err)
 		assert.Nil(t, decompressed)
 	})

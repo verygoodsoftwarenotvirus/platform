@@ -16,10 +16,34 @@ import (
 func Test_buildZerologger(T *testing.T) {
 	T.Parallel()
 
-	T.Run("standard", func(t *testing.T) {
+	T.Run("with debug level", func(t *testing.T) {
 		t.Parallel()
 
 		assert.NotNil(t, buildZerologger(logging.DebugLevel))
+	})
+
+	T.Run("with info level", func(t *testing.T) {
+		t.Parallel()
+
+		assert.NotNil(t, buildZerologger(logging.InfoLevel))
+	})
+
+	T.Run("with warn level", func(t *testing.T) {
+		t.Parallel()
+
+		assert.NotNil(t, buildZerologger(logging.WarnLevel))
+	})
+
+	T.Run("with error level", func(t *testing.T) {
+		t.Parallel()
+
+		assert.NotNil(t, buildZerologger(logging.ErrorLevel))
+	})
+
+	T.Run("with nil level", func(t *testing.T) {
+		t.Parallel()
+
+		assert.NotNil(t, buildZerologger(nil))
 	})
 }
 
@@ -57,6 +81,14 @@ func Test_zerologLogger_SetRequestIDFunc(T *testing.T) {
 			return ""
 		})
 	})
+
+	T.Run("with nil function", func(t *testing.T) {
+		t.Parallel()
+
+		l := NewZerologLogger(logging.DebugLevel)
+
+		l.SetRequestIDFunc(nil)
+	})
 }
 
 func Test_zerologLogger_Info(T *testing.T) {
@@ -92,6 +124,14 @@ func Test_zerologLogger_Error(T *testing.T) {
 		l := NewZerologLogger(logging.DebugLevel)
 
 		l.Error(t.Name(), errors.New("blah"))
+	})
+
+	T.Run("with nil error", func(t *testing.T) {
+		t.Parallel()
+
+		l := NewZerologLogger(logging.DebugLevel)
+
+		l.Error(t.Name(), nil)
 	})
 }
 
@@ -171,12 +211,20 @@ func Test_zerologLogger_WithRequest(T *testing.T) {
 			return t.Name()
 		}
 
-		u, err := url.ParseRequestURI("https://whatever.whocares.gov?things=stuff")
+		u, err := url.ParseRequestURI("https://whatever.whocares.gov/path?things=stuff")
 		require.NoError(t, err)
 
 		assert.NotNil(t, l.WithRequest(&http.Request{
 			URL: u,
 		}))
+	})
+
+	T.Run("with nil request", func(t *testing.T) {
+		t.Parallel()
+
+		l := NewZerologLogger(logging.DebugLevel)
+
+		assert.NotNil(t, l.WithRequest(nil))
 	})
 }
 
@@ -189,5 +237,13 @@ func Test_zerologLogger_WithResponse(T *testing.T) {
 		l := NewZerologLogger(logging.DebugLevel)
 
 		assert.NotNil(t, l.WithResponse(&http.Response{}))
+	})
+
+	T.Run("with nil response", func(t *testing.T) {
+		t.Parallel()
+
+		l := NewZerologLogger(logging.DebugLevel)
+
+		assert.NotNil(t, l.WithResponse(nil))
 	})
 }

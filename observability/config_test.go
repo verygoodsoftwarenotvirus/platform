@@ -7,6 +7,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing/oteltrace"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConfig_ValidateWithContext(T *testing.T) {
@@ -28,5 +29,24 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		}
 
 		assert.NoError(t, cfg.ValidateWithContext(ctx))
+	})
+}
+
+func TestConfig_ProvidePillars(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		cfg := &Config{}
+
+		pillars, err := cfg.ProvidePillars(ctx)
+		require.NoError(t, err)
+		require.NotNil(t, pillars)
+		assert.NotNil(t, pillars.Logger)
+		assert.NotNil(t, pillars.TracerProvider)
+		assert.NotNil(t, pillars.MetricsProvider)
+		assert.NotNil(t, pillars.Profiler)
 	})
 }

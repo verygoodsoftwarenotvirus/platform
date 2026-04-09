@@ -9,6 +9,27 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func Test_timeFromNullTime(T *testing.T) {
+	T.Parallel()
+
+	T.Run("with valid time", func(t *testing.T) {
+		t.Parallel()
+
+		now := time.Now()
+		nt := sql.NullTime{Time: now, Valid: true}
+
+		assert.Equal(t, now, TimeFromNullTime(nt))
+	})
+
+	T.Run("with invalid time", func(t *testing.T) {
+		t.Parallel()
+
+		nt := sql.NullTime{Valid: false}
+
+		assert.Zero(t, TimeFromNullTime(nt))
+	})
+}
+
 func Test_timePointerFromNullTime(T *testing.T) {
 	T.Parallel()
 
@@ -185,6 +206,28 @@ func Test_nullBoolFromBool(T *testing.T) {
 
 		expected := sql.NullBool{Bool: true, Valid: true}
 		assert.Equal(t, expected, NullBoolFromBool(true))
+	})
+}
+
+func Test_nullBoolFromBoolPointer(T *testing.T) {
+	T.Parallel()
+
+	T.Run("with non-nil pointer", func(t *testing.T) {
+		t.Parallel()
+
+		b := true
+		result := NullBoolFromBoolPointer(&b)
+
+		assert.True(t, result.Valid)
+		assert.True(t, result.Bool)
+	})
+
+	T.Run("with nil pointer", func(t *testing.T) {
+		t.Parallel()
+
+		result := NullBoolFromBoolPointer(nil)
+
+		assert.False(t, result.Valid)
 	})
 }
 

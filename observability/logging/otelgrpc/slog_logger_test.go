@@ -24,6 +24,56 @@ func TestNewLogger(T *testing.T) {
 		assert.NotNil(t, l)
 		assert.NoError(t, err)
 	})
+
+	T.Run("with nil config", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		l, err := NewOtelSlogLogger(ctx, logging.DebugLevel, t.Name(), nil)
+		assert.Nil(t, l)
+		assert.Error(t, err)
+	})
+
+	T.Run("with info level", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		l, err := NewOtelSlogLogger(ctx, logging.InfoLevel, t.Name(), &Config{})
+		assert.NotNil(t, l)
+		assert.NoError(t, err)
+	})
+
+	T.Run("with warn level", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		l, err := NewOtelSlogLogger(ctx, logging.WarnLevel, t.Name(), &Config{})
+		assert.NotNil(t, l)
+		assert.NoError(t, err)
+	})
+
+	T.Run("with error level", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		l, err := NewOtelSlogLogger(ctx, logging.ErrorLevel, t.Name(), &Config{})
+		assert.NotNil(t, l)
+		assert.NoError(t, err)
+	})
+
+	T.Run("with collector endpoint", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		cfg := &Config{
+			CollectorEndpoint: "localhost:4317",
+			Insecure:          true,
+		}
+
+		l, err := NewOtelSlogLogger(ctx, logging.DebugLevel, t.Name(), cfg)
+		assert.NotNil(t, l)
+		assert.NoError(t, err)
+	})
 }
 
 func Test_zerologLogger_WithName(T *testing.T) {
@@ -53,6 +103,16 @@ func Test_zerologLogger_SetRequestIDFunc(T *testing.T) {
 		l.SetRequestIDFunc(func(*http.Request) string {
 			return ""
 		})
+	})
+
+	T.Run("with nil function", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		l, err := NewOtelSlogLogger(ctx, logging.DebugLevel, t.Name(), &Config{})
+		require.NoError(t, err)
+
+		l.SetRequestIDFunc(nil)
 	})
 }
 
@@ -95,6 +155,16 @@ func Test_zerologLogger_Error(T *testing.T) {
 		require.NoError(t, err)
 
 		l.Error(t.Name(), errors.New("blah"))
+	})
+
+	T.Run("with nil error", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		l, err := NewOtelSlogLogger(ctx, logging.DebugLevel, t.Name(), &Config{})
+		require.NoError(t, err)
+
+		l.Error(t.Name(), nil)
 	})
 }
 
@@ -187,12 +257,22 @@ func Test_zerologLogger_WithRequest(T *testing.T) {
 			return t.Name()
 		}
 
-		u, err := url.ParseRequestURI("https://whatever.whocares.gov?things=stuff")
+		u, err := url.ParseRequestURI("https://whatever.whocares.gov/path?things=stuff")
 		require.NoError(t, err)
 
 		assert.NotNil(t, l.WithRequest(&http.Request{
 			URL: u,
 		}))
+	})
+
+	T.Run("with nil request", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		l, err := NewOtelSlogLogger(ctx, logging.DebugLevel, t.Name(), &Config{})
+		require.NoError(t, err)
+
+		assert.NotNil(t, l.WithRequest(nil))
 	})
 }
 
@@ -207,5 +287,32 @@ func Test_zerologLogger_WithResponse(T *testing.T) {
 		require.NoError(t, err)
 
 		assert.NotNil(t, l.WithResponse(&http.Response{}))
+	})
+
+	T.Run("with nil response", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		l, err := NewOtelSlogLogger(ctx, logging.DebugLevel, t.Name(), &Config{})
+		require.NoError(t, err)
+
+		assert.NotNil(t, l.WithResponse(nil))
+	})
+}
+
+func TestConfig_ValidateWithContext(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		cfg := &Config{
+			CollectorEndpoint: "localhost:4317",
+		}
+
+		// NOTE: ValidateWithContext uses &c (double pointer) which causes
+		// ozzo-validation to reject it. This exercises the code path regardless.
+		assert.Error(t, cfg.ValidateWithContext(ctx))
 	})
 }

@@ -31,10 +31,10 @@ type (
 
 	builder struct {
 		tracer     tracing.Tracer
-		totpIssuer Issuer
 		qrEncode   func(content string, level qr.ErrorCorrectionLevel, mode qr.Encoding) (barcode.Barcode, error)
 		scale      func(bc barcode.Barcode, width, height int) (barcode.Barcode, error)
 		pngEncode  func(b *bytes.Buffer, img barcode.Barcode) error
+		totpIssuer Issuer
 	}
 )
 

@@ -5,7 +5,9 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -29,6 +31,26 @@ type broken struct {
 func init() {
 	gob.Register(&example{})
 	gob.Register(&broken{})
+}
+
+type errReader struct{}
+
+func (r *errReader) Read([]byte) (int, error) {
+	return 0, errors.New("read error")
+}
+
+type errWriter struct{}
+
+func (w *errWriter) Write([]byte) (int, error) {
+	return 0, errors.New("write error")
+}
+
+type errorCloser struct {
+	io.Reader
+}
+
+func (e *errorCloser) Close() error {
+	return errors.New("close error")
 }
 
 func TestServerEncoderDecoder_encodeResponse(T *testing.T) {
@@ -338,4 +360,89 @@ func Test_serverEncoderDecoder_DecodeBytes(T *testing.T) {
 			assert.Equal(t, goodDataExpectation, dest)
 		})
 	}
+}
+
+func TestServerEncoderDecoder_RespondWithData(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		encoderDecoder, ok := ProvideServerEncoderDecoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), ContentTypeJSON).(*serverEncoderDecoder)
+		require.True(t, ok)
+
+		res := httptest.NewRecorder()
+
+		encoderDecoder.RespondWithData(ctx, res, &example{Name: t.Name()})
+
+		assert.Equal(t, http.StatusOK, res.Code)
+		assert.NotEmpty(t, res.Body.String())
+	})
+}
+
+func Test_tomlDecoder_Decode(T *testing.T) {
+	T.Parallel()
+
+	T.Run("with read error", func(t *testing.T) {
+		t.Parallel()
+
+		d := newTomlDecoder(&errReader{})
+
+		var dest example
+		assert.Error(t, d.Decode(&dest))
+	})
+}
+
+func Test_emojiEncoder_Encode(T *testing.T) {
+	T.Parallel()
+
+	T.Run("with marshal error", func(t *testing.T) {
+		t.Parallel()
+
+		enc := newEmojiEncoder(&bytes.Buffer{})
+		assert.Error(t, enc.Encode(make(chan int)))
+	})
+
+	T.Run("with write error", func(t *testing.T) {
+		t.Parallel()
+
+		enc := newEmojiEncoder(&errWriter{})
+		assert.Error(t, enc.Encode(&example{Name: "test"}))
+	})
+}
+
+func Test_emojiDecoder_Decode(T *testing.T) {
+	T.Parallel()
+
+	T.Run("with read error", func(t *testing.T) {
+		t.Parallel()
+
+		d := newEmojiDecoder(&errReader{})
+
+		var dest example
+		assert.Error(t, d.Decode(&dest))
+	})
+}
+
+func TestServerEncoderDecoder_DecodeRequest_bodyCloseError(T *testing.T) {
+	T.Parallel()
+
+	T.Run("with body close error", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		encoderDecoder := ProvideServerEncoderDecoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), ContentTypeJSON)
+
+		data, err := json.Marshal(&example{Name: "test"})
+		require.NoError(t, err)
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://whatever.whocares.gov", &errorCloser{Reader: bytes.NewReader(data)})
+		require.NoError(t, err)
+		req.Header.Set(ContentTypeHeaderKey, contentTypeJSON)
+
+		var dest example
+		assert.NoError(t, encoderDecoder.DecodeRequest(ctx, req, &dest))
+		assert.Equal(t, "test", dest.Name)
+	})
 }

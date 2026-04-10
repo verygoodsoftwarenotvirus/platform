@@ -1,6 +1,7 @@
 package encoding
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,8 +12,10 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/reflection"
 
+	"github.com/keith-turner/ecoji/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestProvideClientEncoder(T *testing.T) {
@@ -120,6 +123,16 @@ func Test_clientEncoder_Encode(T *testing.T) {
 
 		assert.Error(t, e.Encode(ctx, nil, &broken{Name: json.Number(t.Name())}))
 	})
+
+	T.Run("with emoji encode error", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		e := ProvideClientEncoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), ContentTypeEmoji)
+
+		var b bytes.Buffer
+		assert.Error(t, e.Encode(ctx, &b, make(chan int)))
+	})
 }
 
 func Test_clientEncoder_EncodeReader(T *testing.T) {
@@ -147,5 +160,48 @@ func Test_clientEncoder_EncodeReader(T *testing.T) {
 		actual, err := e.EncodeReader(ctx, &broken{Name: json.Number(t.Name())})
 		assert.Error(t, err)
 		assert.Nil(t, actual)
+	})
+}
+
+func Test_marshalEmoji(T *testing.T) {
+	T.Parallel()
+
+	T.Run("with un-encodable data", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := marshalEmoji(make(chan int))
+		assert.Error(t, err)
+	})
+}
+
+func Test_unmarshalEmoji(T *testing.T) {
+	T.Parallel()
+
+	T.Run("with invalid ecoji data", func(t *testing.T) {
+		t.Parallel()
+
+		var dest example
+		assert.Error(t, unmarshalEmoji([]byte("not valid ecoji data"), &dest))
+	})
+
+	T.Run("with valid ecoji but invalid gob data", func(t *testing.T) {
+		t.Parallel()
+
+		var buf bytes.Buffer
+		require.NoError(t, ecoji.EncodeV2(bytes.NewReader([]byte("not valid gob data")), &buf, 76))
+
+		var dest example
+		assert.Error(t, unmarshalEmoji(buf.Bytes(), &dest))
+	})
+}
+
+func Test_tomlMarshalFunc(T *testing.T) {
+	T.Parallel()
+
+	T.Run("with un-encodable data", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := tomlMarshalFunc(make(chan int))
+		assert.Error(t, err)
 	})
 }

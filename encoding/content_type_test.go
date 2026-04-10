@@ -27,7 +27,7 @@ func Test_buildContentType(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		//
+		assert.NotNil(t, buildContentType("test"))
 	})
 }
 
@@ -72,5 +72,29 @@ func Test_contentTypeFromString(T *testing.T) {
 		t.Parallel()
 
 		assert.Equal(t, ContentTypeXML, contentTypeFromString(contentTypeXML))
+	})
+
+	T.Run("with TOML", func(t *testing.T) {
+		t.Parallel()
+
+		assert.Equal(t, ContentTypeTOML, contentTypeFromString(contentTypeTOML))
+	})
+
+	T.Run("with YAML", func(t *testing.T) {
+		t.Parallel()
+
+		assert.Equal(t, ContentTypeYAML, contentTypeFromString(contentTypeYAML))
+	})
+
+	T.Run("with Emoji", func(t *testing.T) {
+		t.Parallel()
+
+		assert.Equal(t, ContentTypeEmoji, contentTypeFromString(contentTypeEmoji))
+	})
+
+	T.Run("with unknown defaults to JSON", func(t *testing.T) {
+		t.Parallel()
+
+		assert.Equal(t, ContentTypeJSON, contentTypeFromString("unknown"))
 	})
 }

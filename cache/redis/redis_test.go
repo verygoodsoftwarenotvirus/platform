@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	rediscontainers "github.com/testcontainers/testcontainers-go/modules/redis"
 )
 
@@ -38,7 +38,7 @@ func buildContainerBackedRedisConfig(t *testing.T) (config *Config, shutdownFunc
 	time.Sleep(100 * time.Millisecond)
 
 	redisAddress, err := redisContainer.ConnectionString(containerCtx)
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	cfg := &Config{
 		QueueAddresses: []string{
@@ -63,17 +63,17 @@ func Test_redisCacheImpl_Get(T *testing.T) {
 
 		cfg, containerShutdown := buildContainerBackedRedisConfig(t)
 		defer func() {
-			assert.NoError(t, containerShutdown(ctx))
+			test.NoError(t, containerShutdown(ctx))
 		}()
 		c, err := NewRedisCache[example](cfg, 0, nil, nil, nil, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		exampleContent := &example{Name: t.Name()}
-		assert.NoError(t, c.Set(ctx, exampleKey, exampleContent))
+		test.NoError(t, c.Set(ctx, exampleKey, exampleContent))
 
 		actual, getErr := c.Get(ctx, exampleKey)
-		assert.Equal(t, exampleContent, actual)
-		assert.NoError(t, getErr)
+		test.Eq(t, exampleContent, actual)
+		test.NoError(t, getErr)
 	})
 }
 
@@ -87,13 +87,13 @@ func Test_redisCacheImpl_Set(T *testing.T) {
 
 		cfg, containerShutdown := buildContainerBackedRedisConfig(t)
 		defer func() {
-			assert.NoError(t, containerShutdown(ctx))
+			test.NoError(t, containerShutdown(ctx))
 		}()
 		c, err := NewRedisCache[example](cfg, 0, nil, nil, nil, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		exampleContent := &example{Name: t.Name()}
-		assert.NoError(t, c.Set(ctx, exampleKey, exampleContent))
+		test.NoError(t, c.Set(ctx, exampleKey, exampleContent))
 	})
 }
 
@@ -107,14 +107,14 @@ func Test_redisCacheImpl_Delete(T *testing.T) {
 
 		cfg, containerShutdown := buildContainerBackedRedisConfig(t)
 		defer func() {
-			assert.NoError(t, containerShutdown(ctx))
+			test.NoError(t, containerShutdown(ctx))
 		}()
 		c, err := NewRedisCache[example](cfg, 0, nil, nil, nil, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		exampleContent := &example{Name: t.Name()}
-		assert.NoError(t, c.Set(ctx, exampleKey, exampleContent))
+		test.NoError(t, c.Set(ctx, exampleKey, exampleContent))
 
-		assert.NoError(t, c.Delete(ctx, exampleKey))
+		test.NoError(t, c.Delete(ctx, exampleKey))
 	})
 }

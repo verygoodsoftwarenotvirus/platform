@@ -3,8 +3,8 @@ package memory
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 const (
@@ -22,8 +22,8 @@ func Test_newInMemoryCache(T *testing.T) {
 		t.Parallel()
 
 		actual, err := NewInMemoryCache[example](nil, nil, nil)
-		require.NoError(t, err)
-		assert.NotNil(t, actual)
+		must.NoError(t, err)
+		test.NotNil(t, actual)
 	})
 }
 
@@ -35,14 +35,14 @@ func Test_inMemoryCacheImpl_Get(T *testing.T) {
 
 		ctx := t.Context()
 		c, err := NewInMemoryCache[example](nil, nil, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		expected := &example{Name: t.Name()}
-		assert.NoError(t, c.Set(ctx, exampleKey, expected))
+		test.NoError(t, c.Set(ctx, exampleKey, expected))
 
 		actual, err := c.Get(ctx, exampleKey)
-		assert.Equal(t, expected, actual)
-		assert.NoError(t, err)
+		test.Eq(t, expected, actual)
+		test.NoError(t, err)
 	})
 }
 
@@ -54,11 +54,11 @@ func Test_inMemoryCacheImpl_Set(T *testing.T) {
 
 		ctx := t.Context()
 		c, err := NewInMemoryCache[example](nil, nil, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
-		assert.Len(t, c.(*inMemoryCacheImpl[example]).cache, 0)
-		assert.NoError(t, c.Set(ctx, exampleKey, &example{Name: t.Name()}))
-		assert.Len(t, c.(*inMemoryCacheImpl[example]).cache, 1)
+		test.MapLen(t, 0, c.(*inMemoryCacheImpl[example]).cache)
+		test.NoError(t, c.Set(ctx, exampleKey, &example{Name: t.Name()}))
+		test.MapLen(t, 1, c.(*inMemoryCacheImpl[example]).cache)
 	})
 }
 
@@ -70,13 +70,13 @@ func Test_inMemoryCacheImpl_Delete(T *testing.T) {
 
 		ctx := t.Context()
 		c, err := NewInMemoryCache[example](nil, nil, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
-		assert.Len(t, c.(*inMemoryCacheImpl[example]).cache, 0)
-		assert.NoError(t, c.Set(ctx, exampleKey, &example{Name: t.Name()}))
-		assert.Len(t, c.(*inMemoryCacheImpl[example]).cache, 1)
-		assert.NoError(t, c.Delete(ctx, exampleKey))
-		assert.Len(t, c.(*inMemoryCacheImpl[example]).cache, 0)
+		test.MapLen(t, 0, c.(*inMemoryCacheImpl[example]).cache)
+		test.NoError(t, c.Set(ctx, exampleKey, &example{Name: t.Name()}))
+		test.MapLen(t, 1, c.(*inMemoryCacheImpl[example]).cache)
+		test.NoError(t, c.Delete(ctx, exampleKey))
+		test.MapLen(t, 0, c.(*inMemoryCacheImpl[example]).cache)
 	})
 }
 
@@ -87,7 +87,7 @@ func Test_inMemoryCacheImpl_Ping(T *testing.T) {
 		t.Parallel()
 
 		c, err := NewInMemoryCache[example](nil, nil, nil)
-		require.NoError(t, err)
-		assert.NoError(t, c.Ping(t.Context()))
+		must.NoError(t, err)
+		test.NoError(t, c.Ping(t.Context()))
 	})
 }

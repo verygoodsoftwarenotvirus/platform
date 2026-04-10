@@ -3,7 +3,7 @@ package cache
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test/must"
 )
 
 func TestErrNotFound(T *testing.T) {
@@ -12,7 +12,7 @@ func TestErrNotFound(T *testing.T) {
 	T.Run("is not nil", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, ErrNotFound)
-		assert.Equal(t, "not found", ErrNotFound.Error())
+		must.NotNil(t, ErrNotFound)
+		must.EqOp(t, "not found", ErrNotFound.Error())
 	})
 }

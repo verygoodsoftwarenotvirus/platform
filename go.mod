@@ -15,6 +15,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.41.5
 	github.com/aws/aws-sdk-go-v2/config v1.32.12
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.97.1
+	github.com/aws/aws-sdk-go-v2/service/sesv2 v1.60.2
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.42.24
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.68.3
 	github.com/boombuler/barcode v1.1.0
@@ -58,8 +59,10 @@ require (
 	github.com/samber/do/v2 v2.0.0
 	github.com/samber/slog-multi v1.7.1
 	github.com/segmentio/analytics-go/v3 v3.3.0
+	github.com/segmentio/kafka-go v0.4.50
 	github.com/sendgrid/rest v2.6.9+incompatible
 	github.com/sendgrid/sendgrid-go v3.16.1+incompatible
+	github.com/shoenig/test v1.12.2
 	github.com/sideshow/apns2 v0.25.0
 	github.com/stretchr/testify v1.11.1
 	github.com/stripe/stripe-go/v75 v75.11.0
@@ -102,7 +105,6 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.1.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sesv2 v1.60.2 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.12.2 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
@@ -110,12 +112,13 @@ require (
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/google/gnostic-models v0.7.0 // indirect
+	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/wire v0.7.0 // indirect
+	github.com/matryer/moq v0.7.1 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.18 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	github.com/segmentio/kafka-go v0.4.50 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	golang.org/x/term v0.41.0 // indirect
@@ -242,10 +245,10 @@ require (
 	github.com/launchdarkly/ccache v1.1.0 // indirect
 	github.com/launchdarkly/eventsource v1.11.0 // indirect
 	github.com/launchdarkly/go-jsonstream/v3 v3.1.1 // indirect
-	github.com/launchdarkly/go-sdk-common/v3 v3.5.0 // indirect
+	github.com/launchdarkly/go-sdk-common/v3 v3.5.0
 	github.com/launchdarkly/go-sdk-events/v2 v2.0.2 // indirect
 	github.com/launchdarkly/go-semver v1.0.3 // indirect
-	github.com/launchdarkly/go-server-sdk-evaluation/v2 v2.0.2 // indirect
+	github.com/launchdarkly/go-server-sdk-evaluation/v2 v2.0.2
 	github.com/lufia/plan9stats v0.0.0-20260216142805-b3301c5f2a88 // indirect
 	github.com/magiconair/properties v1.8.10 // indirect
 	github.com/mailgun/errors v0.5.0 // indirect
@@ -329,6 +332,7 @@ require (
 tool (
 	github.com/4meepo/tagalign/cmd/tagalign
 	github.com/daixiang0/gci
+	github.com/matryer/moq
 	golang.org/x/tools/cmd/goimports
 	golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment
 )

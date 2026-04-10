@@ -6,16 +6,50 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
+
+const validDeviceToken = "a1b2c3d4e5f67890a1b2c3d4e5f67890a1b2c3d4e5f67890a1b2c3d4e5f67890"
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+func createTestSenderWithTransport(t *testing.T, fn roundTripFunc) *Sender {
+	t.Helper()
+
+	p8Path := createTestP8File(t)
+	cfg := &Config{
+		AuthKeyPath: p8Path,
+		KeyID:       "KEY123",
+		TeamID:      "TEAM123",
+		BundleID:    "com.example.app",
+	}
+	sender, err := NewSender(cfg, tracing.NewNoopTracerProvider(), logging.NewNoopLogger(), nil)
+	require.NoError(t, err)
+
+	sender.client.HTTPClient = &http.Client{Transport: fn}
+	sender.client.Host = "https://test.example.com"
+
+	return sender
+}
 
 func createTestP8File(t *testing.T) string {
 	t.Helper()
@@ -99,6 +133,36 @@ func TestNewSender(T *testing.T) {
 		assert.Contains(t, err.Error(), "loading auth key")
 	})
 
+	T.Run("with empty team ID", func(t *testing.T) {
+		t.Parallel()
+
+		p8Path := createTestP8File(t)
+		cfg := &Config{
+			AuthKeyPath: p8Path,
+			KeyID:       "KEY123",
+			BundleID:    "com.example.app",
+		}
+		sender, err := NewSender(cfg, tracingProvider, logger, nil)
+		assert.Nil(t, sender)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "missing required config")
+	})
+
+	T.Run("with empty bundle ID", func(t *testing.T) {
+		t.Parallel()
+
+		p8Path := createTestP8File(t)
+		cfg := &Config{
+			AuthKeyPath: p8Path,
+			KeyID:       "KEY123",
+			TeamID:      "TEAM123",
+		}
+		sender, err := NewSender(cfg, tracingProvider, logger, nil)
+		assert.Nil(t, sender)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "missing required config")
+	})
+
 	T.Run("with valid config", func(t *testing.T) {
 		t.Parallel()
 
@@ -114,6 +178,132 @@ func TestNewSender(T *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, sender)
 		assert.Equal(t, "com.example.app", sender.topic)
+	})
+
+	T.Run("with production config", func(t *testing.T) {
+		t.Parallel()
+
+		p8Path := createTestP8File(t)
+		cfg := &Config{
+			AuthKeyPath: p8Path,
+			KeyID:       "KEY123",
+			TeamID:      "TEAM123",
+			BundleID:    "com.example.app",
+			Production:  true,
+		}
+		sender, err := NewSender(cfg, tracingProvider, logger, nil)
+		require.NoError(t, err)
+		require.NotNil(t, sender)
+		assert.Equal(t, "com.example.app", sender.topic)
+	})
+
+	T.Run("with send counter creation error", func(t *testing.T) {
+		t.Parallel()
+
+		p8Path := createTestP8File(t)
+		cfg := &Config{
+			AuthKeyPath: p8Path,
+			KeyID:       "KEY123",
+			TeamID:      "TEAM123",
+			BundleID:    "com.example.app",
+		}
+
+		mp := &mockmetrics.MetricsProvider{}
+		mp.On("NewInt64Counter", o11yName+"_sends", mock.Anything).
+			Return((*metrics.Int64CounterImpl)(nil), errors.New("counter error"))
+
+		sender, err := NewSender(cfg, tracingProvider, logger, mp)
+		assert.Nil(t, sender)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "creating send counter")
+	})
+
+	T.Run("with error counter creation error", func(t *testing.T) {
+		t.Parallel()
+
+		p8Path := createTestP8File(t)
+		cfg := &Config{
+			AuthKeyPath: p8Path,
+			KeyID:       "KEY123",
+			TeamID:      "TEAM123",
+			BundleID:    "com.example.app",
+		}
+
+		mp := &mockmetrics.MetricsProvider{}
+		mp.On("NewInt64Counter", o11yName+"_sends", mock.Anything).
+			Return((*metrics.Int64CounterImpl)(nil), nil)
+		mp.On("NewInt64Counter", o11yName+"_errors", mock.Anything).
+			Return((*metrics.Int64CounterImpl)(nil), errors.New("counter error"))
+
+		sender, err := NewSender(cfg, tracingProvider, logger, mp)
+		assert.Nil(t, sender)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "creating error counter")
+	})
+}
+
+func TestSender_Send(T *testing.T) {
+	T.Parallel()
+
+	ctx := T.Context()
+
+	T.Run("successful push", func(t *testing.T) {
+		t.Parallel()
+
+		sender := createTestSenderWithTransport(t, func(_ *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Apns-Id": {"test-apns-id"}},
+				Body:       io.NopCloser(strings.NewReader("")),
+			}, nil
+		})
+
+		err := sender.Send(ctx, validDeviceToken, "title", "body", nil)
+		assert.NoError(t, err)
+	})
+
+	T.Run("successful push with badge count", func(t *testing.T) {
+		t.Parallel()
+
+		sender := createTestSenderWithTransport(t, func(_ *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Apns-Id": {"test-apns-id"}},
+				Body:       io.NopCloser(strings.NewReader("")),
+			}, nil
+		})
+
+		badge := 5
+		err := sender.Send(ctx, validDeviceToken, "title", "body", &badge)
+		assert.NoError(t, err)
+	})
+
+	T.Run("push returns transport error", func(t *testing.T) {
+		t.Parallel()
+
+		sender := createTestSenderWithTransport(t, func(_ *http.Request) (*http.Response, error) {
+			return nil, errors.New("transport error")
+		})
+
+		err := sender.Send(ctx, validDeviceToken, "title", "body", nil)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "push failed")
+	})
+
+	T.Run("push returns non-sent response", func(t *testing.T) {
+		t.Parallel()
+
+		sender := createTestSenderWithTransport(t, func(_ *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusBadRequest,
+				Header:     http.Header{"Apns-Id": {"test-apns-id"}},
+				Body:       io.NopCloser(strings.NewReader(`{"reason":"BadDeviceToken"}`)),
+			}, nil
+		})
+
+		err := sender.Send(ctx, validDeviceToken, "title", "body", nil)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "BadDeviceToken")
 	})
 }
 

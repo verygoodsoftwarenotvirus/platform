@@ -138,3 +138,29 @@ func TestRudderstackEventReporter_EventOccurred(T *testing.T) {
 		require.NoError(t, collector.EventOccurred(ctx, t.Name(), exampleUserID, properties))
 	})
 }
+
+func TestRudderstackEventReporter_EventOccurredAnonymous(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		logger := logging.NewNoopLogger()
+		exampleAnonymousID := identifiers.New()
+		properties := map[string]any{
+			"test.name": t.Name(),
+		}
+
+		cfg := &Config{
+			APIKey:       t.Name(),
+			DataPlaneURL: t.Name(),
+		}
+
+		collector, err := NewRudderstackEventReporter(logger, tracing.NewNoopTracerProvider(), nil, cfg, cbnoop.NewCircuitBreaker())
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		require.NoError(t, collector.EventOccurredAnonymous(ctx, t.Name(), exampleAnonymousID, properties))
+	})
+}

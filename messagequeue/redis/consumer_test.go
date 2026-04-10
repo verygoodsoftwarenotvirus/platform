@@ -8,10 +8,13 @@ import (
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/messagequeue"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	metricnoop "go.opentelemetry.io/otel/metric/noop"
 )
 
 // buildRedisBackedConsumer builds a Redis container-backed messagequeue.Consumer.
@@ -146,5 +149,38 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 		actual, err = conPro.ProvideConsumer(ctx, t.Name(), nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, actual)
+	})
+
+	T.Run("with empty topic", func(t *testing.T) {
+		t.Parallel()
+
+		logger := logging.NewNoopLogger()
+		cfg := Config{
+			QueueAddresses: []string{t.Name()},
+		}
+
+		conPro := ProvideRedisConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil, cfg)
+		require.NotNil(t, conPro)
+
+		actual, err := conPro.ProvideConsumer(t.Context(), "", nil)
+		assert.Nil(t, actual)
+		assert.ErrorIs(t, err, ErrEmptyInputProvided)
+	})
+}
+
+func Test_provideRedisConsumer(T *testing.T) {
+	T.Parallel()
+
+	T.Run("panics when NewInt64Counter fails", func(t *testing.T) {
+		t.Parallel()
+
+		mp := &metrics.MockProvider{}
+		mp.On("NewInt64Counter", "t_consumed", mock.Anything).Return(metricnoop.Int64Counter{}, errors.New("forced error"))
+
+		assert.Panics(t, func() {
+			provideRedisConsumer(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, nil, "t", nil)
+		})
+
+		mock.AssertExpectationsForObjects(t, mp)
 	})
 }

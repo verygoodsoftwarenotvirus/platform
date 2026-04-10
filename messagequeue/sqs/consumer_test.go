@@ -7,6 +7,7 @@ import (
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/messagequeue"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/testutils"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	metricnoop "go.opentelemetry.io/otel/metric/noop"
 )
 
 type mockMessageReceiver struct {
@@ -220,5 +222,29 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, actual)
 		assert.ErrorIs(t, err, messagequeue.ErrEmptyTopicName)
+	})
+}
+
+func Test_provideSQSConsumer(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		consumer := provideSQSConsumer(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, nil, "https://sqs.us-east-1.amazonaws.com/123/test", nil)
+		require.NotNil(t, consumer)
+	})
+
+	T.Run("panics when NewInt64Counter fails", func(t *testing.T) {
+		t.Parallel()
+
+		mp := &metrics.MockProvider{}
+		mp.On("NewInt64Counter", "t_consumed", mock.Anything).Return(metricnoop.Int64Counter{}, errors.New("forced error"))
+
+		assert.Panics(t, func() {
+			provideSQSConsumer(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, nil, "t", nil)
+		})
+
+		mock.AssertExpectationsForObjects(t, mp)
 	})
 }

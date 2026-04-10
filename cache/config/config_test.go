@@ -8,6 +8,7 @@ import (
 	circuitbreakingcfg "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/config"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	metricsmock2 "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock2"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/shoenig/test"
@@ -128,7 +129,7 @@ func TestProvideCache(T *testing.T) {
 			},
 		}
 
-		mp := &ProviderMock{
+		mp := &metricsmock2.ProviderMock{
 			NewInt64CounterFunc: func(name string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
 				test.EqOp(t, "redis-cache-breaker_circuit_breaker_tripped", name)
 				return nil, errors.New("counter init failure")

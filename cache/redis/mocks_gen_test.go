@@ -1,7 +1,10 @@
 package redis
 
-// Regenerate mocks via `go generate ./cache/redis/...`.
+// Regenerate the redisClient mock via `go generate ./cache/redis/...`. The
+// redisClient interface is unexported (it's a test seam), so its mock lives
+// in-package as a *_test.go file rather than under a sibling mock package.
+// Mocks for the external interfaces (metrics.Provider, circuitbreaking.CircuitBreaker)
+// live alongside those interfaces in observability/metrics/mock2 and
+// circuitbreaking/mock2.
 
 //go:generate go tool github.com/matryer/moq -out redisclient_mock_test.go -pkg redis -rm -fmt goimports . redisClient
-//go:generate go tool github.com/matryer/moq -out metricsprovider_mock_test.go -pkg redis -rm -fmt goimports ../../observability/metrics Provider
-//go:generate go tool github.com/matryer/moq -out circuitbreaker_mock_test.go -pkg redis -rm -fmt goimports ../../circuitbreaking CircuitBreaker

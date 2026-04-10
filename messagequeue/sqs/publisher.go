@@ -73,34 +73,9 @@ func (p *sqsPublisher) Publish(ctx context.Context, data any) error {
 
 // PublishAsync publishes a message onto an SQS event queue.
 func (p *sqsPublisher) PublishAsync(ctx context.Context, data any) {
-	ctx, span := p.tracer.StartSpan(ctx)
-	defer span.End()
-
-	startTime := time.Now()
-	logger := p.logger
-
-	logger.Debug("publishing message")
-
-	var b bytes.Buffer
-	if err := p.encoder.Encode(ctx, &b, data); err != nil {
-		p.publishErrCounter.Add(ctx, 1)
-		observability.AcknowledgeError(err, logger, span, "encoding topic message")
-		return
+	if err := p.Publish(ctx, data); err != nil {
+		p.logger.Error("publishing message", err)
 	}
-
-	input := &sqs.SendMessageInput{
-		MessageBody: aws.String(b.String()),
-		QueueUrl:    aws.String(p.topic),
-	}
-
-	if _, err := p.publisher.SendMessage(ctx, input); err != nil {
-		p.publishErrCounter.Add(ctx, 1)
-		observability.AcknowledgeError(err, logger, span, "publishing message")
-		return
-	}
-
-	p.publishedCounter.Add(ctx, 1)
-	p.latencyHist.Record(ctx, float64(time.Since(startTime).Milliseconds()))
 }
 
 // provideSQSPublisher provides a sqs-backed Publisher.

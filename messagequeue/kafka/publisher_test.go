@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/encoding"
 	mockencoding "github.com/verygoodsoftwarenotvirus/platform/v5/encoding/mock"
@@ -181,18 +180,9 @@ func Test_kafkaPublisher_PublishAsync(T *testing.T) {
 			Name: t.Name(),
 		}
 
-		done := make(chan struct{})
-		writer.On("WriteMessages", mock.Anything, mock.AnythingOfType("[]kafka.Message")).Return(nil).Run(func(args mock.Arguments) {
-			close(done)
-		})
+		writer.On("WriteMessages", testutils.ContextMatcher, mock.AnythingOfType("[]kafka.Message")).Return(nil)
 
 		pub.PublishAsync(ctx, inputData)
-
-		select {
-		case <-done:
-		case <-time.After(5 * time.Second):
-			t.Fatal("timed out waiting for async write")
-		}
 
 		mock.AssertExpectationsForObjects(t, writer)
 	})
@@ -224,18 +214,9 @@ func Test_kafkaPublisher_PublishAsync(T *testing.T) {
 			Name: t.Name(),
 		}
 
-		done := make(chan struct{})
-		writer.On("WriteMessages", mock.Anything, mock.AnythingOfType("[]kafka.Message")).Return(errors.New("write failed")).Run(func(args mock.Arguments) {
-			close(done)
-		})
+		writer.On("WriteMessages", testutils.ContextMatcher, mock.AnythingOfType("[]kafka.Message")).Return(errors.New("write failed"))
 
 		pub.PublishAsync(ctx, inputData)
-
-		select {
-		case <-done:
-		case <-time.After(5 * time.Second):
-			t.Fatal("timed out waiting for async write")
-		}
 
 		mock.AssertExpectationsForObjects(t, writer)
 	})

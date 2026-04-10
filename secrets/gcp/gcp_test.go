@@ -5,9 +5,14 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
+
 	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/metric"
 )
 
 func TestNewGCPSecretSource(T *testing.T) {
@@ -32,11 +37,60 @@ func TestNewGCPSecretSource(T *testing.T) {
 	T.Run("with mock client succeeds", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{ProjectID: "test-project"}
-		mock := &mockGCPClient{value: "secret-value"}
-		source, err := NewGCPSecretSource(context.Background(), cfg, mock, nil, nil, nil)
+		mc := &mockGCPClient{value: "secret-value"}
+		source, err := NewGCPSecretSource(context.Background(), cfg, mc, nil, nil, nil)
 		require.NoError(t, err)
 		require.NotNil(t, source)
 		defer source.Close()
+	})
+
+	T.Run("with error creating lookup counter", func(t *testing.T) {
+		t.Parallel()
+
+		mp := &mockmetrics.MetricsProvider{}
+		mp.On("NewInt64Counter", name+"_lookups", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+
+		cfg := &Config{ProjectID: "test-project"}
+		source, err := NewGCPSecretSource(context.Background(), cfg, &mockGCPClient{}, nil, nil, mp)
+		require.Error(t, err)
+		assert.Nil(t, source)
+
+		mock.AssertExpectationsForObjects(t, mp)
+	})
+
+	T.Run("with error creating error counter", func(t *testing.T) {
+		t.Parallel()
+
+		mp := &mockmetrics.MetricsProvider{}
+		mp.On("NewInt64Counter", name+"_lookups", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewInt64Counter", name+"_errors", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+
+		cfg := &Config{ProjectID: "test-project"}
+		source, err := NewGCPSecretSource(context.Background(), cfg, &mockGCPClient{}, nil, nil, mp)
+		require.Error(t, err)
+		assert.Nil(t, source)
+
+		mock.AssertExpectationsForObjects(t, mp)
+	})
+
+	T.Run("with error creating latency histogram", func(t *testing.T) {
+		t.Parallel()
+
+		noopMP := metrics.NewNoopMetricsProvider()
+		h, histErr := noopMP.NewFloat64Histogram("test")
+		require.NoError(t, histErr)
+
+		mp := &mockmetrics.MetricsProvider{}
+		mp.On("NewInt64Counter", name+"_lookups", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewInt64Counter", name+"_errors", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewFloat64Histogram", name+"_latency_ms", []metric.Float64HistogramOption(nil)).Return(h, errors.New("arbitrary"))
+
+		cfg := &Config{ProjectID: "test-project"}
+		source, err := NewGCPSecretSource(context.Background(), cfg, &mockGCPClient{}, nil, nil, mp)
+		require.Error(t, err)
+		assert.Nil(t, source)
+
+		mock.AssertExpectationsForObjects(t, mp)
 	})
 }
 
@@ -46,8 +100,8 @@ func TestGCPSecretSource_GetSecret(T *testing.T) {
 	T.Run("success", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{ProjectID: "test-project"}
-		mock := &mockGCPClient{value: "my-secret-value"}
-		source, err := NewGCPSecretSource(context.Background(), cfg, mock, nil, nil, nil)
+		mc := &mockGCPClient{value: "my-secret-value"}
+		source, err := NewGCPSecretSource(context.Background(), cfg, mc, nil, nil, nil)
 		require.NoError(t, err)
 		defer source.Close()
 
@@ -59,8 +113,8 @@ func TestGCPSecretSource_GetSecret(T *testing.T) {
 	T.Run("error from client", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{ProjectID: "test-project"}
-		mock := &mockGCPClient{err: errors.New("gcp error")}
-		source, err := NewGCPSecretSource(context.Background(), cfg, mock, nil, nil, nil)
+		mc := &mockGCPClient{err: errors.New("gcp error")}
+		source, err := NewGCPSecretSource(context.Background(), cfg, mc, nil, nil, nil)
 		require.NoError(t, err)
 		defer source.Close()
 
@@ -72,8 +126,8 @@ func TestGCPSecretSource_GetSecret(T *testing.T) {
 	T.Run("full resource name passed through", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{ProjectID: "test-project"}
-		mock := &mockGCPClient{value: "full-name-secret"}
-		source, err := NewGCPSecretSource(context.Background(), cfg, mock, nil, nil, nil)
+		mc := &mockGCPClient{value: "full-name-secret"}
+		source, err := NewGCPSecretSource(context.Background(), cfg, mc, nil, nil, nil)
 		require.NoError(t, err)
 		defer source.Close()
 
@@ -90,13 +144,13 @@ func TestGCPSecretSource_Close(T *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{ProjectID: "test-project"}
-		mock := &mockGCPClient{}
-		source, err := NewGCPSecretSource(context.Background(), cfg, mock, nil, nil, nil)
+		mc := &mockGCPClient{}
+		source, err := NewGCPSecretSource(context.Background(), cfg, mc, nil, nil, nil)
 		require.NoError(t, err)
 
 		err = source.Close()
 		require.NoError(t, err)
-		assert.True(t, mock.closed)
+		assert.True(t, mc.closed)
 	})
 }
 

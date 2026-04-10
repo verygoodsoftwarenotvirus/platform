@@ -10,7 +10,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type example struct{}
+type example struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
 
 func TestProvideIndexManager(T *testing.T) {
 	T.Parallel()

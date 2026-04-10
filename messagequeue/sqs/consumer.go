@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v5/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/messagequeue"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
@@ -129,6 +130,7 @@ func (c *sqsConsumer) Consume(ctx context.Context, stopChan chan bool, errs chan
 
 type consumerProvider struct {
 	logger          logging.Logger
+	tracer          tracing.Tracer
 	tracerProvider  tracing.TracerProvider
 	metricsProvider metrics.Provider
 	consumerCache   map[string]messagequeue.Consumer
@@ -137,26 +139,30 @@ type consumerProvider struct {
 }
 
 // ProvideSQSConsumerProvider returns a ConsumerProvider for SQS.
-func ProvideSQSConsumerProvider(ctx context.Context, logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider, _ Config) messagequeue.ConsumerProvider {
+func ProvideSQSConsumerProvider(ctx context.Context, logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider, _ Config) (messagequeue.ConsumerProvider, error) {
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
-		panic("sqs consumer provider: load default config: " + err.Error())
+		return nil, errors.Wrap(err, "loading default AWS config")
 	}
 	svc := sqs.NewFromConfig(cfg)
 
 	return &consumerProvider{
 		logger:          logging.EnsureLogger(logger),
+		tracer:          tracing.NewNamedTracer(tracerProvider, "sqs_consumer_provider"),
 		tracerProvider:  tracerProvider,
 		metricsProvider: metricsProvider,
 		sqsClient:       svc,
 		consumerCache:   map[string]messagequeue.Consumer{},
-	}
+	}, nil
 }
 
 // ProvideConsumer returns a Consumer for the given topic (queue URL).
-func (p *consumerProvider) ProvideConsumer(_ context.Context, topic string, handlerFunc messagequeue.ConsumerFunc) (messagequeue.Consumer, error) {
+func (p *consumerProvider) ProvideConsumer(ctx context.Context, topic string, handlerFunc messagequeue.ConsumerFunc) (messagequeue.Consumer, error) {
+	_, span := p.tracer.StartSpan(ctx)
+	defer span.End()
+
 	if topic == "" {
-		return nil, messagequeue.ErrEmptyTopicName
+		return nil, observability.PrepareAndLogError(messagequeue.ErrEmptyTopicName, p.logger, span, "providing consumer")
 	}
 
 	p.consumerCacheMu.Lock()

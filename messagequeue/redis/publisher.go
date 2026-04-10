@@ -83,20 +83,9 @@ func (p *redisPublisher) Publish(ctx context.Context, data any) error {
 
 // PublishAsync implements the Publisher interface.
 func (p *redisPublisher) PublishAsync(ctx context.Context, data any) {
-	_, span := p.tracer.StartSpan(ctx)
-	defer span.End()
-
-	startTime := time.Now()
-
-	var b bytes.Buffer
-	if err := p.encoder.Encode(ctx, &b, data); err != nil {
-		p.publishErrCounter.Add(ctx, 1)
-		observability.AcknowledgeError(err, p.logger, span, "encoding topic message")
-		return
+	if err := p.Publish(ctx, data); err != nil {
+		p.logger.Error("publishing message", err)
 	}
-
-	p.publishedCounter.Add(ctx, 1)
-	p.latencyHist.Record(ctx, float64(time.Since(startTime).Milliseconds()))
 }
 
 // provideRedisPublisher provides a redis-backed Publisher.

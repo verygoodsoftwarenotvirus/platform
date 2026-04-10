@@ -164,7 +164,8 @@ func TestProvideSQSConsumerProvider(T *testing.T) {
 		logger := logging.NewNoopLogger()
 		cfg := Config{}
 
-		actual := ProvideSQSConsumerProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil, cfg)
+		actual, err := ProvideSQSConsumerProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil, cfg)
+		assert.NoError(t, err)
 		assert.NotNil(t, actual)
 	})
 }
@@ -179,7 +180,8 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 		logger := logging.NewNoopLogger()
 		cfg := Config{}
 
-		provider := ProvideSQSConsumerProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil, cfg)
+		provider, err := ProvideSQSConsumerProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil, cfg)
+		require.NoError(t, err)
 		require.NotNil(t, provider)
 
 		actual, err := provider.ProvideConsumer(ctx, "https://sqs.us-east-1.amazonaws.com/123/test", nil)
@@ -195,7 +197,8 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 		cfg := Config{}
 		topic := "https://sqs.us-east-1.amazonaws.com/123/cached-queue"
 
-		provider := ProvideSQSConsumerProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil, cfg)
+		provider, err := ProvideSQSConsumerProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil, cfg)
+		require.NoError(t, err)
 		require.NotNil(t, provider)
 
 		actual, err := provider.ProvideConsumer(ctx, topic, nil)
@@ -215,7 +218,8 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 		logger := logging.NewNoopLogger()
 		cfg := Config{}
 
-		provider := ProvideSQSConsumerProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil, cfg)
+		provider, err := ProvideSQSConsumerProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil, cfg)
+		require.NoError(t, err)
 		require.NotNil(t, provider)
 
 		actual, err := provider.ProvideConsumer(ctx, "", nil)

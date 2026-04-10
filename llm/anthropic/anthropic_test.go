@@ -2,13 +2,19 @@ package anthropic
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/llm"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/metric"
 )
 
 // anthropicMessageResponse mimics the Anthropic Messages API response format.
@@ -56,6 +62,63 @@ func TestNewProvider(T *testing.T) {
 		}, nil, nil, nil)
 		require.NoError(t, err)
 		require.NotNil(t, provider)
+	})
+
+	T.Run("with timeout", func(t *testing.T) {
+		t.Parallel()
+
+		provider, err := NewProvider(&Config{
+			APIKey:  "test-key",
+			Timeout: 5 * time.Second,
+		}, nil, nil, nil)
+		require.NoError(t, err)
+		require.NotNil(t, provider)
+	})
+
+	T.Run("with error creating request counter", func(t *testing.T) {
+		t.Parallel()
+
+		mp := &mockmetrics.MetricsProvider{}
+		mp.On("NewInt64Counter", name+"_requests", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+
+		provider, err := NewProvider(&Config{APIKey: "test-key"}, nil, nil, mp)
+		require.Error(t, err)
+		require.Nil(t, provider)
+
+		mock.AssertExpectationsForObjects(t, mp)
+	})
+
+	T.Run("with error creating error counter", func(t *testing.T) {
+		t.Parallel()
+
+		mp := &mockmetrics.MetricsProvider{}
+		mp.On("NewInt64Counter", name+"_requests", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewInt64Counter", name+"_errors", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+
+		provider, err := NewProvider(&Config{APIKey: "test-key"}, nil, nil, mp)
+		require.Error(t, err)
+		require.Nil(t, provider)
+
+		mock.AssertExpectationsForObjects(t, mp)
+	})
+
+	T.Run("with error creating latency histogram", func(t *testing.T) {
+		t.Parallel()
+
+		noopMP := metrics.NewNoopMetricsProvider()
+		h, histErr := noopMP.NewFloat64Histogram("test")
+		require.NoError(t, histErr)
+
+		mp := &mockmetrics.MetricsProvider{}
+		mp.On("NewInt64Counter", name+"_requests", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewInt64Counter", name+"_errors", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewFloat64Histogram", name+"_latency_ms", []metric.Float64HistogramOption(nil)).Return(h, errors.New("arbitrary"))
+
+		provider, err := NewProvider(&Config{APIKey: "test-key"}, nil, nil, mp)
+		require.Error(t, err)
+		require.Nil(t, provider)
+
+		mock.AssertExpectationsForObjects(t, mp)
 	})
 }
 

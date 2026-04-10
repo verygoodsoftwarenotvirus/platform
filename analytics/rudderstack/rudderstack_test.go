@@ -1,14 +1,19 @@
 package rudderstack
 
 import (
+	"errors"
 	"testing"
 
 	cbnoop "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/noop"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/identifiers"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/metric"
 )
 
 func TestNewRudderstackEventReporter(T *testing.T) {
@@ -64,6 +69,43 @@ func TestNewRudderstackEventReporter(T *testing.T) {
 		collector, err := NewRudderstackEventReporter(logger, tracing.NewNoopTracerProvider(), nil, cfg, cbnoop.NewCircuitBreaker())
 		require.Error(t, err)
 		require.Nil(t, collector)
+	})
+
+	T.Run("with error creating event counter", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{
+			APIKey:       t.Name(),
+			DataPlaneURL: t.Name(),
+		}
+
+		mp := &mockmetrics.MetricsProvider{}
+		mp.On("NewInt64Counter", name+"_events", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+
+		collector, err := NewRudderstackEventReporter(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, cfg, cbnoop.NewCircuitBreaker())
+		require.Error(t, err)
+		require.Nil(t, collector)
+
+		mock.AssertExpectationsForObjects(t, mp)
+	})
+
+	T.Run("with error creating error counter", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{
+			APIKey:       t.Name(),
+			DataPlaneURL: t.Name(),
+		}
+
+		mp := &mockmetrics.MetricsProvider{}
+		mp.On("NewInt64Counter", name+"_events", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewInt64Counter", name+"_errors", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+
+		collector, err := NewRudderstackEventReporter(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, cfg, cbnoop.NewCircuitBreaker())
+		require.Error(t, err)
+		require.Nil(t, collector)
+
+		mock.AssertExpectationsForObjects(t, mp)
 	})
 }
 

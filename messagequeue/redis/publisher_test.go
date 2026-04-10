@@ -130,6 +130,78 @@ func Test_redisPublisher_Publish(T *testing.T) {
 	})
 }
 
+func Test_redisPublisher_PublishAsync(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		logger := logging.NewNoopLogger()
+
+		cfg := Config{
+			QueueAddresses: []string{t.Name()},
+		}
+		provider := ProvideRedisPublisherProvider(logger, tracing.NewNoopTracerProvider(), nil, cfg)
+		require.NotNil(t, provider)
+
+		a, err := provider.ProvidePublisher(ctx, t.Name())
+		assert.NotNil(t, a)
+		assert.NoError(t, err)
+
+		actual, ok := a.(*redisPublisher)
+		require.True(t, ok)
+
+		inputData := &struct {
+			Name string `json:"name"`
+		}{
+			Name: t.Name(),
+		}
+
+		mmp := &mockMessagePublisher{}
+		mmp.On(
+			"Publish",
+			testutils.ContextMatcher,
+			actual.topic,
+			fmt.Appendf(nil, `{"name":%q}%s`, t.Name(), string(byte(10))),
+		).Return(&redis.IntCmd{})
+
+		actual.publisher = mmp
+
+		actual.PublishAsync(ctx, inputData)
+
+		mock.AssertExpectationsForObjects(t, mmp)
+	})
+
+	T.Run("with error encoding value", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		logger := logging.NewNoopLogger()
+
+		cfg := Config{
+			QueueAddresses: []string{t.Name()},
+		}
+		provider := ProvideRedisPublisherProvider(logger, tracing.NewNoopTracerProvider(), nil, cfg)
+		require.NotNil(t, provider)
+
+		a, err := provider.ProvidePublisher(ctx, t.Name())
+		assert.NotNil(t, a)
+		assert.NoError(t, err)
+
+		actual, ok := a.(*redisPublisher)
+		require.True(t, ok)
+
+		inputData := &struct {
+			Name json.Number `json:"name"`
+		}{
+			Name: json.Number(t.Name()),
+		}
+
+		actual.PublishAsync(ctx, inputData)
+	})
+}
+
 func TestProvideRedisPublisherProvider(T *testing.T) {
 	T.Parallel()
 

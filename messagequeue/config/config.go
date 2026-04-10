@@ -97,7 +97,7 @@ func ProvideConsumerProvider(ctx context.Context, logger logging.Logger, tracerP
 	case string(ProviderRedis):
 		return redis.ProvideRedisConsumerProvider(logger, tracerProvider, metricsProvider, c.Consumer.Redis), nil
 	case string(ProviderSQS):
-		return sqs.ProvideSQSConsumerProvider(ctx, logger, tracerProvider, metricsProvider, c.Consumer.SQS), nil
+		return sqs.ProvideSQSConsumerProvider(ctx, logger, tracerProvider, metricsProvider, c.Consumer.SQS)
 	case string(ProviderKafka):
 		return kafka.ProvideKafkaConsumerProvider(logger, tracerProvider, metricsProvider, c.Consumer.Kafka), nil
 	case string(ProviderPubSub):

@@ -92,3 +92,24 @@ func TestSegmentEventReporter_EventOccurred(T *testing.T) {
 		require.NoError(t, collector.EventOccurred(ctx, t.Name(), exampleUserID, properties))
 	})
 }
+
+func TestSegmentEventReporter_EventOccurredAnonymous(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		logger := logging.NewNoopLogger()
+		exampleAnonymousID := identifiers.New()
+		properties := map[string]any{
+			"test.name": t.Name(),
+		}
+
+		collector, err := NewSegmentEventReporter(logger, tracing.NewNoopTracerProvider(), nil, t.Name(), cbnoop.NewCircuitBreaker())
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		require.NoError(t, collector.EventOccurredAnonymous(ctx, t.Name(), exampleAnonymousID, properties))
+	})
+}

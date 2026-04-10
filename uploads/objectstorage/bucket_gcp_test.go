@@ -6,25 +6,25 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestFilesystemConfig_ValidateWithContext(T *testing.T) {
+func TestGCPConfig_ValidateWithContext(T *testing.T) {
 	T.Parallel()
 
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		cfg := &FilesystemConfig{
-			RootDirectory: t.Name(),
+		cfg := &GCPConfig{
+			BucketName: t.Name(),
 		}
 
 		assert.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
-	T.Run("with missing root directory", func(t *testing.T) {
+	T.Run("with missing bucket name", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		cfg := &FilesystemConfig{}
+		cfg := &GCPConfig{}
 
 		assert.Error(t, cfg.ValidateWithContext(ctx))
 	})

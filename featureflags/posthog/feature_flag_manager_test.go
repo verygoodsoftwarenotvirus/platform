@@ -2,8 +2,10 @@ package posthog
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking"
@@ -11,15 +13,64 @@ import (
 	cbnoop "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/noop"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/featureflags"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
+	openfeatureposthog "github.com/dhaus67/openfeature-posthog-go"
+	"github.com/open-feature/go-sdk/openfeature"
 	"github.com/posthog/posthog-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+var testFlags = map[string]any{
+	"bool-flag":   true,
+	"string-flag": "hello-world",
+	"int-flag":    "42",
+	"float-flag":  "3.14",
+	"object-flag": `{"key":"value"}`,
+}
+
 func evalCtx(targetingKey string) featureflags.EvaluationContext {
 	return featureflags.EvaluationContext{TargetingKey: targetingKey}
+}
+
+func posthogFlagsHandler(flags map[string]any) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasPrefix(r.URL.Path, "/api/feature_flag/local_evaluation"):
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]any{
+				"flags":              []any{},
+				"group_type_mapping": map[string]string{},
+			})
+		case strings.HasPrefix(r.URL.Path, "/flags/"):
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]any{
+				"featureFlags":        flags,
+				"featureFlagPayloads": map[string]any{},
+			})
+		default:
+			w.WriteHeader(http.StatusOK)
+		}
+	})
+}
+
+func posthogErrorHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasPrefix(r.URL.Path, "/api/feature_flag/local_evaluation"):
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]any{
+				"flags":              []any{},
+				"group_type_mapping": map[string]string{},
+			})
+		case strings.HasPrefix(r.URL.Path, "/flags/"):
+			w.WriteHeader(http.StatusForbidden)
+		default:
+			w.WriteHeader(http.StatusOK)
+		}
+	})
 }
 
 func buildTestManager(t *testing.T, cb circuitbreaking.CircuitBreaker, configModifiers ...func(config *posthog.Config)) *featureFlagManager {
@@ -35,6 +86,52 @@ func buildTestManager(t *testing.T, cb circuitbreaking.CircuitBreaker, configMod
 	require.NotNil(t, ffm)
 
 	return ffm.(*featureFlagManager)
+}
+
+func buildTestManagerWithHandler(t *testing.T, handler http.Handler) *featureFlagManager {
+	t.Helper()
+
+	ts := httptest.NewServer(handler)
+
+	phConfig := posthog.Config{
+		PersonalApiKey: t.Name(),
+		Endpoint:       ts.URL,
+	}
+
+	client, err := posthog.NewWithConfig(t.Name(), phConfig)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		client.Close()
+		ts.Close()
+	})
+
+	// Use a unique domain per test to avoid global OpenFeature provider conflicts.
+	domain := "test_" + strings.ReplaceAll(t.Name(), "/", "_")
+	provider := openfeatureposthog.NewProvider(client)
+	err = openfeature.SetNamedProviderAndWait(domain, provider)
+	require.NoError(t, err)
+
+	ofClient := openfeature.NewClient(domain)
+
+	mp := metrics.EnsureMetricsProvider(nil)
+	evalCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_evaluations", serviceName))
+	require.NoError(t, err)
+	errorCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_errors", serviceName))
+	require.NoError(t, err)
+	latencyHist, err := mp.NewFloat64Histogram(fmt.Sprintf("%s_latency_ms", serviceName))
+	require.NoError(t, err)
+
+	return &featureFlagManager{
+		posthogClient:  client,
+		ofClient:       ofClient,
+		circuitBreaker: cbnoop.NewCircuitBreaker(),
+		logger:         logging.NewNoopLogger(),
+		tracer:         tracing.NewNamedTracer(tracing.NewNoopTracerProvider(), serviceName),
+		evalCounter:    evalCounter,
+		errorCounter:   errorCounter,
+		latencyHist:    latencyHist,
+	}
 }
 
 func TestNewFeatureFlagManager(T *testing.T) {
@@ -99,51 +196,47 @@ func TestNewFeatureFlagManager(T *testing.T) {
 	})
 }
 
+func TestToOpenFeatureContext(T *testing.T) {
+	T.Parallel()
+
+	T.Run("with attributes", func(t *testing.T) {
+		t.Parallel()
+
+		ec := featureflags.EvaluationContext{
+			TargetingKey: "user123",
+			Attributes:   map[string]any{"plan": "pro", "region": "us-east"},
+		}
+
+		result := toOpenFeatureContext(ec)
+
+		assert.Equal(t, "user123", result.TargetingKey())
+		assert.Equal(t, "pro", result.Attribute("plan"))
+		assert.Equal(t, "us-east", result.Attribute("region"))
+	})
+
+	T.Run("with nil attributes", func(t *testing.T) {
+		t.Parallel()
+
+		ec := featureflags.EvaluationContext{
+			TargetingKey: "user456",
+		}
+
+		result := toOpenFeatureContext(ec)
+
+		assert.Equal(t, "user456", result.TargetingKey())
+	})
+}
+
 func TestFeatureFlagManager_CanUseFeature(T *testing.T) {
 	T.Parallel()
 
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
-		t.SkipNow()
 
 		ctx := t.Context()
-		exampleUsername := "username"
+		ffm := buildTestManagerWithHandler(t, posthogFlagsHandler(testFlags))
 
-		flagName := t.Name()
-		cfg := &Config{ProjectAPIKey: t.Name(), PersonalAPIKey: t.Name()}
-
-		ts := httptest.NewTLSServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-			response, err := json.Marshal(&posthog.FeatureFlagsResponse{
-				Flags: []posthog.FeatureFlag{
-					{
-						Key:    flagName,
-						Active: true,
-						Filters: posthog.Filter{
-							Groups: []posthog.FeatureFlagCondition{
-								{
-									Properties:        nil,
-									RolloutPercentage: nil,
-									Variant:           nil,
-								},
-							},
-						},
-					},
-				},
-				GroupTypeMapping: new(map[string]string{}),
-			})
-			require.NoError(t, err)
-
-			_, err = res.Write(response)
-			require.NoError(t, err)
-		}))
-
-		ffm, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker(), func(config *posthog.Config) {
-			config.Transport = ts.Client().Transport
-			config.Endpoint = ts.URL
-		})
-		require.NoError(t, err)
-
-		actual, err := ffm.CanUseFeature(ctx, flagName, evalCtx(exampleUsername))
+		actual, err := ffm.CanUseFeature(ctx, "bool-flag", evalCtx("user123"))
 		assert.NoError(t, err)
 		assert.True(t, actual)
 	})
@@ -152,21 +245,9 @@ func TestFeatureFlagManager_CanUseFeature(T *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		exampleUsername := "username"
+		ffm := buildTestManagerWithHandler(t, posthogErrorHandler())
 
-		cfg := &Config{ProjectAPIKey: t.Name(), PersonalAPIKey: t.Name()}
-
-		ts := httptest.NewTLSServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-			res.WriteHeader(http.StatusForbidden)
-		}))
-
-		ffm, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker(), func(config *posthog.Config) {
-			config.Transport = ts.Client().Transport
-			config.Endpoint = ts.URL
-		})
-		require.NoError(t, err)
-
-		actual, err := ffm.CanUseFeature(ctx, t.Name(), evalCtx(exampleUsername))
+		actual, err := ffm.CanUseFeature(ctx, "bool-flag", evalCtx("user123"))
 		assert.Error(t, err)
 		assert.False(t, actual)
 	})
@@ -193,16 +274,22 @@ func TestFeatureFlagManager_GetStringValue(T *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		cb := &mockCircuitBreaker.MockCircuitBreaker{}
-		cb.On("CanProceed").Return(true)
-		cb.On("Succeeded").Return()
-		cb.On("Failed").Return()
+		ffm := buildTestManagerWithHandler(t, posthogFlagsHandler(testFlags))
 
-		ffm := buildTestManager(t, cb)
+		result, err := ffm.GetStringValue(ctx, "string-flag", "fallback", evalCtx("user123"))
+		assert.NoError(t, err)
+		assert.Equal(t, "hello-world", result)
+	})
 
-		result, err := ffm.GetStringValue(ctx, "some-flag", "fallback", evalCtx("user123"))
-		_ = err
-		assert.NotNil(t, result)
+	T.Run("with error executing request", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		ffm := buildTestManagerWithHandler(t, posthogErrorHandler())
+
+		result, err := ffm.GetStringValue(ctx, "string-flag", "fallback", evalCtx("user123"))
+		assert.Error(t, err)
+		assert.Equal(t, "fallback", result)
 	})
 
 	T.Run("with broken circuit", func(t *testing.T) {
@@ -227,16 +314,22 @@ func TestFeatureFlagManager_GetInt64Value(T *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		cb := &mockCircuitBreaker.MockCircuitBreaker{}
-		cb.On("CanProceed").Return(true)
-		cb.On("Succeeded").Return()
-		cb.On("Failed").Return()
+		ffm := buildTestManagerWithHandler(t, posthogFlagsHandler(testFlags))
 
-		ffm := buildTestManager(t, cb)
+		result, err := ffm.GetInt64Value(ctx, "int-flag", int64(0), evalCtx("user123"))
+		assert.NoError(t, err)
+		assert.Equal(t, int64(42), result)
+	})
 
-		result, err := ffm.GetInt64Value(ctx, "some-flag", int64(42), evalCtx("user123"))
-		_ = err
-		_ = result
+	T.Run("with error executing request", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		ffm := buildTestManagerWithHandler(t, posthogErrorHandler())
+
+		result, err := ffm.GetInt64Value(ctx, "int-flag", int64(42), evalCtx("user123"))
+		assert.Error(t, err)
+		assert.Equal(t, int64(42), result)
 	})
 
 	T.Run("with broken circuit", func(t *testing.T) {
@@ -257,6 +350,28 @@ func TestFeatureFlagManager_GetInt64Value(T *testing.T) {
 func TestFeatureFlagManager_GetFloat64Value(T *testing.T) {
 	T.Parallel()
 
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		ffm := buildTestManagerWithHandler(t, posthogFlagsHandler(testFlags))
+
+		result, err := ffm.GetFloat64Value(ctx, "float-flag", 0.0, evalCtx("user123"))
+		assert.NoError(t, err)
+		assert.InDelta(t, 3.14, result, 1e-9)
+	})
+
+	T.Run("with error executing request", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		ffm := buildTestManagerWithHandler(t, posthogErrorHandler())
+
+		result, err := ffm.GetFloat64Value(ctx, "float-flag", 3.14, evalCtx("user123"))
+		assert.Error(t, err)
+		assert.InDelta(t, 3.14, result, 1e-9)
+	})
+
 	T.Run("with broken circuit", func(t *testing.T) {
 		t.Parallel()
 
@@ -274,6 +389,30 @@ func TestFeatureFlagManager_GetFloat64Value(T *testing.T) {
 
 func TestFeatureFlagManager_GetObjectValue(T *testing.T) {
 	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		ffm := buildTestManagerWithHandler(t, posthogFlagsHandler(testFlags))
+
+		def := map[string]any{"default": true}
+		result, err := ffm.GetObjectValue(ctx, "object-flag", def, evalCtx("user123"))
+		assert.NoError(t, err)
+		assert.Equal(t, map[string]any{"key": "value"}, result)
+	})
+
+	T.Run("with error executing request", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		ffm := buildTestManagerWithHandler(t, posthogErrorHandler())
+
+		def := map[string]any{"k": "v"}
+		result, err := ffm.GetObjectValue(ctx, "object-flag", def, evalCtx("user123"))
+		assert.Error(t, err)
+		assert.Equal(t, def, result)
+	})
 
 	T.Run("with broken circuit", func(t *testing.T) {
 		t.Parallel()

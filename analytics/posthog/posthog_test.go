@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewSegmentEventReporter(T *testing.T) {
+func TestNewPostHogEventReporter(T *testing.T) {
 	T.Parallel()
 
 	T.Run("standard", func(t *testing.T) {
@@ -37,7 +37,7 @@ func TestNewSegmentEventReporter(T *testing.T) {
 	})
 }
 
-func TestSegmentEventReporter_Close(T *testing.T) {
+func TestPostHogEventReporter_Close(T *testing.T) {
 	T.Parallel()
 
 	T.Run("standard", func(t *testing.T) {
@@ -54,7 +54,7 @@ func TestSegmentEventReporter_Close(T *testing.T) {
 	})
 }
 
-func TestSegmentEventReporter_AddUser(T *testing.T) {
+func TestPostHogEventReporter_AddUser(T *testing.T) {
 	T.Parallel()
 
 	T.Run("standard", func(t *testing.T) {
@@ -76,7 +76,7 @@ func TestSegmentEventReporter_AddUser(T *testing.T) {
 	})
 }
 
-func TestSegmentEventReporter_EventOccurred(T *testing.T) {
+func TestPostHogEventReporter_EventOccurred(T *testing.T) {
 	T.Parallel()
 
 	T.Run("standard", func(t *testing.T) {
@@ -95,5 +95,27 @@ func TestSegmentEventReporter_EventOccurred(T *testing.T) {
 		require.NotNil(t, collector)
 
 		require.NoError(t, collector.EventOccurred(ctx, t.Name(), exampleUserID, properties))
+	})
+}
+
+func TestPostHogEventReporter_EventOccurredAnonymous(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		logger := logging.NewNoopLogger()
+		cfg := &Config{APIKey: t.Name()}
+		exampleAnonymousID := identifiers.New()
+		properties := map[string]any{
+			"test.name": t.Name(),
+		}
+
+		collector, err := NewPostHogEventReporter(logger, tracing.NewNoopTracerProvider(), nil, cfg.APIKey, cbnoop.NewCircuitBreaker())
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		require.NoError(t, collector.EventOccurredAnonymous(ctx, t.Name(), exampleAnonymousID, properties))
 	})
 }

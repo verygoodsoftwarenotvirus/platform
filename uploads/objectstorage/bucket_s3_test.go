@@ -19,4 +19,13 @@ func TestS3Config_ValidateWithContext(T *testing.T) {
 
 		assert.NoError(t, cfg.ValidateWithContext(ctx))
 	})
+
+	T.Run("with missing bucket name", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		cfg := &S3Config{}
+
+		assert.Error(t, cfg.ValidateWithContext(ctx))
+	})
 }

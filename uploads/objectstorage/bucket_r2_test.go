@@ -22,4 +22,56 @@ func TestR2Config_ValidateWithContext(T *testing.T) {
 
 		assert.NoError(t, cfg.ValidateWithContext(ctx))
 	})
+
+	T.Run("with missing account ID", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		cfg := &R2Config{
+			BucketName:      t.Name(),
+			AccessKeyID:     t.Name(),
+			SecretAccessKey: t.Name(),
+		}
+
+		assert.Error(t, cfg.ValidateWithContext(ctx))
+	})
+
+	T.Run("with missing bucket name", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		cfg := &R2Config{
+			AccountID:       t.Name(),
+			AccessKeyID:     t.Name(),
+			SecretAccessKey: t.Name(),
+		}
+
+		assert.Error(t, cfg.ValidateWithContext(ctx))
+	})
+
+	T.Run("with missing access key ID", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		cfg := &R2Config{
+			AccountID:       t.Name(),
+			BucketName:      t.Name(),
+			SecretAccessKey: t.Name(),
+		}
+
+		assert.Error(t, cfg.ValidateWithContext(ctx))
+	})
+
+	T.Run("with missing secret access key", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		cfg := &R2Config{
+			AccountID:   t.Name(),
+			BucketName:  t.Name(),
+			AccessKeyID: t.Name(),
+		}
+
+		assert.Error(t, cfg.ValidateWithContext(ctx))
+	})
 }

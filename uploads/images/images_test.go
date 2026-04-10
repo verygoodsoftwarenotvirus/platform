@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
@@ -80,6 +81,111 @@ func buildGIFBytes(t *testing.T) *bytes.Buffer {
 	return bytes.NewBuffer(expected)
 }
 
+func newMultiFileUploadRequest(t *testing.T, files map[string][]byte) *http.Request {
+	t.Helper()
+
+	ctx := t.Context()
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	for filename, data := range files {
+		part, err := writer.CreateFormFile(filename, filename)
+		require.NoError(t, err)
+		_, err = io.Copy(part, bytes.NewReader(data))
+		require.NoError(t, err)
+	}
+
+	require.NoError(t, writer.Close())
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://whatever.whocares.gov", body)
+	require.NoError(t, err)
+
+	req.Header.Set(headerContentType, writer.FormDataContentType())
+
+	return req
+}
+
+func Test_contentTypeFromFilename(T *testing.T) {
+	T.Parallel()
+
+	T.Run("png", func(t *testing.T) {
+		t.Parallel()
+
+		assert.Equal(t, imagePNG, contentTypeFromFilename("photo.png"))
+	})
+
+	T.Run("jpeg", func(t *testing.T) {
+		t.Parallel()
+
+		assert.Equal(t, imageJPEG, contentTypeFromFilename("photo.jpeg"))
+	})
+
+	T.Run("gif", func(t *testing.T) {
+		t.Parallel()
+
+		assert.Equal(t, imageGIF, contentTypeFromFilename("photo.gif"))
+	})
+
+	T.Run("falls back to mime.TypeByExtension", func(t *testing.T) {
+		t.Parallel()
+
+		actual := contentTypeFromFilename("document.html")
+		assert.Contains(t, actual, "text/html")
+	})
+
+	T.Run("unknown extension", func(t *testing.T) {
+		t.Parallel()
+
+		actual := contentTypeFromFilename("file.xyznotreal")
+		assert.Empty(t, actual)
+	})
+}
+
+func Test_isImage(T *testing.T) {
+	T.Parallel()
+
+	T.Run("png", func(t *testing.T) {
+		t.Parallel()
+
+		assert.True(t, isImage("photo.png"))
+	})
+
+	T.Run("jpeg", func(t *testing.T) {
+		t.Parallel()
+
+		assert.True(t, isImage("photo.jpeg"))
+	})
+
+	T.Run("gif", func(t *testing.T) {
+		t.Parallel()
+
+		assert.True(t, isImage("photo.gif"))
+	})
+
+	T.Run("non-image", func(t *testing.T) {
+		t.Parallel()
+
+		assert.False(t, isImage("document.html"))
+	})
+
+	T.Run("unknown extension", func(t *testing.T) {
+		t.Parallel()
+
+		assert.False(t, isImage("file.xyznotreal"))
+	})
+}
+
+func TestNewMediaUploadProcessor(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		p := NewMediaUploadProcessor(nil, tracing.NewNoopTracerProvider())
+		assert.NotNil(t, p)
+	})
+}
+
 func TestImage_DataURI(T *testing.T) {
 	T.Parallel()
 
@@ -106,15 +212,20 @@ func TestImage_Write(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
+		data := []byte(t.Name())
 		i := &Upload{
 			Filename:    t.Name(),
 			ContentType: "things/stuff",
-			Data:        []byte(t.Name()),
-			Size:        12345,
+			Data:        data,
+			Size:        len(data),
 		}
 
 		res := httptest.NewRecorder()
 		assert.NoError(t, i.Write(res))
+
+		assert.Equal(t, "things/stuff", res.Header().Get(headerContentType))
+		assert.Equal(t, strconv.Itoa(len(data)), res.Header().Get("RawHTML-Length"))
+		assert.Equal(t, data, res.Body.Bytes())
 	})
 
 	T.Run("with write error", func(t *testing.T) {
@@ -176,7 +287,7 @@ func TestImage_Thumbnail(T *testing.T) {
 func TestLimitFileSize(T *testing.T) {
 	T.Parallel()
 
-	T.Run("standard", func(t *testing.T) {
+	T.Run("with zero max uses default", func(t *testing.T) {
 		t.Parallel()
 
 		imgBytes := buildPNGBytes(t)
@@ -184,6 +295,16 @@ func TestLimitFileSize(T *testing.T) {
 		res := httptest.NewRecorder()
 
 		LimitFileSize(0, res, req)
+	})
+
+	T.Run("with explicit max size", func(t *testing.T) {
+		t.Parallel()
+
+		imgBytes := buildPNGBytes(t)
+		req := newAvatarUploadRequest(t, "avatar.png", imgBytes)
+		res := httptest.NewRecorder()
+
+		LimitFileSize(2048, res, req)
 	})
 }
 
@@ -236,5 +357,129 @@ func Test_uploadProcessor_Process(T *testing.T) {
 		actual, err := p.ProcessFile(ctx, req, expectedFieldName)
 		assert.Nil(t, actual)
 		assert.Error(t, err)
+	})
+
+	T.Run("with non-image file", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		p := NewMediaUploadProcessor(nil, tracing.NewNoopTracerProvider())
+		expectedFieldName := "document"
+
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+		part, err := writer.CreateFormFile(expectedFieldName, "notes.txt")
+		require.NoError(t, err)
+		_, err = part.Write([]byte("hello world"))
+		require.NoError(t, err)
+		require.NoError(t, writer.Close())
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://whatever.whocares.gov", body)
+		require.NoError(t, err)
+		req.Header.Set(headerContentType, writer.FormDataContentType())
+
+		actual, err := p.ProcessFile(ctx, req, expectedFieldName)
+		assert.NotNil(t, actual)
+		assert.NoError(t, err)
+	})
+}
+
+func Test_uploadProcessor_ProcessFiles(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard with single file", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		p := NewMediaUploadProcessor(nil, tracing.NewNoopTracerProvider())
+
+		imgBytes := buildPNGBytes(t).Bytes()
+		req := newMultiFileUploadRequest(t, map[string][]byte{
+			"photo.png": imgBytes,
+		})
+
+		actual, err := p.ProcessFiles(ctx, req, "upload")
+		assert.NoError(t, err)
+		assert.Len(t, actual, 1)
+	})
+
+	T.Run("standard with multiple files", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		p := NewMediaUploadProcessor(nil, tracing.NewNoopTracerProvider())
+
+		pngBytes := buildPNGBytes(t).Bytes()
+		jpegBytes := buildJPEGBytes(t).Bytes()
+		req := newMultiFileUploadRequest(t, map[string][]byte{
+			"photo1.png":  pngBytes,
+			"photo2.jpeg": jpegBytes,
+		})
+
+		actual, err := p.ProcessFiles(ctx, req, "upload")
+		assert.NoError(t, err)
+		assert.Len(t, actual, 2)
+	})
+
+	T.Run("with no multipart form", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		p := NewMediaUploadProcessor(nil, tracing.NewNoopTracerProvider())
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://whatever.whocares.gov", http.NoBody)
+		require.NoError(t, err)
+
+		actual, err := p.ProcessFiles(ctx, req, "upload")
+		assert.Error(t, err)
+		assert.Nil(t, actual)
+	})
+
+	T.Run("with invalid image data", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		p := NewMediaUploadProcessor(nil, tracing.NewNoopTracerProvider())
+
+		req := newMultiFileUploadRequest(t, map[string][]byte{
+			"photo.png": []byte("not a real png"),
+		})
+
+		actual, err := p.ProcessFiles(ctx, req, "upload")
+		assert.Error(t, err)
+		assert.Nil(t, actual)
+	})
+
+	T.Run("with non-image files", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		p := NewMediaUploadProcessor(nil, tracing.NewNoopTracerProvider())
+
+		req := newMultiFileUploadRequest(t, map[string][]byte{
+			"notes.txt": []byte("just a text file"),
+		})
+
+		actual, err := p.ProcessFiles(ctx, req, "upload")
+		assert.NoError(t, err)
+		assert.Len(t, actual, 1)
+	})
+
+	T.Run("with already parsed multipart form", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		p := NewMediaUploadProcessor(nil, tracing.NewNoopTracerProvider())
+
+		imgBytes := buildPNGBytes(t).Bytes()
+		req := newMultiFileUploadRequest(t, map[string][]byte{
+			"photo.png": imgBytes,
+		})
+
+		require.NoError(t, req.ParseMultipartForm(defaultMaxMemory))
+
+		actual, err := p.ProcessFiles(ctx, req, "upload")
+		assert.NoError(t, err)
+		assert.Len(t, actual, 1)
 	})
 }

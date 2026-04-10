@@ -1,9 +1,10 @@
 package objectstorage
 
 import (
-	"os"
 	"testing"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking"
+	cbmock "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/noop"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
@@ -44,9 +45,10 @@ func TestUploader_ReadFile(T *testing.T) {
 
 		ctx := t.Context()
 		exampleFilename := "hello_world.txt"
+		expectedContent := []byte(t.Name())
 
 		b := memblob.OpenBucket(&memblob.Options{})
-		require.NoError(t, b.WriteAll(ctx, exampleFilename, []byte(t.Name()), nil))
+		require.NoError(t, b.WriteAll(ctx, exampleFilename, expectedContent, nil))
 
 		saveCounter, readCounter, saveErrCounter, readErrCounter, latencyHist := noopUploaderMetrics(t)
 		u := &Uploader{
@@ -63,7 +65,7 @@ func TestUploader_ReadFile(T *testing.T) {
 
 		x, err := u.ReadFile(ctx, exampleFilename)
 		assert.NoError(t, err)
-		assert.NotNil(t, x)
+		assert.Equal(t, expectedContent, x)
 	})
 
 	T.Run("with invalid file", func(t *testing.T) {
@@ -89,6 +91,32 @@ func TestUploader_ReadFile(T *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, x)
 	})
+
+	T.Run("with broken circuit breaker", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+
+		cb := &cbmock.MockCircuitBreaker{}
+		cb.On("CannotProceed").Return(true)
+
+		saveCounter, readCounter, saveErrCounter, readErrCounter, latencyHist := noopUploaderMetrics(t)
+		u := &Uploader{
+			bucket:         memblob.OpenBucket(&memblob.Options{}),
+			logger:         logging.NewNoopLogger(),
+			tracer:         tracing.NewTracerForTest(t.Name()),
+			circuitBreaker: cb,
+			saveCounter:    saveCounter,
+			readCounter:    readCounter,
+			saveErrCounter: saveErrCounter,
+			readErrCounter: readErrCounter,
+			latencyHist:    latencyHist,
+		}
+
+		x, err := u.ReadFile(ctx, "anything.txt")
+		assert.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
+		assert.Nil(t, x)
+	})
 }
 
 func TestUploader_SaveFile(T *testing.T) {
@@ -96,9 +124,6 @@ func TestUploader_SaveFile(T *testing.T) {
 
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
-
-		tempFile, err := os.CreateTemp("", "")
-		require.NoError(t, err)
 
 		ctx := t.Context()
 		saveCounter, readCounter, saveErrCounter, readErrCounter, latencyHist := noopUploaderMetrics(t)
@@ -114,6 +139,84 @@ func TestUploader_SaveFile(T *testing.T) {
 			latencyHist:    latencyHist,
 		}
 
-		assert.NoError(t, u.SaveFile(ctx, tempFile.Name(), []byte(t.Name())))
+		assert.NoError(t, u.SaveFile(ctx, "test_file.txt", []byte(t.Name())))
+	})
+
+	T.Run("with broken circuit breaker", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+
+		cb := &cbmock.MockCircuitBreaker{}
+		cb.On("CannotProceed").Return(true)
+
+		saveCounter, readCounter, saveErrCounter, readErrCounter, latencyHist := noopUploaderMetrics(t)
+		u := &Uploader{
+			bucket:         memblob.OpenBucket(&memblob.Options{}),
+			logger:         logging.NewNoopLogger(),
+			tracer:         tracing.NewTracerForTest(t.Name()),
+			circuitBreaker: cb,
+			saveCounter:    saveCounter,
+			readCounter:    readCounter,
+			saveErrCounter: saveErrCounter,
+			readErrCounter: readErrCounter,
+			latencyHist:    latencyHist,
+		}
+
+		assert.ErrorIs(t, u.SaveFile(ctx, "test_file.txt", []byte(t.Name())), circuitbreaking.ErrCircuitBroken)
+	})
+
+	T.Run("with write error", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+
+		cb := &cbmock.MockCircuitBreaker{}
+		cb.On("CannotProceed").Return(false)
+		cb.On("Failed").Return()
+
+		b := memblob.OpenBucket(&memblob.Options{})
+		require.NoError(t, b.Close())
+
+		saveCounter, readCounter, saveErrCounter, readErrCounter, latencyHist := noopUploaderMetrics(t)
+		u := &Uploader{
+			bucket:         b,
+			logger:         logging.NewNoopLogger(),
+			tracer:         tracing.NewTracerForTest(t.Name()),
+			circuitBreaker: cb,
+			saveCounter:    saveCounter,
+			readCounter:    readCounter,
+			saveErrCounter: saveErrCounter,
+			readErrCounter: readErrCounter,
+			latencyHist:    latencyHist,
+		}
+
+		assert.Error(t, u.SaveFile(ctx, "test_file.txt", []byte(t.Name())))
+	})
+
+	T.Run("can be read back after save", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		content := []byte("hello world")
+
+		saveCounter, readCounter, saveErrCounter, readErrCounter, latencyHist := noopUploaderMetrics(t)
+		u := &Uploader{
+			bucket:         memblob.OpenBucket(&memblob.Options{}),
+			logger:         logging.NewNoopLogger(),
+			tracer:         tracing.NewTracerForTest(t.Name()),
+			circuitBreaker: noop.NewCircuitBreaker(),
+			saveCounter:    saveCounter,
+			readCounter:    readCounter,
+			saveErrCounter: saveErrCounter,
+			readErrCounter: readErrCounter,
+			latencyHist:    latencyHist,
+		}
+
+		require.NoError(t, u.SaveFile(ctx, "roundtrip.txt", content))
+
+		actual, err := u.ReadFile(ctx, "roundtrip.txt")
+		assert.NoError(t, err)
+		assert.Equal(t, content, actual)
 	})
 }

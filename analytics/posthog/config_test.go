@@ -16,4 +16,12 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 
 		require.NoError(t, cfg.ValidateWithContext(t.Context()))
 	})
+
+	T.Run("with empty API key", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{}
+
+		require.Error(t, cfg.ValidateWithContext(t.Context()))
+	})
 }

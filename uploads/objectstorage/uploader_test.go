@@ -242,6 +242,22 @@ func TestNewUploadManager(T *testing.T) {
 		assert.NotNil(t, x)
 		assert.NoError(t, err)
 	})
+
+	T.Run("with selectBucket error", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		l := logging.NewNoopLogger()
+		cfg := &Config{
+			BucketName: t.Name(),
+			Provider:   GCPCloudStorageProvider,
+			GCP:        &GCPConfig{BucketName: t.Name()},
+		}
+
+		x, err := NewUploadManager(ctx, l, tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider(), cfg)
+		assert.Nil(t, x)
+		assert.Error(t, err)
+	})
 }
 
 func TestUploader_selectBucket(T *testing.T) {
@@ -374,5 +390,33 @@ func TestUploader_selectBucket(T *testing.T) {
 		}
 
 		assert.NoError(t, u.selectBucket(ctx, cfg))
+	})
+
+	T.Run("gcp provider fails without credentials", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		u := &Uploader{}
+		cfg := &Config{
+			Provider: GCPCloudStorageProvider,
+			GCP: &GCPConfig{
+				BucketName: t.Name(),
+			},
+		}
+
+		assert.Error(t, u.selectBucket(ctx, cfg))
+	})
+
+	T.Run("filesystem with invalid root directory", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		u := &Uploader{}
+		cfg := &Config{
+			Provider:         FilesystemProvider,
+			FilesystemConfig: &FilesystemConfig{RootDirectory: string([]byte{0x00})},
+		}
+
+		assert.Error(t, u.selectBucket(ctx, cfg))
 	})
 }

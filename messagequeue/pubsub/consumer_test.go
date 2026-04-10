@@ -2,6 +2,7 @@ package pubsub
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -12,14 +13,17 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/identifiers"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/messagequeue"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/random"
 
 	"cloud.google.com/go/pubsub/v2"
 	"cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	tcpubsub "github.com/testcontainers/testcontainers-go/modules/gcloud/pubsub"
+	metricnoop "go.opentelemetry.io/otel/metric/noop"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -123,6 +127,19 @@ func TestBuildPubSubConsumer(T *testing.T) {
 
 		consumer := buildPubSubConsumer(logger, tracing.NewNoopTracerProvider(), nil, nil, "test-topic", handler)
 		require.NotNil(t, consumer)
+	})
+
+	T.Run("panics when NewInt64Counter fails", func(t *testing.T) {
+		t.Parallel()
+
+		mp := &metrics.MockProvider{}
+		mp.On("NewInt64Counter", "t_consumed", mock.Anything).Return(metricnoop.Int64Counter{}, errors.New("forced error"))
+
+		assert.Panics(t, func() {
+			buildPubSubConsumer(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, nil, "t", nil)
+		})
+
+		mock.AssertExpectationsForObjects(t, mp)
 	})
 }
 

@@ -3,11 +3,13 @@ package redis
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/messagequeue"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/testutils"
 
@@ -15,6 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	metricnoop "go.opentelemetry.io/otel/metric/noop"
 )
 
 type mockMessagePublisher struct {
@@ -182,5 +185,75 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 		actual, err = provider.ProvidePublisher(ctx, t.Name())
 		assert.NotNil(t, actual)
 		assert.NoError(t, err)
+	})
+
+	T.Run("with empty topic", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		logger := logging.NewNoopLogger()
+
+		cfg := Config{
+			QueueAddresses: []string{t.Name()},
+		}
+		provider := ProvideRedisPublisherProvider(logger, tracing.NewNoopTracerProvider(), nil, cfg)
+		require.NotNil(t, provider)
+
+		actual, err := provider.ProvidePublisher(ctx, "")
+		assert.Nil(t, actual)
+		assert.ErrorIs(t, err, messagequeue.ErrEmptyTopicName)
+	})
+}
+
+func Test_provideRedisPublisher(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		publisher := provideRedisPublisher(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, nil, "test-topic")
+		require.NotNil(t, publisher)
+	})
+
+	T.Run("panics when first NewInt64Counter fails", func(t *testing.T) {
+		t.Parallel()
+
+		mp := &metrics.MockProvider{}
+		mp.On("NewInt64Counter", "t_published", mock.Anything).Return(metricnoop.Int64Counter{}, errors.New("forced error"))
+
+		assert.Panics(t, func() {
+			provideRedisPublisher(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, nil, "t")
+		})
+
+		mock.AssertExpectationsForObjects(t, mp)
+	})
+
+	T.Run("panics when second NewInt64Counter fails", func(t *testing.T) {
+		t.Parallel()
+
+		mp := &metrics.MockProvider{}
+		mp.On("NewInt64Counter", "t_published", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
+		mp.On("NewInt64Counter", "t_publish_errors", mock.Anything).Return(metricnoop.Int64Counter{}, errors.New("forced error"))
+
+		assert.Panics(t, func() {
+			provideRedisPublisher(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, nil, "t")
+		})
+
+		mock.AssertExpectationsForObjects(t, mp)
+	})
+
+	T.Run("panics when NewFloat64Histogram fails", func(t *testing.T) {
+		t.Parallel()
+
+		mp := &metrics.MockProvider{}
+		mp.On("NewInt64Counter", "t_published", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
+		mp.On("NewInt64Counter", "t_publish_errors", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
+		mp.On("NewFloat64Histogram", "t_publish_latency_ms", mock.Anything).Return(metricnoop.Float64Histogram{}, errors.New("forced error"))
+
+		assert.Panics(t, func() {
+			provideRedisPublisher(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, nil, "t")
+		})
+
+		mock.AssertExpectationsForObjects(t, mp)
 	})
 }

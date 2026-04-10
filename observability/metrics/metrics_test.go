@@ -123,7 +123,7 @@ func TestInt64CounterForTest(T *testing.T) {
 
 	T.Run("returns a counter", func(t *testing.T) {
 		t.Parallel()
-		c := Int64CounterForTest("test_counter")
+		c := Int64CounterForTest(t, "test_counter")
 		assert.NotNil(t, c)
 	})
 }

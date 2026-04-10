@@ -129,7 +129,7 @@ func TestNewRedisRateLimiter(T *testing.T) {
 		}
 
 		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", redisName+"_allowed", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), errors.New("counter error"))
+		mp.On("NewInt64Counter", redisName+"_allowed", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("counter error"))
 
 		rl, err := NewRedisRateLimiter(cfg, mp, 10)
 		assert.Error(t, err)
@@ -146,8 +146,8 @@ func TestNewRedisRateLimiter(T *testing.T) {
 		}
 
 		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", redisName+"_allowed", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), nil)
-		mp.On("NewInt64Counter", redisName+"_rejected", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), errors.New("counter error"))
+		mp.On("NewInt64Counter", redisName+"_allowed", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewInt64Counter", redisName+"_rejected", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("counter error"))
 
 		rl, err := NewRedisRateLimiter(cfg, mp, 10)
 		assert.Error(t, err)
@@ -164,9 +164,9 @@ func TestNewRedisRateLimiter(T *testing.T) {
 		}
 
 		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", redisName+"_allowed", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), nil)
-		mp.On("NewInt64Counter", redisName+"_rejected", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), nil)
-		mp.On("NewInt64Counter", redisName+"_errors", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), errors.New("counter error"))
+		mp.On("NewInt64Counter", redisName+"_allowed", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewInt64Counter", redisName+"_rejected", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewInt64Counter", redisName+"_errors", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("counter error"))
 
 		rl, err := NewRedisRateLimiter(cfg, mp, 10)
 		assert.Error(t, err)

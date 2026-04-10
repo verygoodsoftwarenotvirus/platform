@@ -160,7 +160,7 @@ func TestNewRedisCache(T *testing.T) {
 		cfg := &Config{QueueAddresses: []string{"localhost:6379"}}
 
 		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", name+"_cache_hits", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), errors.New("counter error"))
+		mp.On("NewInt64Counter", name+"_cache_hits", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("counter error"))
 
 		c, err := NewRedisCache[example](cfg, time.Minute, nil, nil, mp, nil)
 		assert.Error(t, err)
@@ -175,8 +175,8 @@ func TestNewRedisCache(T *testing.T) {
 		cfg := &Config{QueueAddresses: []string{"localhost:6379"}}
 
 		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", name+"_cache_hits", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), nil)
-		mp.On("NewInt64Counter", name+"_cache_misses", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), errors.New("counter error"))
+		mp.On("NewInt64Counter", name+"_cache_hits", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewInt64Counter", name+"_cache_misses", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("counter error"))
 
 		c, err := NewRedisCache[example](cfg, time.Minute, nil, nil, mp, nil)
 		assert.Error(t, err)
@@ -191,9 +191,9 @@ func TestNewRedisCache(T *testing.T) {
 		cfg := &Config{QueueAddresses: []string{"localhost:6379"}}
 
 		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", name+"_cache_hits", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), nil)
-		mp.On("NewInt64Counter", name+"_cache_misses", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), nil)
-		mp.On("NewInt64Counter", name+"_cache_sets", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), errors.New("counter error"))
+		mp.On("NewInt64Counter", name+"_cache_hits", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewInt64Counter", name+"_cache_misses", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewInt64Counter", name+"_cache_sets", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("counter error"))
 
 		c, err := NewRedisCache[example](cfg, time.Minute, nil, nil, mp, nil)
 		assert.Error(t, err)
@@ -208,10 +208,10 @@ func TestNewRedisCache(T *testing.T) {
 		cfg := &Config{QueueAddresses: []string{"localhost:6379"}}
 
 		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", name+"_cache_hits", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), nil)
-		mp.On("NewInt64Counter", name+"_cache_misses", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), nil)
-		mp.On("NewInt64Counter", name+"_cache_sets", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), nil)
-		mp.On("NewInt64Counter", name+"_cache_deletes", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), errors.New("counter error"))
+		mp.On("NewInt64Counter", name+"_cache_hits", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewInt64Counter", name+"_cache_misses", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewInt64Counter", name+"_cache_sets", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewInt64Counter", name+"_cache_deletes", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("counter error"))
 
 		c, err := NewRedisCache[example](cfg, time.Minute, nil, nil, mp, nil)
 		assert.Error(t, err)
@@ -226,11 +226,11 @@ func TestNewRedisCache(T *testing.T) {
 		cfg := &Config{QueueAddresses: []string{"localhost:6379"}}
 
 		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", name+"_cache_hits", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), nil)
-		mp.On("NewInt64Counter", name+"_cache_misses", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), nil)
-		mp.On("NewInt64Counter", name+"_cache_sets", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), nil)
-		mp.On("NewInt64Counter", name+"_cache_deletes", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), nil)
-		mp.On("NewInt64Counter", name+"_cache_errors", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), errors.New("counter error"))
+		mp.On("NewInt64Counter", name+"_cache_hits", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewInt64Counter", name+"_cache_misses", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewInt64Counter", name+"_cache_sets", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewInt64Counter", name+"_cache_deletes", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewInt64Counter", name+"_cache_errors", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("counter error"))
 
 		c, err := NewRedisCache[example](cfg, time.Minute, nil, nil, mp, nil)
 		assert.Error(t, err)
@@ -249,11 +249,11 @@ func TestNewRedisCache(T *testing.T) {
 		require.NoError(t, histErr)
 
 		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", name+"_cache_hits", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), nil)
-		mp.On("NewInt64Counter", name+"_cache_misses", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), nil)
-		mp.On("NewInt64Counter", name+"_cache_sets", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), nil)
-		mp.On("NewInt64Counter", name+"_cache_deletes", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), nil)
-		mp.On("NewInt64Counter", name+"_cache_errors", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), nil)
+		mp.On("NewInt64Counter", name+"_cache_hits", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewInt64Counter", name+"_cache_misses", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewInt64Counter", name+"_cache_sets", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewInt64Counter", name+"_cache_deletes", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewInt64Counter", name+"_cache_errors", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
 		mp.On("NewFloat64Histogram", name+"_cache_latency_ms", []metric.Float64HistogramOption(nil)).Return(h, errors.New("histogram error"))
 
 		c, err := NewRedisCache[example](cfg, time.Minute, nil, nil, mp, nil)

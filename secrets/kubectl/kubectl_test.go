@@ -5,8 +5,13 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/metric"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -33,10 +38,59 @@ func TestNewKubectlSecretSource(T *testing.T) {
 	T.Run("with mock client succeeds", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Namespace: "default"}
-		mock := &mockSecretGetter{}
-		source, err := NewKubectlSecretSource(context.Background(), cfg, mock, nil, nil, nil)
+		mc := &mockSecretGetter{}
+		source, err := NewKubectlSecretSource(context.Background(), cfg, mc, nil, nil, nil)
 		require.NoError(t, err)
 		require.NotNil(t, source)
+	})
+
+	T.Run("with error creating lookup counter", func(t *testing.T) {
+		t.Parallel()
+
+		mp := &mockmetrics.MetricsProvider{}
+		mp.On("NewInt64Counter", name+"_lookups", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+
+		cfg := &Config{Namespace: "default"}
+		source, err := NewKubectlSecretSource(context.Background(), cfg, &mockSecretGetter{}, nil, nil, mp)
+		require.Error(t, err)
+		assert.Nil(t, source)
+
+		mock.AssertExpectationsForObjects(t, mp)
+	})
+
+	T.Run("with error creating error counter", func(t *testing.T) {
+		t.Parallel()
+
+		mp := &mockmetrics.MetricsProvider{}
+		mp.On("NewInt64Counter", name+"_lookups", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewInt64Counter", name+"_errors", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+
+		cfg := &Config{Namespace: "default"}
+		source, err := NewKubectlSecretSource(context.Background(), cfg, &mockSecretGetter{}, nil, nil, mp)
+		require.Error(t, err)
+		assert.Nil(t, source)
+
+		mock.AssertExpectationsForObjects(t, mp)
+	})
+
+	T.Run("with error creating latency histogram", func(t *testing.T) {
+		t.Parallel()
+
+		noopMP := metrics.NewNoopMetricsProvider()
+		h, histErr := noopMP.NewFloat64Histogram("test")
+		require.NoError(t, histErr)
+
+		mp := &mockmetrics.MetricsProvider{}
+		mp.On("NewInt64Counter", name+"_lookups", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewInt64Counter", name+"_errors", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewFloat64Histogram", name+"_latency_ms", []metric.Float64HistogramOption(nil)).Return(h, errors.New("arbitrary"))
+
+		cfg := &Config{Namespace: "default"}
+		source, err := NewKubectlSecretSource(context.Background(), cfg, &mockSecretGetter{}, nil, nil, mp)
+		require.Error(t, err)
+		assert.Nil(t, source)
+
+		mock.AssertExpectationsForObjects(t, mp)
 	})
 }
 
@@ -46,27 +100,27 @@ func TestKubectlSecretSource_GetSecret(T *testing.T) {
 	T.Run("success", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Namespace: "default"}
-		mock := &mockSecretGetter{
+		mc := &mockSecretGetter{
 			secret: &corev1.Secret{
 				Data: map[string][]byte{
 					"password": []byte("s3cret"),
 				},
 			},
 		}
-		source, err := NewKubectlSecretSource(context.Background(), cfg, mock, nil, nil, nil)
+		source, err := NewKubectlSecretSource(context.Background(), cfg, mc, nil, nil, nil)
 		require.NoError(t, err)
 
 		got, err := source.GetSecret(context.Background(), "db-creds/password")
 		require.NoError(t, err)
 		assert.Equal(t, "s3cret", got)
-		assert.Equal(t, "db-creds", mock.lastName)
+		assert.Equal(t, "db-creds", mc.lastName)
 	})
 
 	T.Run("missing slash in name", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Namespace: "default"}
-		mock := &mockSecretGetter{}
-		source, err := NewKubectlSecretSource(context.Background(), cfg, mock, nil, nil, nil)
+		mc := &mockSecretGetter{}
+		source, err := NewKubectlSecretSource(context.Background(), cfg, mc, nil, nil, nil)
 		require.NoError(t, err)
 
 		_, err = source.GetSecret(context.Background(), "no-slash")
@@ -77,14 +131,14 @@ func TestKubectlSecretSource_GetSecret(T *testing.T) {
 	T.Run("key not found", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Namespace: "default"}
-		mock := &mockSecretGetter{
+		mc := &mockSecretGetter{
 			secret: &corev1.Secret{
 				Data: map[string][]byte{
 					"username": []byte("admin"),
 				},
 			},
 		}
-		source, err := NewKubectlSecretSource(context.Background(), cfg, mock, nil, nil, nil)
+		source, err := NewKubectlSecretSource(context.Background(), cfg, mc, nil, nil, nil)
 		require.NoError(t, err)
 
 		_, err = source.GetSecret(context.Background(), "db-creds/password")
@@ -95,8 +149,8 @@ func TestKubectlSecretSource_GetSecret(T *testing.T) {
 	T.Run("client error", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Namespace: "default"}
-		mock := &mockSecretGetter{err: errors.New("k8s api error")}
-		source, err := NewKubectlSecretSource(context.Background(), cfg, mock, nil, nil, nil)
+		mc := &mockSecretGetter{err: errors.New("k8s api error")}
+		source, err := NewKubectlSecretSource(context.Background(), cfg, mc, nil, nil, nil)
 		require.NoError(t, err)
 
 		_, err = source.GetSecret(context.Background(), "db-creds/password")
@@ -111,8 +165,8 @@ func TestKubectlSecretSource_Close(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Namespace: "default"}
-		mock := &mockSecretGetter{}
-		source, err := NewKubectlSecretSource(context.Background(), cfg, mock, nil, nil, nil)
+		mc := &mockSecretGetter{}
+		source, err := NewKubectlSecretSource(context.Background(), cfg, mc, nil, nil, nil)
 		require.NoError(t, err)
 
 		err = source.Close()

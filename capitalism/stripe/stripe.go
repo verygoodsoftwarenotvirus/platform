@@ -1,7 +1,6 @@
 package stripe
 
 import (
-	"encoding/json"
 	"io"
 	"net/http"
 
@@ -70,8 +69,8 @@ func (s *stripePaymentManager) HandleEventWebhook(req *http.Request) error {
 	switch event.Type {
 	case stripe.EventTypePaymentIntentSucceeded:
 		var paymentIntent stripe.PaymentIntent
-		if marshallErr := json.Unmarshal(event.Data.Raw, &paymentIntent); marshallErr != nil {
-			return marshallErr
+		if decodeErr := s.encoderDecoder.DecodeBytes(req.Context(), event.Data.Raw, &paymentIntent); decodeErr != nil {
+			return decodeErr
 		}
 	default:
 		logger.WithValue("event_type", event.Type).Info("Unhandled event type")

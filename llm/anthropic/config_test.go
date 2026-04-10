@@ -1,4 +1,4 @@
-package encoding
+package anthropic
 
 import (
 	"testing"
@@ -12,20 +12,18 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := t.Context()
 		cfg := &Config{
-			ContentType: contentTypeJSON,
+			APIKey: "test-key",
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		assert.NoError(t, cfg.ValidateWithContext(t.Context()))
 	})
 
-	T.Run("with invalid config", func(t *testing.T) {
+	T.Run("missing API key", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := t.Context()
 		cfg := &Config{}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		assert.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 }

@@ -169,32 +169,7 @@ func (p *pubSubPublisher) Publish(ctx context.Context, data any) error {
 }
 
 func (p *pubSubPublisher) PublishAsync(ctx context.Context, data any) {
-	_, span := p.tracer.StartSpan(ctx)
-	defer span.End()
-
-	startTime := time.Now()
-	logger := p.logger.Clone()
-
-	var b bytes.Buffer
-	if err := p.encoder.Encode(ctx, &b, data); err != nil {
-		p.publishErrCounter.Add(ctx, 1)
-		observability.AcknowledgeError(err, logger, span, "encoding topic message")
-		return
+	if err := p.Publish(ctx, data); err != nil {
+		p.logger.Error("publishing message", err)
 	}
-
-	msg := &pubsub.Message{Data: b.Bytes()}
-	result := p.publisher.Publish(ctx, msg)
-	<-result.Ready()
-
-	// The Get method blocks until a server-generated ID or an error is returned for the published message.
-	if _, err := result.Get(ctx); err != nil {
-		p.publishErrCounter.Add(ctx, 1)
-		observability.AcknowledgeError(err, logger, span, "publishing pubsub message")
-		return
-	}
-
-	p.publishedCounter.Add(ctx, 1)
-	p.latencyHist.Record(ctx, float64(time.Since(startTime).Milliseconds()))
-
-	logger.Debug("published message")
 }

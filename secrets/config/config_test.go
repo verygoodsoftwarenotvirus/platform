@@ -2,9 +2,12 @@ package secretscfg
 
 import (
 	"context"
+	"errors"
 	"os"
 	"testing"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/secrets/gcp"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/secrets/kubectl"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/secrets/ssm"
@@ -14,7 +17,9 @@ import (
 	awsssm "github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/aws/aws-sdk-go-v2/service/ssm/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/metric"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -274,5 +279,87 @@ func TestConfig_ProvideSecretSource(T *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, source)
 		assert.Contains(t, err.Error(), "kubectl")
+	})
+
+	T.Run("nil config with metrics error", func(t *testing.T) {
+		t.Parallel()
+
+		mp := &mockmetrics.MetricsProvider{}
+		mp.On("NewInt64Counter", mock.AnythingOfType("string"), []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+
+		var cfg *Config
+		source, err := cfg.ProvideSecretSource(context.Background(), nil, nil, mp)
+		require.Error(t, err)
+		assert.Nil(t, source)
+
+		mock.AssertExpectationsForObjects(t, mp)
+	})
+
+	T.Run("env provider with metrics error", func(t *testing.T) {
+		t.Parallel()
+
+		mp := &mockmetrics.MetricsProvider{}
+		mp.On("NewInt64Counter", mock.AnythingOfType("string"), []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+
+		cfg := &Config{Provider: ProviderEnv}
+		source, err := cfg.ProvideSecretSource(context.Background(), nil, nil, mp)
+		require.Error(t, err)
+		assert.Nil(t, source)
+
+		mock.AssertExpectationsForObjects(t, mp)
+	})
+
+	T.Run("gcp provider with metrics error", func(t *testing.T) {
+		t.Parallel()
+
+		mp := &mockmetrics.MetricsProvider{}
+		mp.On("NewInt64Counter", mock.AnythingOfType("string"), []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+
+		cfg := &Config{
+			Provider:  ProviderGCP,
+			GCP:       &gcp.Config{ProjectID: "test-project"},
+			GCPClient: &mockGCPClient{value: "x"},
+		}
+		source, err := cfg.ProvideSecretSource(context.Background(), nil, nil, mp)
+		require.Error(t, err)
+		assert.Nil(t, source)
+
+		mock.AssertExpectationsForObjects(t, mp)
+	})
+
+	T.Run("ssm provider with metrics error", func(t *testing.T) {
+		t.Parallel()
+
+		mp := &mockmetrics.MetricsProvider{}
+		mp.On("NewInt64Counter", mock.AnythingOfType("string"), []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+
+		cfg := &Config{
+			Provider:  ProviderSSM,
+			SSM:       &ssm.Config{Region: "us-east-1"},
+			SSMClient: &mockSSMClient{value: "x"},
+		}
+		source, err := cfg.ProvideSecretSource(context.Background(), nil, nil, mp)
+		require.Error(t, err)
+		assert.Nil(t, source)
+
+		mock.AssertExpectationsForObjects(t, mp)
+	})
+
+	T.Run("kubectl provider with metrics error", func(t *testing.T) {
+		t.Parallel()
+
+		mp := &mockmetrics.MetricsProvider{}
+		mp.On("NewInt64Counter", mock.AnythingOfType("string"), []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+
+		cfg := &Config{
+			Provider:      ProviderKubectl,
+			Kubectl:       &kubectl.Config{Namespace: "default"},
+			KubectlClient: &mockKubectlClient{secret: &corev1.Secret{}},
+		}
+		source, err := cfg.ProvideSecretSource(context.Background(), nil, nil, mp)
+		require.Error(t, err)
+		assert.Nil(t, source)
+
+		mock.AssertExpectationsForObjects(t, mp)
 	})
 }

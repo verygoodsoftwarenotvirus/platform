@@ -3,6 +3,7 @@ package pgvector
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -11,14 +12,17 @@ import (
 	cbnoop "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/noop"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/database"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/identifiers"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	vectorsearch "github.com/verygoodsoftwarenotvirus/platform/v5/search/vector"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	postgrescontainer "github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
+	metricnoop "go.opentelemetry.io/otel/metric/noop"
 )
 
 const pgvectorImage = "pgvector/pgvector:pg16"
@@ -131,6 +135,131 @@ func TestProvideIndex(T *testing.T) {
 		_, err := ProvideIndex[doc](t.Context(), nil, nil, nil, &Config{Dimension: 3, Metric: vectorsearch.DistanceCosine, MetadataColumn: "weird-col"}, &testDBClient{}, "idx", cbnoop.NewCircuitBreaker())
 		require.ErrorIs(t, err, ErrInvalidIdentifier)
 	})
+
+	T.Run("error creating upsert counter", func(t *testing.T) {
+		t.Parallel()
+
+		mp := &metrics.MockProvider{}
+		mp.On("NewInt64Counter", "pgvector_index_upserts", mock.Anything).Return(metricnoop.Int64Counter{}, errors.New("forced error"))
+
+		_, err := ProvideIndex[doc](t.Context(), nil, nil, mp, &Config{Dimension: 3, Metric: vectorsearch.DistanceCosine}, &testDBClient{}, "idx", cbnoop.NewCircuitBreaker())
+		require.Error(t, err)
+
+		mock.AssertExpectationsForObjects(t, mp)
+	})
+
+	T.Run("error creating delete counter", func(t *testing.T) {
+		t.Parallel()
+
+		mp := &metrics.MockProvider{}
+		mp.On("NewInt64Counter", "pgvector_index_upserts", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
+		mp.On("NewInt64Counter", "pgvector_index_deletes", mock.Anything).Return(metricnoop.Int64Counter{}, errors.New("forced error"))
+
+		_, err := ProvideIndex[doc](t.Context(), nil, nil, mp, &Config{Dimension: 3, Metric: vectorsearch.DistanceCosine}, &testDBClient{}, "idx", cbnoop.NewCircuitBreaker())
+		require.Error(t, err)
+
+		mock.AssertExpectationsForObjects(t, mp)
+	})
+
+	T.Run("error creating wipe counter", func(t *testing.T) {
+		t.Parallel()
+
+		mp := &metrics.MockProvider{}
+		mp.On("NewInt64Counter", "pgvector_index_upserts", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
+		mp.On("NewInt64Counter", "pgvector_index_deletes", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
+		mp.On("NewInt64Counter", "pgvector_index_wipes", mock.Anything).Return(metricnoop.Int64Counter{}, errors.New("forced error"))
+
+		_, err := ProvideIndex[doc](t.Context(), nil, nil, mp, &Config{Dimension: 3, Metric: vectorsearch.DistanceCosine}, &testDBClient{}, "idx", cbnoop.NewCircuitBreaker())
+		require.Error(t, err)
+
+		mock.AssertExpectationsForObjects(t, mp)
+	})
+
+	T.Run("error creating query counter", func(t *testing.T) {
+		t.Parallel()
+
+		mp := &metrics.MockProvider{}
+		mp.On("NewInt64Counter", "pgvector_index_upserts", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
+		mp.On("NewInt64Counter", "pgvector_index_deletes", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
+		mp.On("NewInt64Counter", "pgvector_index_wipes", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
+		mp.On("NewInt64Counter", "pgvector_index_queries", mock.Anything).Return(metricnoop.Int64Counter{}, errors.New("forced error"))
+
+		_, err := ProvideIndex[doc](t.Context(), nil, nil, mp, &Config{Dimension: 3, Metric: vectorsearch.DistanceCosine}, &testDBClient{}, "idx", cbnoop.NewCircuitBreaker())
+		require.Error(t, err)
+
+		mock.AssertExpectationsForObjects(t, mp)
+	})
+
+	T.Run("error creating error counter", func(t *testing.T) {
+		t.Parallel()
+
+		mp := &metrics.MockProvider{}
+		mp.On("NewInt64Counter", "pgvector_index_upserts", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
+		mp.On("NewInt64Counter", "pgvector_index_deletes", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
+		mp.On("NewInt64Counter", "pgvector_index_wipes", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
+		mp.On("NewInt64Counter", "pgvector_index_queries", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
+		mp.On("NewInt64Counter", "pgvector_index_errors", mock.Anything).Return(metricnoop.Int64Counter{}, errors.New("forced error"))
+
+		_, err := ProvideIndex[doc](t.Context(), nil, nil, mp, &Config{Dimension: 3, Metric: vectorsearch.DistanceCosine}, &testDBClient{}, "idx", cbnoop.NewCircuitBreaker())
+		require.Error(t, err)
+
+		mock.AssertExpectationsForObjects(t, mp)
+	})
+
+	T.Run("error creating latency histogram", func(t *testing.T) {
+		t.Parallel()
+
+		mp := &metrics.MockProvider{}
+		mp.On("NewInt64Counter", "pgvector_index_upserts", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
+		mp.On("NewInt64Counter", "pgvector_index_deletes", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
+		mp.On("NewInt64Counter", "pgvector_index_wipes", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
+		mp.On("NewInt64Counter", "pgvector_index_queries", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
+		mp.On("NewInt64Counter", "pgvector_index_errors", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
+		mp.On("NewFloat64Histogram", "pgvector_index_latency_ms", mock.Anything).Return(metricnoop.Float64Histogram{}, errors.New("forced error"))
+
+		_, err := ProvideIndex[doc](t.Context(), nil, nil, mp, &Config{Dimension: 3, Metric: vectorsearch.DistanceCosine}, &testDBClient{}, "idx", cbnoop.NewCircuitBreaker())
+		require.Error(t, err)
+
+		mock.AssertExpectationsForObjects(t, mp)
+	})
+}
+
+func Test_operatorAndOpClass(T *testing.T) {
+	T.Parallel()
+
+	T.Run("cosine", func(t *testing.T) {
+		t.Parallel()
+
+		op, opsClass, err := operatorAndOpClass(vectorsearch.DistanceCosine)
+		require.NoError(t, err)
+		assert.Equal(t, "<=>", op)
+		assert.Equal(t, "vector_cosine_ops", opsClass)
+	})
+
+	T.Run("dot product", func(t *testing.T) {
+		t.Parallel()
+
+		op, opsClass, err := operatorAndOpClass(vectorsearch.DistanceDotProduct)
+		require.NoError(t, err)
+		assert.Equal(t, "<#>", op)
+		assert.Equal(t, "vector_ip_ops", opsClass)
+	})
+
+	T.Run("euclidean", func(t *testing.T) {
+		t.Parallel()
+
+		op, opsClass, err := operatorAndOpClass(vectorsearch.DistanceEuclidean)
+		require.NoError(t, err)
+		assert.Equal(t, "<->", op)
+		assert.Equal(t, "vector_l2_ops", opsClass)
+	})
+
+	T.Run("invalid metric", func(t *testing.T) {
+		t.Parallel()
+
+		_, _, err := operatorAndOpClass("bogus")
+		require.ErrorIs(t, err, vectorsearch.ErrInvalidMetric)
+	})
 }
 
 func TestEncodeVector(T *testing.T) {
@@ -214,6 +343,75 @@ func TestMarshalUnmarshalMetadata(T *testing.T) {
 		out, err := unmarshalMetadata[doc]([]byte("null"))
 		require.NoError(t, err)
 		assert.Nil(t, out)
+	})
+
+	T.Run("empty is treated as nil", func(t *testing.T) {
+		t.Parallel()
+		out, err := unmarshalMetadata[doc]([]byte{})
+		require.NoError(t, err)
+		assert.Nil(t, out)
+	})
+
+	T.Run("invalid JSON returns error", func(t *testing.T) {
+		t.Parallel()
+		_, err := unmarshalMetadata[doc]([]byte(`{not json`))
+		require.Error(t, err)
+	})
+}
+
+func Test_firstWords(T *testing.T) {
+	T.Parallel()
+
+	T.Run("multi-word statement", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, "CREATE EXTENSION", firstWords("CREATE EXTENSION IF NOT EXISTS vector"))
+	})
+
+	T.Run("single word", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, "TRUNCATE", firstWords("TRUNCATE"))
+	})
+
+	T.Run("two words only", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, "DROP TABLE", firstWords("DROP TABLE"))
+	})
+
+	T.Run("leading whitespace is trimmed", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, "CREATE TABLE", firstWords("  CREATE TABLE foo"))
+	})
+}
+
+func TestValidateWithContext(T *testing.T) {
+	T.Parallel()
+
+	T.Run("nil config", func(t *testing.T) {
+		t.Parallel()
+		var cfg *Config
+		err := cfg.ValidateWithContext(t.Context())
+		require.Error(t, err)
+	})
+
+	T.Run("valid config", func(t *testing.T) {
+		t.Parallel()
+		cfg := &Config{Dimension: 3, Metric: vectorsearch.DistanceCosine}
+		err := cfg.ValidateWithContext(t.Context())
+		require.NoError(t, err)
+	})
+
+	T.Run("missing dimension", func(t *testing.T) {
+		t.Parallel()
+		cfg := &Config{Metric: vectorsearch.DistanceCosine}
+		err := cfg.ValidateWithContext(t.Context())
+		require.Error(t, err)
+	})
+
+	T.Run("invalid metric", func(t *testing.T) {
+		t.Parallel()
+		cfg := &Config{Dimension: 3, Metric: "bogus"}
+		err := cfg.ValidateWithContext(t.Context())
+		require.Error(t, err)
 	})
 }
 

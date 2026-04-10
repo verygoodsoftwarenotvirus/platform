@@ -2,16 +2,56 @@ package env
 
 import (
 	"context"
+	"errors"
 	"os"
 	"testing"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/secrets"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/metric"
 )
 
 var _ secrets.SecretSource = (*envSecretSource)(nil)
+
+func TestNewEnvSecretSource(T *testing.T) {
+	T.Parallel()
+
+	T.Run("with error creating lookup counter", func(t *testing.T) {
+		t.Parallel()
+
+		mp := &mockmetrics.MetricsProvider{}
+		mp.On("NewInt64Counter", name+"_lookups", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+
+		source, err := NewEnvSecretSource(nil, nil, mp)
+		require.Error(t, err)
+		assert.Nil(t, source)
+
+		mock.AssertExpectationsForObjects(t, mp)
+	})
+
+	T.Run("with error creating latency histogram", func(t *testing.T) {
+		t.Parallel()
+
+		noopMP := metrics.NewNoopMetricsProvider()
+		h, histErr := noopMP.NewFloat64Histogram("test")
+		require.NoError(t, histErr)
+
+		mp := &mockmetrics.MetricsProvider{}
+		mp.On("NewInt64Counter", name+"_lookups", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
+		mp.On("NewFloat64Histogram", name+"_latency_ms", []metric.Float64HistogramOption(nil)).Return(h, errors.New("arbitrary"))
+
+		source, err := NewEnvSecretSource(nil, nil, mp)
+		require.Error(t, err)
+		assert.Nil(t, source)
+
+		mock.AssertExpectationsForObjects(t, mp)
+	})
+}
 
 func TestEnvSecretSource_GetSecret(T *testing.T) {
 	T.Parallel()

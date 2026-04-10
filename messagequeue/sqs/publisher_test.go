@@ -96,6 +96,109 @@ func Test_sqsPublisher_Publish(T *testing.T) {
 	})
 }
 
+func Test_sqsPublisher_PublishAsync(T *testing.T) {
+	T.Parallel()
+
+	T.Run("standard", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		logger := logging.NewNoopLogger()
+
+		provider := ProvideSQSPublisherProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil)
+		require.NotNil(t, provider)
+
+		a, err := provider.ProvidePublisher(ctx, t.Name())
+		assert.NotNil(t, a)
+		assert.NoError(t, err)
+
+		actual, ok := a.(*sqsPublisher)
+		require.True(t, ok)
+
+		inputData := &struct {
+			Name string `json:"name"`
+		}{
+			Name: t.Name(),
+		}
+
+		mmp := &mockMessagePublisher{}
+		mmp.On(
+			"SendMessage",
+			testutils.ContextMatcher,
+			mock.MatchedBy(func(*sqs.SendMessageInput) bool { return true }),
+			mock.Anything,
+		).Return(&sqs.SendMessageOutput{}, nil)
+
+		actual.publisher = mmp
+
+		actual.PublishAsync(ctx, inputData)
+
+		mock.AssertExpectationsForObjects(t, mmp)
+	})
+
+	T.Run("with error encoding value", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		logger := logging.NewNoopLogger()
+
+		provider := ProvideSQSPublisherProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil)
+		require.NotNil(t, provider)
+
+		a, err := provider.ProvidePublisher(ctx, t.Name())
+		assert.NotNil(t, a)
+		assert.NoError(t, err)
+
+		actual, ok := a.(*sqsPublisher)
+		require.True(t, ok)
+
+		inputData := &struct {
+			Name json.Number `json:"name"`
+		}{
+			Name: json.Number(t.Name()),
+		}
+
+		actual.PublishAsync(ctx, inputData)
+	})
+
+	T.Run("with SendMessage error", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		logger := logging.NewNoopLogger()
+
+		provider := ProvideSQSPublisherProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil)
+		require.NotNil(t, provider)
+
+		a, err := provider.ProvidePublisher(ctx, t.Name())
+		assert.NotNil(t, a)
+		assert.NoError(t, err)
+
+		actual, ok := a.(*sqsPublisher)
+		require.True(t, ok)
+
+		inputData := &struct {
+			Name string `json:"name"`
+		}{
+			Name: t.Name(),
+		}
+
+		mmp := &mockMessagePublisher{}
+		mmp.On(
+			"SendMessage",
+			testutils.ContextMatcher,
+			mock.MatchedBy(func(*sqs.SendMessageInput) bool { return true }),
+			mock.Anything,
+		).Return((*sqs.SendMessageOutput)(nil), errors.New("send failed"))
+
+		actual.publisher = mmp
+
+		actual.PublishAsync(ctx, inputData)
+
+		mock.AssertExpectationsForObjects(t, mmp)
+	})
+}
+
 func TestProvideSQSPublisherProvider(T *testing.T) {
 	T.Parallel()
 

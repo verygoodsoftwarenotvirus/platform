@@ -1,15 +1,20 @@
 package llmcfg
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/llm/anthropic"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/llm/openai"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/metric"
 )
 
 func TestConfig_ValidateWithContext(T *testing.T) {
@@ -141,6 +146,48 @@ func TestConfig_ProvideLLMProvider(T *testing.T) {
 		provider, err := cfg.ProvideLLMProvider(ctx, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil)
 		require.NoError(t, err)
 		require.NotNil(t, provider)
+	})
+
+	T.Run("openai provider with metrics error", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		cfg := &Config{
+			Provider: ProviderOpenAI,
+			OpenAI: &openai.Config{
+				APIKey: "test-key",
+			},
+		}
+
+		mp := &mockmetrics.MetricsProvider{}
+		mp.On("NewInt64Counter", mock.AnythingOfType("string"), []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+
+		provider, err := cfg.ProvideLLMProvider(ctx, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp)
+		assert.Nil(t, provider)
+		assert.Error(t, err)
+
+		mock.AssertExpectationsForObjects(t, mp)
+	})
+
+	T.Run("anthropic provider with metrics error", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		cfg := &Config{
+			Provider: ProviderAnthropic,
+			Anthropic: &anthropic.Config{
+				APIKey: "test-key",
+			},
+		}
+
+		mp := &mockmetrics.MetricsProvider{}
+		mp.On("NewInt64Counter", mock.AnythingOfType("string"), []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+
+		provider, err := cfg.ProvideLLMProvider(ctx, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp)
+		assert.Nil(t, provider)
+		assert.Error(t, err)
+
+		mock.AssertExpectationsForObjects(t, mp)
 	})
 }
 

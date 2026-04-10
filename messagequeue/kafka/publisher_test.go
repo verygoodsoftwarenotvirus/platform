@@ -347,7 +347,7 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 		ctx := t.Context()
 
 		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", mock.Anything, []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), errors.New("counter error"))
+		mp.On("NewInt64Counter", mock.Anything, []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("counter error"))
 
 		cfg := Config{
 			Brokers: []string{"localhost:9092"},
@@ -373,8 +373,8 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 		ctx := t.Context()
 
 		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", mock.Anything, []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), nil).Once()
-		mp.On("NewInt64Counter", mock.Anything, []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), errors.New("counter error")).Once()
+		mp.On("NewInt64Counter", mock.Anything, []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil).Once()
+		mp.On("NewInt64Counter", mock.Anything, []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("counter error")).Once()
 
 		cfg := Config{
 			Brokers: []string{"localhost:9092"},
@@ -400,7 +400,7 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 		ctx := t.Context()
 
 		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", mock.Anything, []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), nil)
+		mp.On("NewInt64Counter", mock.Anything, []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
 		mp.On("NewFloat64Histogram", mock.Anything, []metric.Float64HistogramOption(nil)).Return(&metrics.Float64HistogramImpl{}, errors.New("histogram error"))
 
 		cfg := Config{

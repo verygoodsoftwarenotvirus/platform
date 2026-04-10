@@ -194,7 +194,7 @@ func Test_kafkaConsumer_Consume(T *testing.T) {
 			reader:          reader,
 			logger:          logging.NewNoopLogger(),
 			tracer:          tracing.NewTracerForTest(t.Name()),
-			consumedCounter: metrics.Int64CounterForTest(t.Name()),
+			consumedCounter: metrics.Int64CounterForTest(t, t.Name()),
 			handlerFunc: func(_ context.Context, data []byte) error {
 				handlerCalled = true
 				assert.Equal(t, []byte("test-message"), data)
@@ -228,7 +228,7 @@ func Test_kafkaConsumer_Consume(T *testing.T) {
 			reader:          reader,
 			logger:          logging.NewNoopLogger(),
 			tracer:          tracing.NewTracerForTest(t.Name()),
-			consumedCounter: metrics.Int64CounterForTest(t.Name()),
+			consumedCounter: metrics.Int64CounterForTest(t, t.Name()),
 			handlerFunc: func(context.Context, []byte) error {
 				cancel()
 				return handlerErr
@@ -260,7 +260,7 @@ func Test_kafkaConsumer_Consume(T *testing.T) {
 			reader:          reader,
 			logger:          logging.NewNoopLogger(),
 			tracer:          tracing.NewTracerForTest(t.Name()),
-			consumedCounter: metrics.Int64CounterForTest(t.Name()),
+			consumedCounter: metrics.Int64CounterForTest(t, t.Name()),
 			handlerFunc: func(context.Context, []byte) error {
 				cancel()
 				return errors.New("handler failed")
@@ -288,7 +288,7 @@ func Test_kafkaConsumer_Consume(T *testing.T) {
 			reader:          reader,
 			logger:          logging.NewNoopLogger(),
 			tracer:          tracing.NewTracerForTest(t.Name()),
-			consumedCounter: metrics.Int64CounterForTest(t.Name()),
+			consumedCounter: metrics.Int64CounterForTest(t, t.Name()),
 			handlerFunc: func(context.Context, []byte) error {
 				cancel()
 				return nil
@@ -383,7 +383,7 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 		ctx := t.Context()
 
 		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", mock.Anything, []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest("x"), errors.New("counter error"))
+		mp.On("NewInt64Counter", mock.Anything, []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("counter error"))
 
 		cfg := Config{
 			Brokers: []string{"localhost:9092"},

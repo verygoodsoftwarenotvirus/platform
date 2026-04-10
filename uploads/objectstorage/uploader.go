@@ -55,6 +55,7 @@ type (
 		S3Config          *S3Config                 `env:"init"                envPrefix:"S3_"                    json:"s3,omitempty"`
 		GCP               *GCPConfig                `env:"init"                envPrefix:"GCP_"                   json:"gcpConfig,omitempty"`
 		R2Config          *R2Config                 `env:"init"                envPrefix:"R2_"                    json:"r2,omitempty"`
+		BackblazeB2Config *BackblazeB2Config        `env:"init"                envPrefix:"BACKBLAZE_B2_"          json:"backblazeB2,omitempty"`
 		BucketPrefix      string                    `env:"BUCKET_PREFIX"       json:"bucketPrefix,omitempty"`
 		BucketName        string                    `env:"BUCKET_NAME"         json:"bucketName,omitempty"`
 		UploadFilenameKey string                    `env:"UPLOAD_FILENAME_KEY" json:"uploadFilenameKey,omitempty"`
@@ -69,11 +70,12 @@ var _ validation.ValidatableWithContext = (*Config)(nil)
 func (c *Config) ValidateWithContext(ctx context.Context) error {
 	return validation.ValidateStructWithContext(ctx, c,
 		validation.Field(&c.BucketName, validation.Required),
-		validation.Field(&c.Provider, validation.In(S3Provider, FilesystemProvider, MemoryProvider, GCPCloudStorageProvider, R2Provider)),
+		validation.Field(&c.Provider, validation.In(S3Provider, FilesystemProvider, MemoryProvider, GCPCloudStorageProvider, R2Provider, BackblazeB2Provider)),
 		validation.Field(&c.S3Config, validation.When(c.Provider == S3Provider, validation.Required).Else(validation.Nil)),
 		validation.Field(&c.GCP, validation.When(c.Provider == GCPCloudStorageProvider, validation.Required).Else(validation.Nil)),
 		validation.Field(&c.FilesystemConfig, validation.When(c.Provider == FilesystemProvider, validation.Required).Else(validation.Nil)),
 		validation.Field(&c.R2Config, validation.When(c.Provider == R2Provider, validation.Required).Else(validation.Nil)),
+		validation.Field(&c.BackblazeB2Config, validation.When(c.Provider == BackblazeB2Provider, validation.Required).Else(validation.Nil)),
 	)
 }
 
@@ -189,6 +191,23 @@ func (u *Uploader) selectBucket(ctx context.Context, cfg *Config) (err error) {
 			UseLegacyList: false,
 		}); err != nil {
 			return platformerrors.Wrap(err, "initializing r2 bucket")
+		}
+	case BackblazeB2Provider:
+		if cfg.BackblazeB2Config == nil {
+			return ErrNilConfig
+		}
+
+		endpoint := fmt.Sprintf("https://s3.%s.backblazeb2.com", cfg.BackblazeB2Config.Region)
+		client := s3v2.New(s3v2.Options{
+			BaseEndpoint: aws.String(endpoint),
+			Credentials:  credentials.NewStaticCredentialsProvider(cfg.BackblazeB2Config.ApplicationKeyID, cfg.BackblazeB2Config.ApplicationKey, ""),
+			Region:       cfg.BackblazeB2Config.Region,
+		})
+
+		if u.bucket, err = s3blob.OpenBucketV2(ctx, client, cfg.BackblazeB2Config.BucketName, &s3blob.Options{
+			UseLegacyList: false,
+		}); err != nil {
+			return platformerrors.Wrap(err, "initializing backblaze b2 bucket")
 		}
 	case MemoryProvider:
 		u.bucket = memblob.OpenBucket(&memblob.Options{})

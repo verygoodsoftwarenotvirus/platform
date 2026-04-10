@@ -130,6 +130,36 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		assert.Error(t, cfg.ValidateWithContext(ctx))
 	})
 
+	T.Run("with backblaze b2 provider", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		cfg := &Config{
+			BucketName: t.Name(),
+			Provider:   BackblazeB2Provider,
+			BackblazeB2Config: &BackblazeB2Config{
+				ApplicationKeyID: t.Name(),
+				ApplicationKey:   t.Name(),
+				BucketName:       t.Name(),
+				Region:           t.Name(),
+			},
+		}
+
+		assert.NoError(t, cfg.ValidateWithContext(ctx))
+	})
+
+	T.Run("with backblaze b2 provider missing config", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		cfg := &Config{
+			BucketName: t.Name(),
+			Provider:   BackblazeB2Provider,
+		}
+
+		assert.Error(t, cfg.ValidateWithContext(ctx))
+	})
+
 	T.Run("with memory provider", func(t *testing.T) {
 		t.Parallel()
 
@@ -329,6 +359,37 @@ func TestUploader_selectBucket(T *testing.T) {
 		cfg := &Config{
 			Provider: R2Provider,
 			R2Config: nil,
+		}
+
+		assert.Error(t, u.selectBucket(ctx, cfg))
+	})
+
+	T.Run("backblaze b2 happy path", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		u := &Uploader{}
+		cfg := &Config{
+			Provider: BackblazeB2Provider,
+			BackblazeB2Config: &BackblazeB2Config{
+				ApplicationKeyID: t.Name(),
+				ApplicationKey:   t.Name(),
+				BucketName:       t.Name(),
+				Region:           t.Name(),
+			},
+		}
+
+		assert.NoError(t, u.selectBucket(ctx, cfg))
+	})
+
+	T.Run("backblaze b2 with nil config", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		u := &Uploader{}
+		cfg := &Config{
+			Provider:          BackblazeB2Provider,
+			BackblazeB2Config: nil,
 		}
 
 		assert.Error(t, u.selectBucket(ctx, cfg))

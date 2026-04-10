@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v5/cache/config/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/cache/redis"
 	circuitbreakingcfg "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/config"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
@@ -128,7 +129,7 @@ func TestProvideCache(T *testing.T) {
 			},
 		}
 
-		mp := &ProviderMock{
+		mp := &mock.MetricsProviderMock{
 			NewInt64CounterFunc: func(name string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
 				test.EqOp(t, "redis-cache-breaker_circuit_breaker_tripped", name)
 				return nil, errors.New("counter init failure")

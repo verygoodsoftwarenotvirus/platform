@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/cache"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/cache/redis/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
@@ -28,7 +29,7 @@ func gobEncodeExample(t *testing.T, e *example) string {
 	return buf.String()
 }
 
-func buildTestImpl(t *testing.T) (*redisCacheImpl[example], *redisClientMock, *CircuitBreakerMock) {
+func buildTestImpl(t *testing.T) (*redisCacheImpl[example], *mock.RedisClientMock, *mock.CircuitBreakerMock) {
 	t.Helper()
 
 	mp := metrics.NewNoopMetricsProvider()
@@ -51,8 +52,8 @@ func buildTestImpl(t *testing.T) (*redisCacheImpl[example], *redisClientMock, *C
 	latencyHist, err := mp.NewFloat64Histogram("test_latency")
 	must.NoError(t, err)
 
-	client := &redisClientMock{}
-	cb := &CircuitBreakerMock{}
+	client := &mock.RedisClientMock{}
+	cb := &mock.CircuitBreakerMock{}
 
 	return &redisCacheImpl[example]{
 		logger:           logging.NewNoopLogger(),
@@ -75,11 +76,12 @@ type counterResult struct {
 	err     error
 }
 
-// newCounterProviderMock returns a ProviderMock whose NewInt64Counter implementation
-// looks up the result keyed on the counter name. Unknown names fail the test.
-func newCounterProviderMock(t *testing.T, results map[string]counterResult) *ProviderMock {
+// newCounterProviderMock returns a MetricsProviderMock whose NewInt64Counter
+// implementation looks up the result keyed on the counter name. Unknown names
+// fail the test.
+func newCounterProviderMock(t *testing.T, results map[string]counterResult) *mock.MetricsProviderMock {
 	t.Helper()
-	return &ProviderMock{
+	return &mock.MetricsProviderMock{
 		NewInt64CounterFunc: func(metricName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
 			res, ok := results[metricName]
 			if !ok {
@@ -247,7 +249,7 @@ func TestNewRedisCache(T *testing.T) {
 		h, histErr := noopMP.NewFloat64Histogram("test")
 		must.NoError(t, histErr)
 
-		mp := &ProviderMock{
+		mp := &mock.MetricsProviderMock{
 			NewInt64CounterFunc: func(_ string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
 				return metrics.Int64CounterForTest(t, "x"), nil
 			},

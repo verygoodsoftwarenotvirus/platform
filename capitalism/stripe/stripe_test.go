@@ -2,6 +2,7 @@ package stripe
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,8 +14,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/random"
 
+	"github.com/shoenig/test"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/stripe/stripe-go/v75"
 	"github.com/stripe/stripe-go/v75/webhook"
@@ -110,8 +111,11 @@ func Test_stripePaymentManager_HandleSubscriptionEventWebhook(T *testing.T) {
 		require.NoError(t, err)
 		eventPayload := pm.encoderDecoder.MustEncode(ctx, event)
 
-		encoderDecoder := mockencoding.NewMockEncoderDecoder()
-		encoderDecoder.On("DecodeBytes", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		encoderDecoder := &mockencoding.ServerEncoderDecoderMock{
+			DecodeBytesFunc: func(_ context.Context, _ []byte, _ any) error {
+				return nil
+			},
+		}
 		pm.encoderDecoder = encoderDecoder
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://whatever.whocares.gov", bytes.NewReader(eventPayload))
@@ -122,7 +126,7 @@ func Test_stripePaymentManager_HandleSubscriptionEventWebhook(T *testing.T) {
 		err = pm.HandleEventWebhook(req)
 		assert.NoError(t, err)
 
-		mock.AssertExpectationsForObjects(t, encoderDecoder)
+		test.SliceLen(t, 1, encoderDecoder.DecodeBytesCalls())
 	})
 
 	T.Run("with error reading body", func(t *testing.T) {
@@ -191,8 +195,11 @@ func Test_stripePaymentManager_HandleSubscriptionEventWebhook(T *testing.T) {
 		require.NoError(t, err)
 		eventPayload := pm.encoderDecoder.MustEncode(ctx, event)
 
-		encoderDecoder := mockencoding.NewMockEncoderDecoder()
-		encoderDecoder.On("DecodeBytes", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("decode error"))
+		encoderDecoder := &mockencoding.ServerEncoderDecoderMock{
+			DecodeBytesFunc: func(_ context.Context, _ []byte, _ any) error {
+				return fmt.Errorf("decode error")
+			},
+		}
 		pm.encoderDecoder = encoderDecoder
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://whatever.whocares.gov", bytes.NewReader(eventPayload))
@@ -203,7 +210,7 @@ func Test_stripePaymentManager_HandleSubscriptionEventWebhook(T *testing.T) {
 		err = pm.HandleEventWebhook(req)
 		assert.Error(t, err)
 
-		mock.AssertExpectationsForObjects(t, encoderDecoder)
+		test.SliceLen(t, 1, encoderDecoder.DecodeBytesCalls())
 	})
 
 	T.Run("with unhandled event type", func(t *testing.T) {

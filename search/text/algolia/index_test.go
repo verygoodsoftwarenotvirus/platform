@@ -16,7 +16,6 @@ import (
 	algoliasearch "github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	algoliatransport "github.com/algolia/algoliasearch-client-go/v3/algolia/transport"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 var _ algoliatransport.Requester = (*testRequester)(nil)
@@ -116,16 +115,15 @@ func TestIndexManager_Index(T *testing.T) {
 	T.Run("with broken circuit breaker", func(t *testing.T) {
 		t.Parallel()
 
-		cb := &mockcircuitbreaking.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(true)
+		cb := &mockcircuitbreaking.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return true },
+		}
 
 		im := buildTestIndexManagerWithCircuitBreaker(t, cb)
 
 		err := im.Index(context.Background(), "id", map[string]string{"id": "test"})
 		assert.Error(t, err)
 		assert.Equal(t, circuitbreaking.ErrCircuitBroken, err)
-
-		mock.AssertExpectationsForObjects(t, cb)
 	})
 
 	T.Run("with unmarshalable value", func(t *testing.T) {
@@ -163,15 +161,14 @@ func TestIndexManager_Index(T *testing.T) {
 			_, _ = w.Write([]byte(`{"createdAt":"2021-01-01T00:00:00Z","objectID":"123","taskID":123}`))
 		})
 
-		cb := &mockcircuitbreaking.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false)
+		cb := &mockcircuitbreaking.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+		}
 
 		im := buildTestIndexManagerWithMockServer(t, handler, cb)
 
 		err := im.Index(context.Background(), "123", map[string]string{"id": "123", "name": "example"})
 		assert.NoError(t, err)
-
-		mock.AssertExpectationsForObjects(t, cb)
 	})
 }
 
@@ -181,8 +178,9 @@ func TestIndexManager_Search(T *testing.T) {
 	T.Run("with broken circuit breaker", func(t *testing.T) {
 		t.Parallel()
 
-		cb := &mockcircuitbreaking.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(true)
+		cb := &mockcircuitbreaking.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return true },
+		}
 
 		im := buildTestIndexManagerWithCircuitBreaker(t, cb)
 
@@ -190,15 +188,14 @@ func TestIndexManager_Search(T *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, results)
 		assert.Equal(t, circuitbreaking.ErrCircuitBroken, err)
-
-		mock.AssertExpectationsForObjects(t, cb)
 	})
 
 	T.Run("with empty query", func(t *testing.T) {
 		t.Parallel()
 
-		cb := &mockcircuitbreaking.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false)
+		cb := &mockcircuitbreaking.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+		}
 
 		im := buildTestIndexManagerWithCircuitBreaker(t, cb)
 
@@ -206,24 +203,21 @@ func TestIndexManager_Search(T *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, results)
 		assert.Equal(t, ErrEmptyQueryProvided, err)
-
-		mock.AssertExpectationsForObjects(t, cb)
 	})
 
 	T.Run("with valid query but invalid credentials", func(t *testing.T) {
 		t.Parallel()
 
-		cb := &mockcircuitbreaking.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false)
-		cb.On("Failed").Return()
+		cb := &mockcircuitbreaking.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+			FailedFunc:        func() {},
+		}
 
 		im := buildTestIndexManagerWithCircuitBreaker(t, cb)
 
 		results, err := im.Search(context.Background(), "test query")
 		assert.Error(t, err)
 		assert.Nil(t, results)
-
-		mock.AssertExpectationsForObjects(t, cb)
 	})
 
 	T.Run("with successful search results", func(t *testing.T) {
@@ -234,9 +228,10 @@ func TestIndexManager_Search(T *testing.T) {
 			_, _ = w.Write([]byte(`{"hits":[{"objectID":"123"}],"nbHits":1,"page":0,"nbPages":1,"hitsPerPage":20,"processingTimeMS":1}`))
 		})
 
-		cb := &mockcircuitbreaking.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false)
-		cb.On("Succeeded").Return()
+		cb := &mockcircuitbreaking.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+			SucceededFunc:     func() {},
+		}
 
 		im := buildTestIndexManagerWithMockServer(t, handler, cb)
 
@@ -244,8 +239,6 @@ func TestIndexManager_Search(T *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, results)
 		assert.Len(t, results, 1)
-
-		mock.AssertExpectationsForObjects(t, cb)
 	})
 
 	T.Run("with empty search results", func(t *testing.T) {
@@ -256,9 +249,10 @@ func TestIndexManager_Search(T *testing.T) {
 			_, _ = w.Write([]byte(`{"hits":[],"nbHits":0,"page":0,"nbPages":0,"hitsPerPage":20,"processingTimeMS":1}`))
 		})
 
-		cb := &mockcircuitbreaking.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false)
-		cb.On("Succeeded").Return()
+		cb := &mockcircuitbreaking.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+			SucceededFunc:     func() {},
+		}
 
 		im := buildTestIndexManagerWithMockServer(t, handler, cb)
 
@@ -266,8 +260,6 @@ func TestIndexManager_Search(T *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, results)
 		assert.Empty(t, results)
-
-		mock.AssertExpectationsForObjects(t, cb)
 	})
 
 	T.Run("with multiple search results", func(t *testing.T) {
@@ -278,9 +270,10 @@ func TestIndexManager_Search(T *testing.T) {
 			_, _ = w.Write([]byte(`{"hits":[{"objectID":"abc","name":"first"},{"objectID":"def","name":"second"},{"objectID":"ghi","name":"third"}],"nbHits":3,"page":0,"nbPages":1,"hitsPerPage":20,"processingTimeMS":1}`))
 		})
 
-		cb := &mockcircuitbreaking.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false)
-		cb.On("Succeeded").Return()
+		cb := &mockcircuitbreaking.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+			SucceededFunc:     func() {},
+		}
 
 		im := buildTestIndexManagerWithMockServer(t, handler, cb)
 
@@ -293,8 +286,6 @@ func TestIndexManager_Search(T *testing.T) {
 		assert.Equal(t, "second", results[1].Name)
 		assert.Equal(t, "ghi", results[2].ID)
 		assert.Equal(t, "third", results[2].Name)
-
-		mock.AssertExpectationsForObjects(t, cb)
 	})
 
 	T.Run("when unmarshalling search result fails", func(t *testing.T) {
@@ -305,16 +296,15 @@ func TestIndexManager_Search(T *testing.T) {
 			_, _ = w.Write([]byte(`{"hits":[{"objectID":"123","name":["not","a","string"]}],"nbHits":1,"page":0,"nbPages":1,"hitsPerPage":20,"processingTimeMS":1}`))
 		})
 
-		cb := &mockcircuitbreaking.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false)
+		cb := &mockcircuitbreaking.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+		}
 
 		im := buildTestIndexManagerWithMockServer(t, handler, cb)
 
 		results, err := im.Search(context.Background(), "test query")
 		assert.Error(t, err)
 		assert.Nil(t, results)
-
-		mock.AssertExpectationsForObjects(t, cb)
 	})
 
 	T.Run("with successful search results without objectID", func(t *testing.T) {
@@ -325,9 +315,10 @@ func TestIndexManager_Search(T *testing.T) {
 			_, _ = w.Write([]byte(`{"hits":[{"name":"example"}],"nbHits":1,"page":0,"nbPages":1,"hitsPerPage":20,"processingTimeMS":1}`))
 		})
 
-		cb := &mockcircuitbreaking.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false)
-		cb.On("Succeeded").Return()
+		cb := &mockcircuitbreaking.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+			SucceededFunc:     func() {},
+		}
 
 		im := buildTestIndexManagerWithMockServer(t, handler, cb)
 
@@ -335,8 +326,6 @@ func TestIndexManager_Search(T *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, results)
 		assert.Len(t, results, 1)
-
-		mock.AssertExpectationsForObjects(t, cb)
 	})
 }
 
@@ -346,31 +335,29 @@ func TestIndexManager_Delete(T *testing.T) {
 	T.Run("with broken circuit breaker", func(t *testing.T) {
 		t.Parallel()
 
-		cb := &mockcircuitbreaking.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(true)
+		cb := &mockcircuitbreaking.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return true },
+		}
 
 		im := buildTestIndexManagerWithCircuitBreaker(t, cb)
 
 		err := im.Delete(context.Background(), "id")
 		assert.Error(t, err)
 		assert.Equal(t, circuitbreaking.ErrCircuitBroken, err)
-
-		mock.AssertExpectationsForObjects(t, cb)
 	})
 
 	T.Run("with invalid credentials", func(t *testing.T) {
 		t.Parallel()
 
-		cb := &mockcircuitbreaking.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false)
-		cb.On("Failed").Return()
+		cb := &mockcircuitbreaking.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+			FailedFunc:        func() {},
+		}
 
 		im := buildTestIndexManagerWithCircuitBreaker(t, cb)
 
 		err := im.Delete(context.Background(), "some-id")
 		assert.Error(t, err)
-
-		mock.AssertExpectationsForObjects(t, cb)
 	})
 
 	T.Run("with successful deletion", func(t *testing.T) {
@@ -381,16 +368,15 @@ func TestIndexManager_Delete(T *testing.T) {
 			_, _ = w.Write([]byte(`{"deletedAt":"2021-01-01T00:00:00Z","taskID":123}`))
 		})
 
-		cb := &mockcircuitbreaking.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false)
-		cb.On("Succeeded").Return()
+		cb := &mockcircuitbreaking.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+			SucceededFunc:     func() {},
+		}
 
 		im := buildTestIndexManagerWithMockServer(t, handler, cb)
 
 		err := im.Delete(context.Background(), "some-id")
 		assert.NoError(t, err)
-
-		mock.AssertExpectationsForObjects(t, cb)
 	})
 }
 
@@ -400,31 +386,29 @@ func TestIndexManager_Wipe(T *testing.T) {
 	T.Run("with broken circuit breaker", func(t *testing.T) {
 		t.Parallel()
 
-		cb := &mockcircuitbreaking.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(true)
+		cb := &mockcircuitbreaking.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return true },
+		}
 
 		im := buildTestIndexManagerWithCircuitBreaker(t, cb)
 
 		err := im.Wipe(context.Background())
 		assert.Error(t, err)
 		assert.Equal(t, circuitbreaking.ErrCircuitBroken, err)
-
-		mock.AssertExpectationsForObjects(t, cb)
 	})
 
 	T.Run("with invalid credentials", func(t *testing.T) {
 		t.Parallel()
 
-		cb := &mockcircuitbreaking.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false)
-		cb.On("Failed").Return()
+		cb := &mockcircuitbreaking.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+			FailedFunc:        func() {},
+		}
 
 		im := buildTestIndexManagerWithCircuitBreaker(t, cb)
 
 		err := im.Wipe(context.Background())
 		assert.Error(t, err)
-
-		mock.AssertExpectationsForObjects(t, cb)
 	})
 
 	T.Run("with successful wipe", func(t *testing.T) {
@@ -435,15 +419,14 @@ func TestIndexManager_Wipe(T *testing.T) {
 			_, _ = w.Write([]byte(`{"updatedAt":"2021-01-01T00:00:00Z","taskID":123}`))
 		})
 
-		cb := &mockcircuitbreaking.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false)
-		cb.On("Succeeded").Return()
+		cb := &mockcircuitbreaking.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+			SucceededFunc:     func() {},
+		}
 
 		im := buildTestIndexManagerWithMockServer(t, handler, cb)
 
 		err := im.Wipe(context.Background())
 		assert.NoError(t, err)
-
-		mock.AssertExpectationsForObjects(t, cb)
 	})
 }

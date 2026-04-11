@@ -8,38 +8,31 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/messagequeue"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/v5/testutils"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/metric"
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
 )
 
 type mockMessageReceiver struct {
-	mock.Mock
+	receiveMessageFunc func(ctx context.Context, input *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error)
+	deleteMessageFunc  func(ctx context.Context, input *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)
+	deleteMessageCalls int
 }
 
 func (m *mockMessageReceiver) ReceiveMessage(ctx context.Context, input *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
-	retVals := m.Called(ctx, input, optFns)
-	out := retVals.Get(0)
-	if out == nil {
-		return nil, retVals.Error(1)
-	}
-	return out.(*sqs.ReceiveMessageOutput), retVals.Error(1)
+	return m.receiveMessageFunc(ctx, input, optFns...)
 }
 
 func (m *mockMessageReceiver) DeleteMessage(ctx context.Context, input *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
-	retVals := m.Called(ctx, input, optFns)
-	out := retVals.Get(0)
-	if out == nil {
-		return nil, retVals.Error(1)
-	}
-	return out.(*sqs.DeleteMessageOutput), retVals.Error(1)
+	m.deleteMessageCalls++
+	return m.deleteMessageFunc(ctx, input, optFns...)
 }
 
 func Test_sqsConsumer_Consume(T *testing.T) {
@@ -50,45 +43,36 @@ func Test_sqsConsumer_Consume(T *testing.T) {
 	T.Run("successful message handling and deletion", func(t *testing.T) {
 		t.Parallel()
 
-		mmr := &mockMessageReceiver{}
-		mmr.On(
-			"ReceiveMessage",
-			testutils.ContextMatcher,
-			mock.MatchedBy(func(in *sqs.ReceiveMessageInput) bool {
-				return aws.ToString(in.QueueUrl) == queueURL &&
-					in.MaxNumberOfMessages == maxNumberOfMessages &&
-					in.WaitTimeSeconds == longPollWaitSeconds
-			}),
-			mock.Anything,
-		).Return(&sqs.ReceiveMessageOutput{
-			Messages: []types.Message{
-				{
-					Body:          aws.String("test-payload"),
-					ReceiptHandle: aws.String("receipt-handle-123"),
-				},
+		deleteCalled := make(chan struct{}, 1)
+		var receiveCalls int
+		mmr := &mockMessageReceiver{
+			receiveMessageFunc: func(_ context.Context, in *sqs.ReceiveMessageInput, _ ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
+				receiveCalls++
+				if receiveCalls == 1 {
+					assert.Equal(t, queueURL, aws.ToString(in.QueueUrl))
+					assert.Equal(t, int32(maxNumberOfMessages), in.MaxNumberOfMessages)
+					assert.Equal(t, int32(longPollWaitSeconds), in.WaitTimeSeconds)
+					return &sqs.ReceiveMessageOutput{
+						Messages: []types.Message{
+							{
+								Body:          aws.String("test-payload"),
+								ReceiptHandle: aws.String("receipt-handle-123"),
+							},
+						},
+					}, nil
+				}
+				return &sqs.ReceiveMessageOutput{Messages: []types.Message{}}, nil
 			},
-		}, nil).Once()
-
-		mmr.On(
-			"ReceiveMessage",
-			testutils.ContextMatcher,
-			mock.Anything,
-			mock.Anything,
-		).Return(&sqs.ReceiveMessageOutput{Messages: []types.Message{}}, nil)
-
-		deleteCalled := make(chan struct{})
-		mmr.On(
-			"DeleteMessage",
-			testutils.ContextMatcher,
-			mock.MatchedBy(func(in *sqs.DeleteMessageInput) bool {
-				return aws.ToString(in.QueueUrl) == queueURL &&
-					aws.ToString(in.ReceiptHandle) == "receipt-handle-123"
-			}),
-			mock.Anything,
-		).Run(func(args mock.Arguments) { deleteCalled <- struct{}{} }).Return(&sqs.DeleteMessageOutput{}, nil).Once()
+			deleteMessageFunc: func(_ context.Context, in *sqs.DeleteMessageInput, _ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
+				assert.Equal(t, queueURL, aws.ToString(in.QueueUrl))
+				assert.Equal(t, "receipt-handle-123", aws.ToString(in.ReceiptHandle))
+				deleteCalled <- struct{}{}
+				return &sqs.DeleteMessageOutput{}, nil
+			},
+		}
 
 		handlerDone := make(chan []byte, 1)
-		handler := func(ctx context.Context, body []byte) error {
+		handler := func(_ context.Context, body []byte) error {
 			handlerDone <- body
 			return nil
 		}
@@ -104,36 +88,35 @@ func Test_sqsConsumer_Consume(T *testing.T) {
 		stopChan <- true
 
 		assert.Equal(t, []byte("test-payload"), receivedBody)
-		mock.AssertExpectationsForObjects(t, mmr)
 	})
 
 	T.Run("handler error does not delete message", func(t *testing.T) {
 		t.Parallel()
 
 		anticipatedErr := errors.New("handler failed")
-		mmr := &mockMessageReceiver{}
-		mmr.On(
-			"ReceiveMessage",
-			testutils.ContextMatcher,
-			mock.Anything,
-			mock.Anything,
-		).Return(&sqs.ReceiveMessageOutput{
-			Messages: []types.Message{
-				{
-					Body:          aws.String("fail-payload"),
-					ReceiptHandle: aws.String("receipt-handle-456"),
-				},
+		var receiveCalls int
+		mmr := &mockMessageReceiver{
+			receiveMessageFunc: func(_ context.Context, _ *sqs.ReceiveMessageInput, _ ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
+				receiveCalls++
+				if receiveCalls == 1 {
+					return &sqs.ReceiveMessageOutput{
+						Messages: []types.Message{
+							{
+								Body:          aws.String("fail-payload"),
+								ReceiptHandle: aws.String("receipt-handle-456"),
+							},
+						},
+					}, nil
+				}
+				return &sqs.ReceiveMessageOutput{Messages: []types.Message{}}, nil
 			},
-		}, nil).Once()
+			deleteMessageFunc: func(_ context.Context, _ *sqs.DeleteMessageInput, _ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
+				t.Fatal("DeleteMessage should not be called when handler errors")
+				return nil, nil
+			},
+		}
 
-		mmr.On(
-			"ReceiveMessage",
-			testutils.ContextMatcher,
-			mock.Anything,
-			mock.Anything,
-		).Return(&sqs.ReceiveMessageOutput{Messages: []types.Message{}}, nil)
-
-		handler := func(ctx context.Context, body []byte) error {
+		handler := func(_ context.Context, _ []byte) error {
 			return anticipatedErr
 		}
 
@@ -149,8 +132,7 @@ func Test_sqsConsumer_Consume(T *testing.T) {
 
 		stopChan <- true
 
-		mmr.AssertNotCalled(t, "DeleteMessage")
-		mock.AssertExpectationsForObjects(t, mmr)
+		assert.Zero(t, mmr.deleteMessageCalls)
 	})
 }
 
@@ -242,13 +224,14 @@ func Test_provideSQSConsumer(T *testing.T) {
 	T.Run("panics when NewInt64Counter fails", func(t *testing.T) {
 		t.Parallel()
 
-		mp := &metrics.MockProvider{}
-		mp.On("NewInt64Counter", "t_consumed", mock.Anything).Return(metricnoop.Int64Counter{}, errors.New("forced error"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(string, ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				return metricnoop.Int64Counter{}, errors.New("forced error")
+			},
+		}
 
 		assert.Panics(t, func() {
 			provideSQSConsumer(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, nil, "t", nil)
 		})
-
-		mock.AssertExpectationsForObjects(t, mp)
 	})
 }

@@ -7,11 +7,12 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/messagequeue"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/metric"
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
 )
 
@@ -28,43 +29,57 @@ func TestBuildPubSubPublisher(T *testing.T) {
 	T.Run("panics when first NewInt64Counter fails", func(t *testing.T) {
 		t.Parallel()
 
-		mp := &metrics.MockProvider{}
-		mp.On("NewInt64Counter", "t_published", mock.Anything).Return(metricnoop.Int64Counter{}, errors.New("forced error"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(name string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				if name == "t_published" {
+					return metricnoop.Int64Counter{}, errors.New("forced error")
+				}
+				t.Fatalf("unexpected NewInt64Counter call: %q", name)
+				return nil, nil
+			},
+		}
 
 		assert.Panics(t, func() {
 			buildPubSubPublisher(logging.NewNoopLogger(), nil, tracing.NewNoopTracerProvider(), mp, "t")
 		})
-
-		mock.AssertExpectationsForObjects(t, mp)
 	})
 
 	T.Run("panics when second NewInt64Counter fails", func(t *testing.T) {
 		t.Parallel()
 
-		mp := &metrics.MockProvider{}
-		mp.On("NewInt64Counter", "t_published", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
-		mp.On("NewInt64Counter", "t_publish_errors", mock.Anything).Return(metricnoop.Int64Counter{}, errors.New("forced error"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(name string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				switch name {
+				case "t_published":
+					return metricnoop.Int64Counter{}, nil
+				case "t_publish_errors":
+					return metricnoop.Int64Counter{}, errors.New("forced error")
+				}
+				t.Fatalf("unexpected NewInt64Counter call: %q", name)
+				return nil, nil
+			},
+		}
 
 		assert.Panics(t, func() {
 			buildPubSubPublisher(logging.NewNoopLogger(), nil, tracing.NewNoopTracerProvider(), mp, "t")
 		})
-
-		mock.AssertExpectationsForObjects(t, mp)
 	})
 
 	T.Run("panics when NewFloat64Histogram fails", func(t *testing.T) {
 		t.Parallel()
 
-		mp := &metrics.MockProvider{}
-		mp.On("NewInt64Counter", "t_published", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
-		mp.On("NewInt64Counter", "t_publish_errors", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
-		mp.On("NewFloat64Histogram", "t_publish_latency_ms", mock.Anything).Return(metricnoop.Float64Histogram{}, errors.New("forced error"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(string, ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				return metricnoop.Int64Counter{}, nil
+			},
+			NewFloat64HistogramFunc: func(string, ...metric.Float64HistogramOption) (metrics.Float64Histogram, error) {
+				return metricnoop.Float64Histogram{}, errors.New("forced error")
+			},
+		}
 
 		assert.Panics(t, func() {
 			buildPubSubPublisher(logging.NewNoopLogger(), nil, tracing.NewNoopTracerProvider(), mp, "t")
 		})
-
-		mock.AssertExpectationsForObjects(t, mp)
 	})
 }
 

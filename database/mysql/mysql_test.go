@@ -13,7 +13,6 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -62,15 +61,7 @@ func (c *testClientConfig) GetConnMaxLifetime() time.Duration {
 	return 30 * time.Minute
 }
 
-type sqlmockExpecterWrapper struct {
-	sqlmock.Sqlmock
-}
-
-func (e *sqlmockExpecterWrapper) AssertExpectations(t mock.TestingT) bool {
-	return assert.NoError(t, e.ExpectationsWereMet(), "not all database expectations were met")
-}
-
-func buildTestClient(t *testing.T) (*Client, *sqlmockExpecterWrapper) {
+func buildTestClient(t *testing.T) (*Client, sqlmock.Sqlmock) {
 	t.Helper()
 
 	fakeDB, sqlMock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
@@ -88,7 +79,7 @@ func buildTestClient(t *testing.T) (*Client, *sqlmockExpecterWrapper) {
 		tracer:   tracing.NewTracerForTest("test"),
 	}
 
-	return c, &sqlmockExpecterWrapper{Sqlmock: sqlMock}
+	return c, sqlMock
 }
 
 // end helper funcs

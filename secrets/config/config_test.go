@@ -16,8 +16,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsssm "github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/aws/aws-sdk-go-v2/service/ssm/types"
+	"github.com/shoenig/test"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/metric"
 	corev1 "k8s.io/api/core/v1"
@@ -284,36 +284,45 @@ func TestConfig_ProvideSecretSource(T *testing.T) {
 	T.Run("nil config with metrics error", func(t *testing.T) {
 		t.Parallel()
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", mock.AnythingOfType("string"), []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(_ string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				return metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary")
+			},
+		}
 
 		var cfg *Config
 		source, err := cfg.ProvideSecretSource(context.Background(), nil, nil, mp)
 		require.Error(t, err)
 		assert.Nil(t, source)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("env provider with metrics error", func(t *testing.T) {
 		t.Parallel()
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", mock.AnythingOfType("string"), []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(_ string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				return metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary")
+			},
+		}
 
 		cfg := &Config{Provider: ProviderEnv}
 		source, err := cfg.ProvideSecretSource(context.Background(), nil, nil, mp)
 		require.Error(t, err)
 		assert.Nil(t, source)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("gcp provider with metrics error", func(t *testing.T) {
 		t.Parallel()
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", mock.AnythingOfType("string"), []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(_ string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				return metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary")
+			},
+		}
 
 		cfg := &Config{
 			Provider:  ProviderGCP,
@@ -324,14 +333,17 @@ func TestConfig_ProvideSecretSource(T *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, source)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("ssm provider with metrics error", func(t *testing.T) {
 		t.Parallel()
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", mock.AnythingOfType("string"), []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(_ string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				return metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary")
+			},
+		}
 
 		cfg := &Config{
 			Provider:  ProviderSSM,
@@ -342,14 +354,17 @@ func TestConfig_ProvideSecretSource(T *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, source)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("kubectl provider with metrics error", func(t *testing.T) {
 		t.Parallel()
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", mock.AnythingOfType("string"), []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(_ string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				return metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary")
+			},
+		}
 
 		cfg := &Config{
 			Provider:      ProviderKubectl,
@@ -360,6 +375,6 @@ func TestConfig_ProvideSecretSource(T *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, source)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 }

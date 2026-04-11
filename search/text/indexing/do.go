@@ -16,7 +16,7 @@ import (
 // Prerequisites: map[string]Function and *msgconfig.QueuesConfig must be
 // registered in the injector before calling this.
 func RegisterIndexScheduler(i do.Injector) {
-	do.Provide[*IndexScheduler](i, func(i do.Injector) (*IndexScheduler, error) {
+	do.Provide(i, func(i do.Injector) (*IndexScheduler, error) {
 		return NewIndexScheduler(
 			do.MustInvoke[context.Context](i),
 			do.MustInvoke[logging.Logger](i),

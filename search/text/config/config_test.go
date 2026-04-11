@@ -13,6 +13,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/search/text/algolia"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/search/text/elasticsearch"
 
+	"github.com/shoenig/test"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -291,11 +292,14 @@ func TestConfig_ProvideIndex(T *testing.T) {
 			},
 		}
 
-		mp := &mockmetrics.MetricsProvider{}
 		// Force the very first counter creation to fail so ProvideCircuitBreaker
 		// returns an error, which is wrapped by ProvideIndex.
-		mp.On("NewInt64Counter", "test-breaker_circuit_breaker_tripped", []metric.Int64CounterOption(nil)).
-			Return(&mockmetrics.Int64Counter{}, errors.New("counter init failure"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, "test-breaker_circuit_breaker_tripped", counterName)
+				return &mockmetrics.Int64CounterMock{}, errors.New("counter init failure")
+			},
+		}
 
 		logger := logging.NewNoopLogger()
 		tracerProvider := tracing.NewNoopTracerProvider()
@@ -303,7 +307,8 @@ func TestConfig_ProvideIndex(T *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, index)
 		assert.Contains(t, err.Error(), "circuit breaker")
-		mp.AssertExpectations(t)
+
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 }
 

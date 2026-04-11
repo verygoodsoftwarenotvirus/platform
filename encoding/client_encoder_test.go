@@ -10,11 +10,9 @@ import (
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/v5/reflection"
 
 	"github.com/keith-turner/ecoji/v2"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -108,8 +106,11 @@ func Test_clientEncoder_Encode(T *testing.T) {
 			ctx := t.Context()
 			e := ProvideClientEncoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), ct)
 
-			mw := &mockWriter{}
-			mw.On(reflection.GetMethodName(mw.Write), mock.Anything).Return(0, errors.New("blah"))
+			mw := &mockWriter{
+				WriteFunc: func(_ []byte) (int, error) {
+					return 0, errors.New("blah")
+				},
+			}
 
 			assert.Error(t, e.Encode(ctx, mw, &example{Name: t.Name()}))
 		})

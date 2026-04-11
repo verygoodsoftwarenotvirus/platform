@@ -15,9 +15,10 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	firebase "firebase.google.com/go/v4"
+	"github.com/shoenig/test"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/metric"
 	"google.golang.org/api/option"
 )
 
@@ -134,15 +135,20 @@ func TestNewSender(T *testing.T) {
 		path := filepath.Join(dir, "creds.json")
 		require.NoError(t, os.WriteFile(path, []byte(fakeServiceAccountJSON), 0o600))
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", o11yName+"_sends", mock.Anything).
-			Return((*metrics.Int64CounterImpl)(nil), errors.New("counter error"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				assert.Equal(t, o11yName+"_sends", counterName)
+				return (*metrics.Int64CounterImpl)(nil), errors.New("counter error")
+			},
+		}
 
 		cfg := &Config{CredentialsPath: path}
 		sender, err := NewSender(ctx, cfg, tracingProvider, logger, mp)
 		assert.Nil(t, sender)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "creating send counter")
+
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("with error counter creation error", func(t *testing.T) {
@@ -152,17 +158,26 @@ func TestNewSender(T *testing.T) {
 		path := filepath.Join(dir, "creds.json")
 		require.NoError(t, os.WriteFile(path, []byte(fakeServiceAccountJSON), 0o600))
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", o11yName+"_sends", mock.Anything).
-			Return((*metrics.Int64CounterImpl)(nil), nil)
-		mp.On("NewInt64Counter", o11yName+"_errors", mock.Anything).
-			Return((*metrics.Int64CounterImpl)(nil), errors.New("counter error"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				switch counterName {
+				case o11yName + "_sends":
+					return (*metrics.Int64CounterImpl)(nil), nil
+				case o11yName + "_errors":
+					return (*metrics.Int64CounterImpl)(nil), errors.New("counter error")
+				}
+				t.Fatalf("unexpected NewInt64Counter call: %q", counterName)
+				return nil, nil
+			},
+		}
 
 		cfg := &Config{CredentialsPath: path}
 		sender, err := NewSender(ctx, cfg, tracingProvider, logger, mp)
 		assert.Nil(t, sender)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "creating error counter")
+
+		test.SliceLen(t, 2, mp.NewInt64CounterCalls())
 	})
 }
 

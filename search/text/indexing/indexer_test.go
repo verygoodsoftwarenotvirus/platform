@@ -6,16 +6,17 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v5/messagequeue"
 	msgconfig "github.com/verygoodsoftwarenotvirus/platform/v5/messagequeue/config"
 	mockpublishers "github.com/verygoodsoftwarenotvirus/platform/v5/messagequeue/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/v5/reflection"
 	textsearch "github.com/verygoodsoftwarenotvirus/platform/v5/search/text"
 
+	"github.com/shoenig/test"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -31,16 +32,25 @@ func TestNewIndexScheduler(T *testing.T) {
 		ctx := t.Context()
 		logger := logging.NewNoopLogger()
 		tracerProvider := tracing.NewNoopTracerProvider()
-		metricsProvider := &mockmetrics.MetricsProvider{}
-		messageQueueProvider := &mockpublishers.PublisherProvider{}
 
 		// Mock metrics provider
-		int64Counter := &mockmetrics.Int64Counter{}
-		metricsProvider.On(reflection.GetMethodName(metricsProvider.NewInt64Counter), "indexer.handled_records", []metric.Int64CounterOption(nil)).Return(int64Counter, nil)
+		int64Counter := &mockmetrics.Int64CounterMock{
+			AddFunc: func(_ context.Context, _ int64, _ ...metric.AddOption) {},
+		}
+		metricsProvider := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, "indexer.handled_records", counterName)
+				return int64Counter, nil
+			},
+		}
 
 		// Mock message queue provider
-		publisher := &mockpublishers.Publisher{}
-		messageQueueProvider.On(reflection.GetMethodName(messageQueueProvider.ProvidePublisher), testQueuesConfig.SearchIndexRequestsTopicName).Return(publisher, nil)
+		publisher := &mockpublishers.PublisherMock{}
+		messageQueueProvider := &mockpublishers.PublisherProviderMock{
+			ProvidePublisherFunc: func(_ context.Context, _ string) (messagequeue.Publisher, error) {
+				return publisher, nil
+			},
+		}
 
 		indexFunctions := map[string]Function{
 			"test_type": func(ctx context.Context) ([]string, error) {
@@ -54,7 +64,9 @@ func TestNewIndexScheduler(T *testing.T) {
 		assert.Equal(t, []string{"test_type"}, scheduler.allIndexTypes)
 		assert.Len(t, scheduler.indexFunctions, 1)
 
-		mock.AssertExpectationsForObjects(t, metricsProvider, messageQueueProvider)
+		test.SliceLen(t, 1, metricsProvider.NewInt64CounterCalls())
+		test.SliceLen(t, 1, messageQueueProvider.ProvidePublisherCalls())
+		test.EqOp(t, testQueuesConfig.SearchIndexRequestsTopicName, messageQueueProvider.ProvidePublisherCalls()[0].Topic)
 	})
 
 	T.Run("with nil index functions", func(t *testing.T) {
@@ -63,16 +75,25 @@ func TestNewIndexScheduler(T *testing.T) {
 		ctx := t.Context()
 		logger := logging.NewNoopLogger()
 		tracerProvider := tracing.NewNoopTracerProvider()
-		metricsProvider := &mockmetrics.MetricsProvider{}
-		messageQueueProvider := &mockpublishers.PublisherProvider{}
 
 		// Mock metrics provider
-		int64Counter := &mockmetrics.Int64Counter{}
-		metricsProvider.On(reflection.GetMethodName(metricsProvider.NewInt64Counter), "indexer.handled_records", []metric.Int64CounterOption(nil)).Return(int64Counter, nil)
+		int64Counter := &mockmetrics.Int64CounterMock{
+			AddFunc: func(_ context.Context, _ int64, _ ...metric.AddOption) {},
+		}
+		metricsProvider := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, "indexer.handled_records", counterName)
+				return int64Counter, nil
+			},
+		}
 
 		// Mock message queue provider
-		publisher := &mockpublishers.Publisher{}
-		messageQueueProvider.On(reflection.GetMethodName(messageQueueProvider.ProvidePublisher), testQueuesConfig.SearchIndexRequestsTopicName).Return(publisher, nil)
+		publisher := &mockpublishers.PublisherMock{}
+		messageQueueProvider := &mockpublishers.PublisherProviderMock{
+			ProvidePublisherFunc: func(_ context.Context, _ string) (messagequeue.Publisher, error) {
+				return publisher, nil
+			},
+		}
 
 		scheduler, err := NewIndexScheduler(ctx, logger, tracerProvider, metricsProvider, messageQueueProvider, testQueuesConfig, nil)
 		assert.NoError(t, err)
@@ -81,7 +102,8 @@ func TestNewIndexScheduler(T *testing.T) {
 		assert.NotNil(t, scheduler.indexFunctions)
 		assert.Len(t, scheduler.indexFunctions, 0)
 
-		mock.AssertExpectationsForObjects(t, metricsProvider, messageQueueProvider)
+		test.SliceLen(t, 1, metricsProvider.NewInt64CounterCalls())
+		test.SliceLen(t, 1, messageQueueProvider.ProvidePublisherCalls())
 	})
 
 	T.Run("metrics provider error", func(t *testing.T) {
@@ -90,19 +112,23 @@ func TestNewIndexScheduler(T *testing.T) {
 		ctx := t.Context()
 		logger := logging.NewNoopLogger()
 		tracerProvider := tracing.NewNoopTracerProvider()
-		metricsProvider := &mockmetrics.MetricsProvider{}
-		messageQueueProvider := &mockpublishers.PublisherProvider{}
+		messageQueueProvider := &mockpublishers.PublisherProviderMock{}
 
 		// Mock metrics provider to return error - need to return a valid interface and error
-		int64Counter := &mockmetrics.Int64Counter{}
-		metricsProvider.On(reflection.GetMethodName(metricsProvider.NewInt64Counter), "indexer.handled_records", []metric.Int64CounterOption(nil)).Return(int64Counter, errors.New("metrics error"))
+		metricsProvider := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, "indexer.handled_records", counterName)
+				return &mockmetrics.Int64CounterMock{}, errors.New("metrics error")
+			},
+		}
 
 		scheduler, err := NewIndexScheduler(ctx, logger, tracerProvider, metricsProvider, messageQueueProvider, testQueuesConfig, nil)
 		assert.Error(t, err)
 		assert.Nil(t, scheduler)
 		assert.Contains(t, err.Error(), "metrics error")
 
-		mock.AssertExpectationsForObjects(t, metricsProvider)
+		test.SliceLen(t, 1, metricsProvider.NewInt64CounterCalls())
+		test.SliceLen(t, 0, messageQueueProvider.ProvidePublisherCalls())
 	})
 
 	T.Run("message queue provider error", func(t *testing.T) {
@@ -111,23 +137,32 @@ func TestNewIndexScheduler(T *testing.T) {
 		ctx := t.Context()
 		logger := logging.NewNoopLogger()
 		tracerProvider := tracing.NewNoopTracerProvider()
-		metricsProvider := &mockmetrics.MetricsProvider{}
-		messageQueueProvider := &mockpublishers.PublisherProvider{}
 
 		// Mock metrics provider
-		int64Counter := &mockmetrics.Int64Counter{}
-		metricsProvider.On(reflection.GetMethodName(metricsProvider.NewInt64Counter), "indexer.handled_records", []metric.Int64CounterOption(nil)).Return(int64Counter, nil)
+		int64Counter := &mockmetrics.Int64CounterMock{
+			AddFunc: func(_ context.Context, _ int64, _ ...metric.AddOption) {},
+		}
+		metricsProvider := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, "indexer.handled_records", counterName)
+				return int64Counter, nil
+			},
+		}
 
 		// Mock message queue provider to return error - need to return a valid interface and error
-		publisher := &mockpublishers.Publisher{}
-		messageQueueProvider.On(reflection.GetMethodName(messageQueueProvider.ProvidePublisher), testQueuesConfig.SearchIndexRequestsTopicName).Return(publisher, errors.New("message queue error"))
+		messageQueueProvider := &mockpublishers.PublisherProviderMock{
+			ProvidePublisherFunc: func(_ context.Context, _ string) (messagequeue.Publisher, error) {
+				return &mockpublishers.PublisherMock{}, errors.New("message queue error")
+			},
+		}
 
 		scheduler, err := NewIndexScheduler(ctx, logger, tracerProvider, metricsProvider, messageQueueProvider, testQueuesConfig, nil)
 		assert.Error(t, err)
 		assert.Nil(t, scheduler)
 		assert.Contains(t, err.Error(), "message queue error")
 
-		mock.AssertExpectationsForObjects(t, metricsProvider, messageQueueProvider)
+		test.SliceLen(t, 1, metricsProvider.NewInt64CounterCalls())
+		test.SliceLen(t, 1, messageQueueProvider.ProvidePublisherCalls())
 	})
 }
 
@@ -140,16 +175,32 @@ func TestIndexScheduler_IndexTypes(T *testing.T) {
 		ctx := t.Context()
 		logger := logging.NewNoopLogger()
 		tracerProvider := tracing.NewNoopTracerProvider()
-		metricsProvider := &mockmetrics.MetricsProvider{}
-		messageQueueProvider := &mockpublishers.PublisherProvider{}
 
 		// Mock metrics provider
-		int64Counter := &mockmetrics.Int64Counter{}
-		metricsProvider.On(reflection.GetMethodName(metricsProvider.NewInt64Counter), "indexer.handled_records", []metric.Int64CounterOption(nil)).Return(int64Counter, nil)
+		int64Counter := &mockmetrics.Int64CounterMock{
+			AddFunc: func(_ context.Context, _ int64, _ ...metric.AddOption) {},
+		}
+		metricsProvider := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, "indexer.handled_records", counterName)
+				return int64Counter, nil
+			},
+		}
 
-		// Mock message queue provider
-		publisher := &mockpublishers.Publisher{}
-		messageQueueProvider.On(reflection.GetMethodName(messageQueueProvider.ProvidePublisher), testQueuesConfig.SearchIndexRequestsTopicName).Return(publisher, nil)
+		// Mock message queue provider - all publishes succeed
+		publisher := &mockpublishers.PublisherMock{
+			PublishFunc: func(_ context.Context, data any) error {
+				req, ok := data.(*textsearch.IndexRequest)
+				require.True(t, ok)
+				test.EqOp(t, "test_type", req.IndexType)
+				return nil
+			},
+		}
+		messageQueueProvider := &mockpublishers.PublisherProviderMock{
+			ProvidePublisherFunc: func(_ context.Context, _ string) (messagequeue.Publisher, error) {
+				return publisher, nil
+			},
+		}
 
 		// Mock index function
 		indexFunctions := map[string]Function{
@@ -161,19 +212,16 @@ func TestIndexScheduler_IndexTypes(T *testing.T) {
 		scheduler, err := NewIndexScheduler(ctx, logger, tracerProvider, metricsProvider, messageQueueProvider, testQueuesConfig, indexFunctions)
 		require.NoError(t, err)
 
-		// Mock publisher calls
-		publisher.On(reflection.GetMethodName(publisher.Publish), mock.Anything, &textsearch.IndexRequest{RowID: "id1", IndexType: "test_type"}).Return(nil)
-		publisher.On(reflection.GetMethodName(publisher.Publish), mock.Anything, &textsearch.IndexRequest{RowID: "id2", IndexType: "test_type"}).Return(nil)
-		publisher.On(reflection.GetMethodName(publisher.Publish), mock.Anything, &textsearch.IndexRequest{RowID: "id3", IndexType: "test_type"}).Return(nil)
-
-		// Mock metrics counter
-		int64Counter.On(reflection.GetMethodName(int64Counter.Add), mock.Anything, int64(3), mock.Anything).Return()
-
 		// Since we only have one index type, it will always be chosen
 		err = scheduler.IndexTypes(ctx)
 		assert.NoError(t, err)
 
-		mock.AssertExpectationsForObjects(t, publisher, int64Counter)
+		publishedIDs := collectPublishedRowIDs(t, publisher.PublishCalls())
+		test.SliceContainsAll(t, publishedIDs, []string{"id1", "id2", "id3"})
+
+		addCalls := int64Counter.AddCalls()
+		test.SliceLen(t, 1, addCalls)
+		test.EqOp(t, int64(3), addCalls[0].Incr)
 	})
 
 	T.Run("successful execution with empty results", func(t *testing.T) {
@@ -182,16 +230,25 @@ func TestIndexScheduler_IndexTypes(T *testing.T) {
 		ctx := t.Context()
 		logger := logging.NewNoopLogger()
 		tracerProvider := tracing.NewNoopTracerProvider()
-		metricsProvider := &mockmetrics.MetricsProvider{}
-		messageQueueProvider := &mockpublishers.PublisherProvider{}
 
 		// Mock metrics provider
-		int64Counter := &mockmetrics.Int64Counter{}
-		metricsProvider.On(reflection.GetMethodName(metricsProvider.NewInt64Counter), "indexer.handled_records", []metric.Int64CounterOption(nil)).Return(int64Counter, nil)
+		int64Counter := &mockmetrics.Int64CounterMock{
+			AddFunc: func(_ context.Context, _ int64, _ ...metric.AddOption) {},
+		}
+		metricsProvider := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, "indexer.handled_records", counterName)
+				return int64Counter, nil
+			},
+		}
 
-		// Mock message queue provider
-		publisher := &mockpublishers.Publisher{}
-		messageQueueProvider.On(reflection.GetMethodName(messageQueueProvider.ProvidePublisher), testQueuesConfig.SearchIndexRequestsTopicName).Return(publisher, nil)
+		// Mock message queue provider - no Publish calls expected
+		publisher := &mockpublishers.PublisherMock{}
+		messageQueueProvider := &mockpublishers.PublisherProviderMock{
+			ProvidePublisherFunc: func(_ context.Context, _ string) (messagequeue.Publisher, error) {
+				return publisher, nil
+			},
+		}
 
 		// Mock index function that returns empty results
 		indexFunctions := map[string]Function{
@@ -205,12 +262,14 @@ func TestIndexScheduler_IndexTypes(T *testing.T) {
 
 		// No publisher calls expected for empty results
 		// But metrics counter is still called with 0
-		int64Counter.On(reflection.GetMethodName(int64Counter.Add), mock.Anything, int64(0), mock.Anything).Return()
-
 		err = scheduler.IndexTypes(ctx)
 		assert.NoError(t, err)
 
-		mock.AssertExpectationsForObjects(t, publisher, int64Counter)
+		test.SliceLen(t, 0, publisher.PublishCalls())
+
+		addCalls := int64Counter.AddCalls()
+		test.SliceLen(t, 1, addCalls)
+		test.EqOp(t, int64(0), addCalls[0].Incr)
 	})
 
 	T.Run("function returns sql.ErrNoRows", func(t *testing.T) {
@@ -219,16 +278,25 @@ func TestIndexScheduler_IndexTypes(T *testing.T) {
 		ctx := t.Context()
 		logger := logging.NewNoopLogger()
 		tracerProvider := tracing.NewNoopTracerProvider()
-		metricsProvider := &mockmetrics.MetricsProvider{}
-		messageQueueProvider := &mockpublishers.PublisherProvider{}
 
 		// Mock metrics provider
-		int64Counter := &mockmetrics.Int64Counter{}
-		metricsProvider.On(reflection.GetMethodName(metricsProvider.NewInt64Counter), "indexer.handled_records", []metric.Int64CounterOption(nil)).Return(int64Counter, nil)
+		int64Counter := &mockmetrics.Int64CounterMock{
+			AddFunc: func(_ context.Context, _ int64, _ ...metric.AddOption) {},
+		}
+		metricsProvider := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, "indexer.handled_records", counterName)
+				return int64Counter, nil
+			},
+		}
 
-		// Mock message queue provider
-		publisher := &mockpublishers.Publisher{}
-		messageQueueProvider.On(reflection.GetMethodName(messageQueueProvider.ProvidePublisher), testQueuesConfig.SearchIndexRequestsTopicName).Return(publisher, nil)
+		// Mock message queue provider - no Publish calls expected
+		publisher := &mockpublishers.PublisherMock{}
+		messageQueueProvider := &mockpublishers.PublisherProviderMock{
+			ProvidePublisherFunc: func(_ context.Context, _ string) (messagequeue.Publisher, error) {
+				return publisher, nil
+			},
+		}
 
 		// Mock index function that returns sql.ErrNoRows
 		indexFunctions := map[string]Function{
@@ -244,7 +312,7 @@ func TestIndexScheduler_IndexTypes(T *testing.T) {
 		err = scheduler.IndexTypes(ctx)
 		assert.NoError(t, err)
 
-		mock.AssertExpectationsForObjects(t, publisher, int64Counter)
+		test.SliceLen(t, 0, publisher.PublishCalls())
 	})
 
 	T.Run("function returns other error", func(t *testing.T) {
@@ -253,16 +321,25 @@ func TestIndexScheduler_IndexTypes(T *testing.T) {
 		ctx := t.Context()
 		logger := logging.NewNoopLogger()
 		tracerProvider := tracing.NewNoopTracerProvider()
-		metricsProvider := &mockmetrics.MetricsProvider{}
-		messageQueueProvider := &mockpublishers.PublisherProvider{}
 
 		// Mock metrics provider
-		int64Counter := &mockmetrics.Int64Counter{}
-		metricsProvider.On(reflection.GetMethodName(metricsProvider.NewInt64Counter), "indexer.handled_records", []metric.Int64CounterOption(nil)).Return(int64Counter, nil)
+		int64Counter := &mockmetrics.Int64CounterMock{
+			AddFunc: func(_ context.Context, _ int64, _ ...metric.AddOption) {},
+		}
+		metricsProvider := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, "indexer.handled_records", counterName)
+				return int64Counter, nil
+			},
+		}
 
-		// Mock message queue provider
-		publisher := &mockpublishers.Publisher{}
-		messageQueueProvider.On(reflection.GetMethodName(messageQueueProvider.ProvidePublisher), testQueuesConfig.SearchIndexRequestsTopicName).Return(publisher, nil)
+		// Mock message queue provider - no Publish calls expected
+		publisher := &mockpublishers.PublisherMock{}
+		messageQueueProvider := &mockpublishers.PublisherProviderMock{
+			ProvidePublisherFunc: func(_ context.Context, _ string) (messagequeue.Publisher, error) {
+				return publisher, nil
+			},
+		}
 
 		// Mock index function that returns an error
 		indexFunctions := map[string]Function{
@@ -278,7 +355,7 @@ func TestIndexScheduler_IndexTypes(T *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "database connection failed")
 
-		mock.AssertExpectationsForObjects(t, publisher, int64Counter)
+		test.SliceLen(t, 0, publisher.PublishCalls())
 	})
 
 	T.Run("unknown index type", func(t *testing.T) {
@@ -287,16 +364,25 @@ func TestIndexScheduler_IndexTypes(T *testing.T) {
 		ctx := t.Context()
 		logger := logging.NewNoopLogger()
 		tracerProvider := tracing.NewNoopTracerProvider()
-		metricsProvider := &mockmetrics.MetricsProvider{}
-		messageQueueProvider := &mockpublishers.PublisherProvider{}
 
 		// Mock metrics provider
-		int64Counter := &mockmetrics.Int64Counter{}
-		metricsProvider.On(reflection.GetMethodName(metricsProvider.NewInt64Counter), "indexer.handled_records", []metric.Int64CounterOption(nil)).Return(int64Counter, nil)
+		int64Counter := &mockmetrics.Int64CounterMock{
+			AddFunc: func(_ context.Context, _ int64, _ ...metric.AddOption) {},
+		}
+		metricsProvider := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, "indexer.handled_records", counterName)
+				return int64Counter, nil
+			},
+		}
 
-		// Mock message queue provider
-		publisher := &mockpublishers.Publisher{}
-		messageQueueProvider.On(reflection.GetMethodName(messageQueueProvider.ProvidePublisher), testQueuesConfig.SearchIndexRequestsTopicName).Return(publisher, nil)
+		// Mock message queue provider - no Publish calls expected
+		publisher := &mockpublishers.PublisherMock{}
+		messageQueueProvider := &mockpublishers.PublisherProviderMock{
+			ProvidePublisherFunc: func(_ context.Context, _ string) (messagequeue.Publisher, error) {
+				return publisher, nil
+			},
+		}
 
 		// Create scheduler with empty index functions
 		scheduler, err := NewIndexScheduler(ctx, logger, tracerProvider, metricsProvider, messageQueueProvider, testQueuesConfig, map[string]Function{})
@@ -310,7 +396,7 @@ func TestIndexScheduler_IndexTypes(T *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "unknown index type unknown_type")
 
-		mock.AssertExpectationsForObjects(t, publisher, int64Counter)
+		test.SliceLen(t, 0, publisher.PublishCalls())
 	})
 
 	T.Run("partial publish failures", func(t *testing.T) {
@@ -319,16 +405,36 @@ func TestIndexScheduler_IndexTypes(T *testing.T) {
 		ctx := t.Context()
 		logger := logging.NewNoopLogger()
 		tracerProvider := tracing.NewNoopTracerProvider()
-		metricsProvider := &mockmetrics.MetricsProvider{}
-		messageQueueProvider := &mockpublishers.PublisherProvider{}
 
 		// Mock metrics provider
-		int64Counter := &mockmetrics.Int64Counter{}
-		metricsProvider.On(reflection.GetMethodName(metricsProvider.NewInt64Counter), "indexer.handled_records", []metric.Int64CounterOption(nil)).Return(int64Counter, nil)
+		int64Counter := &mockmetrics.Int64CounterMock{
+			AddFunc: func(_ context.Context, _ int64, _ ...metric.AddOption) {},
+		}
+		metricsProvider := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, "indexer.handled_records", counterName)
+				return int64Counter, nil
+			},
+		}
 
-		// Mock message queue provider
-		publisher := &mockpublishers.Publisher{}
-		messageQueueProvider.On(reflection.GetMethodName(messageQueueProvider.ProvidePublisher), testQueuesConfig.SearchIndexRequestsTopicName).Return(publisher, nil)
+		// Mock message queue provider - id2 fails, id1 and id3 succeed
+		publishResults := map[string]error{
+			"id1": nil,
+			"id2": errors.New("publish failed"),
+			"id3": nil,
+		}
+		publisher := &mockpublishers.PublisherMock{
+			PublishFunc: func(_ context.Context, data any) error {
+				req, ok := data.(*textsearch.IndexRequest)
+				require.True(t, ok)
+				return publishResults[req.RowID]
+			},
+		}
+		messageQueueProvider := &mockpublishers.PublisherProviderMock{
+			ProvidePublisherFunc: func(_ context.Context, _ string) (messagequeue.Publisher, error) {
+				return publisher, nil
+			},
+		}
 
 		// Mock index function
 		indexFunctions := map[string]Function{
@@ -340,18 +446,16 @@ func TestIndexScheduler_IndexTypes(T *testing.T) {
 		scheduler, err := NewIndexScheduler(ctx, logger, tracerProvider, metricsProvider, messageQueueProvider, testQueuesConfig, indexFunctions)
 		require.NoError(t, err)
 
-		// Mock publisher calls - some succeed, some fail
-		publisher.On(reflection.GetMethodName(publisher.Publish), mock.Anything, &textsearch.IndexRequest{RowID: "id1", IndexType: "test_type"}).Return(nil)
-		publisher.On(reflection.GetMethodName(publisher.Publish), mock.Anything, &textsearch.IndexRequest{RowID: "id2", IndexType: "test_type"}).Return(errors.New("publish failed"))
-		publisher.On(reflection.GetMethodName(publisher.Publish), mock.Anything, &textsearch.IndexRequest{RowID: "id3", IndexType: "test_type"}).Return(nil)
-
-		// Mock metrics counter - should only count successful publishes
-		int64Counter.On(reflection.GetMethodName(int64Counter.Add), mock.Anything, int64(2), mock.Anything).Return()
-
 		err = scheduler.IndexTypes(ctx)
 		assert.NoError(t, err) // Partial failures don't cause the method to return an error
 
-		mock.AssertExpectationsForObjects(t, publisher, int64Counter)
+		publishedIDs := collectPublishedRowIDs(t, publisher.PublishCalls())
+		test.SliceContainsAll(t, publishedIDs, []string{"id1", "id2", "id3"})
+
+		// Metrics counter should only count successful publishes
+		addCalls := int64Counter.AddCalls()
+		test.SliceLen(t, 1, addCalls)
+		test.EqOp(t, int64(2), addCalls[0].Incr)
 	})
 
 	T.Run("all publish failures", func(t *testing.T) {
@@ -360,16 +464,29 @@ func TestIndexScheduler_IndexTypes(T *testing.T) {
 		ctx := t.Context()
 		logger := logging.NewNoopLogger()
 		tracerProvider := tracing.NewNoopTracerProvider()
-		metricsProvider := &mockmetrics.MetricsProvider{}
-		messageQueueProvider := &mockpublishers.PublisherProvider{}
 
 		// Mock metrics provider
-		int64Counter := &mockmetrics.Int64Counter{}
-		metricsProvider.On(reflection.GetMethodName(metricsProvider.NewInt64Counter), "indexer.handled_records", []metric.Int64CounterOption(nil)).Return(int64Counter, nil)
+		int64Counter := &mockmetrics.Int64CounterMock{
+			AddFunc: func(_ context.Context, _ int64, _ ...metric.AddOption) {},
+		}
+		metricsProvider := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, "indexer.handled_records", counterName)
+				return int64Counter, nil
+			},
+		}
 
-		// Mock message queue provider
-		publisher := &mockpublishers.Publisher{}
-		messageQueueProvider.On(reflection.GetMethodName(messageQueueProvider.ProvidePublisher), testQueuesConfig.SearchIndexRequestsTopicName).Return(publisher, nil)
+		// Mock message queue provider - all publishes fail
+		publisher := &mockpublishers.PublisherMock{
+			PublishFunc: func(_ context.Context, _ any) error {
+				return errors.New("publish failed")
+			},
+		}
+		messageQueueProvider := &mockpublishers.PublisherProviderMock{
+			ProvidePublisherFunc: func(_ context.Context, _ string) (messagequeue.Publisher, error) {
+				return publisher, nil
+			},
+		}
 
 		// Mock index function
 		indexFunctions := map[string]Function{
@@ -381,16 +498,29 @@ func TestIndexScheduler_IndexTypes(T *testing.T) {
 		scheduler, err := NewIndexScheduler(ctx, logger, tracerProvider, metricsProvider, messageQueueProvider, testQueuesConfig, indexFunctions)
 		require.NoError(t, err)
 
-		// Mock publisher calls - all fail
-		publisher.On(reflection.GetMethodName(publisher.Publish), mock.Anything, &textsearch.IndexRequest{RowID: "id1", IndexType: "test_type"}).Return(errors.New("publish failed"))
-		publisher.On(reflection.GetMethodName(publisher.Publish), mock.Anything, &textsearch.IndexRequest{RowID: "id2", IndexType: "test_type"}).Return(errors.New("publish failed"))
-
-		// Mock metrics counter - should count 0 successful publishes
-		int64Counter.On(reflection.GetMethodName(int64Counter.Add), mock.Anything, int64(0), mock.Anything).Return()
-
 		err = scheduler.IndexTypes(ctx)
 		assert.NoError(t, err) // Even all failures don't cause the method to return an error
 
-		mock.AssertExpectationsForObjects(t, publisher, int64Counter)
+		test.SliceLen(t, 2, publisher.PublishCalls())
+
+		// Metrics counter should count 0 successful publishes
+		addCalls := int64Counter.AddCalls()
+		test.SliceLen(t, 1, addCalls)
+		test.EqOp(t, int64(0), addCalls[0].Incr)
 	})
+}
+
+func collectPublishedRowIDs(t *testing.T, calls []struct {
+	Ctx  context.Context
+	Data any
+},
+) []string {
+	t.Helper()
+	ids := make([]string, 0, len(calls))
+	for i := range calls {
+		req, ok := calls[i].Data.(*textsearch.IndexRequest)
+		require.True(t, ok)
+		ids = append(ids, req.RowID)
+	}
+	return ids
 }

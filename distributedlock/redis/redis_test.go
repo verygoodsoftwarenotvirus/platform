@@ -289,39 +289,44 @@ func TestLocker_Acquire(T *testing.T) {
 
 	T.Run("blocked by circuit breaker", func(t *testing.T) {
 		t.Parallel()
-		cb := &cbmock.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(true)
+		cb := &cbmock.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return true },
+		}
 		l := newUnitLocker(t, &fakeRedisClient{}, cb)
 
 		_, err := l.Acquire(t.Context(), "k", time.Minute)
 		require.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
-		cb.AssertExpectations(t)
+		require.NotEmpty(t, cb.CannotProceedCalls())
 	})
 
 	T.Run("SetNX backend error trips breaker", func(t *testing.T) {
 		t.Parallel()
 		fc := &fakeRedisClient{setNXErr: errors.New("redis down")}
-		cb := &cbmock.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false)
-		cb.On("Failed").Return()
+		cb := &cbmock.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+			FailedFunc:        func() {},
+		}
 		l := newUnitLocker(t, fc, cb)
 
 		_, err := l.Acquire(t.Context(), "k", time.Minute)
 		require.Error(t, err)
-		cb.AssertExpectations(t)
+		require.NotEmpty(t, cb.CannotProceedCalls())
+		require.NotEmpty(t, cb.FailedCalls())
 	})
 
 	T.Run("contention does not fail breaker", func(t *testing.T) {
 		t.Parallel()
 		fc := &fakeRedisClient{setNXResult: false}
-		cb := &cbmock.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false)
-		cb.On("Succeeded").Return()
+		cb := &cbmock.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+			SucceededFunc:     func() {},
+		}
 		l := newUnitLocker(t, fc, cb)
 
 		_, err := l.Acquire(t.Context(), "k", time.Minute)
 		require.ErrorIs(t, err, distributedlock.ErrLockNotAcquired)
-		cb.AssertExpectations(t)
+		require.NotEmpty(t, cb.CannotProceedCalls())
+		require.NotEmpty(t, cb.SucceededCalls())
 	})
 }
 
@@ -352,13 +357,12 @@ func TestLocker_Release(T *testing.T) {
 	T.Run("eval backend error trips breaker", func(t *testing.T) {
 		t.Parallel()
 		fc := &fakeRedisClient{setNXResult: true}
-		cb := &cbmock.MockCircuitBreaker{}
-		// Acquire path
-		cb.On("CannotProceed").Return(false).Once()
-		cb.On("Succeeded").Return().Once()
-		// Release path: proceed, then evalErr triggers Failed.
-		cb.On("CannotProceed").Return(false).Once()
-		cb.On("Failed").Return().Once()
+		// Acquire path: proceed + succeeded. Release path: proceed + failed.
+		cb := &cbmock.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+			SucceededFunc:     func() {},
+			FailedFunc:        func() {},
+		}
 		l := newUnitLocker(t, fc, cb)
 
 		h, err := l.Acquire(t.Context(), "k", time.Minute)
@@ -366,22 +370,29 @@ func TestLocker_Release(T *testing.T) {
 
 		fc.evalErr = errors.New("eval boom")
 		require.Error(t, h.Release(t.Context()))
-		cb.AssertExpectations(t)
+		require.Len(t, cb.CannotProceedCalls(), 2)
+		require.Len(t, cb.SucceededCalls(), 1)
+		require.Len(t, cb.FailedCalls(), 1)
 	})
 
 	T.Run("blocked by circuit breaker", func(t *testing.T) {
 		t.Parallel()
 		fc := &fakeRedisClient{setNXResult: true}
-		cb := &cbmock.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false).Once()
-		cb.On("Succeeded").Return().Once()
-		cb.On("CannotProceed").Return(true).Once()
+		var cannotProceedCalls int
+		cb := &cbmock.CircuitBreakerMock{
+			CannotProceedFunc: func() bool {
+				cannotProceedCalls++
+				return cannotProceedCalls > 1 // first call (Acquire) proceeds, second (Release) is blocked
+			},
+			SucceededFunc: func() {},
+		}
 		l := newUnitLocker(t, fc, cb)
 
 		h, err := l.Acquire(t.Context(), "k", time.Minute)
 		require.NoError(t, err)
 		require.ErrorIs(t, h.Release(t.Context()), circuitbreaking.ErrCircuitBroken)
-		cb.AssertExpectations(t)
+		require.Len(t, cb.CannotProceedCalls(), 2)
+		require.Len(t, cb.SucceededCalls(), 1)
 	})
 }
 
@@ -427,11 +438,11 @@ func TestLocker_Refresh(T *testing.T) {
 	T.Run("eval backend error trips breaker", func(t *testing.T) {
 		t.Parallel()
 		fc := &fakeRedisClient{setNXResult: true}
-		cb := &cbmock.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false).Once()
-		cb.On("Succeeded").Return().Once()
-		cb.On("CannotProceed").Return(false).Once()
-		cb.On("Failed").Return().Once()
+		cb := &cbmock.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+			SucceededFunc:     func() {},
+			FailedFunc:        func() {},
+		}
 		l := newUnitLocker(t, fc, cb)
 
 		h, err := l.Acquire(t.Context(), "k", time.Minute)
@@ -439,22 +450,29 @@ func TestLocker_Refresh(T *testing.T) {
 
 		fc.evalErr = errors.New("eval boom")
 		require.Error(t, h.Refresh(t.Context(), 5*time.Minute))
-		cb.AssertExpectations(t)
+		require.Len(t, cb.CannotProceedCalls(), 2)
+		require.Len(t, cb.SucceededCalls(), 1)
+		require.Len(t, cb.FailedCalls(), 1)
 	})
 
 	T.Run("blocked by circuit breaker", func(t *testing.T) {
 		t.Parallel()
 		fc := &fakeRedisClient{setNXResult: true}
-		cb := &cbmock.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false).Once()
-		cb.On("Succeeded").Return().Once()
-		cb.On("CannotProceed").Return(true).Once()
+		var cannotProceedCalls int
+		cb := &cbmock.CircuitBreakerMock{
+			CannotProceedFunc: func() bool {
+				cannotProceedCalls++
+				return cannotProceedCalls > 1 // first call (Acquire) proceeds, second (Refresh) is blocked
+			},
+			SucceededFunc: func() {},
+		}
 		l := newUnitLocker(t, fc, cb)
 
 		h, err := l.Acquire(t.Context(), "k", time.Minute)
 		require.NoError(t, err)
 		require.ErrorIs(t, h.Refresh(t.Context(), time.Minute), circuitbreaking.ErrCircuitBroken)
-		cb.AssertExpectations(t)
+		require.Len(t, cb.CannotProceedCalls(), 2)
+		require.Len(t, cb.SucceededCalls(), 1)
 	})
 }
 

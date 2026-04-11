@@ -18,6 +18,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/search/vector/pgvector"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/search/vector/qdrant"
 
+	"github.com/shoenig/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/metric"
@@ -234,9 +235,12 @@ func TestConfig_ProvideIndex(T *testing.T) {
 			},
 		}
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", "test-breaker_circuit_breaker_tripped", []metric.Int64CounterOption(nil)).
-			Return(&mockmetrics.Int64Counter{}, errors.New("counter init failure"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, "test-breaker_circuit_breaker_tripped", counterName)
+				return &mockmetrics.Int64CounterMock{}, errors.New("counter init failure")
+			},
+		}
 
 		idx, err := ProvideIndex[testStruct](
 			ctx,
@@ -250,6 +254,7 @@ func TestConfig_ProvideIndex(T *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, idx)
 		assert.Contains(t, err.Error(), "circuit breaker")
-		mp.AssertExpectations(t)
+
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 }

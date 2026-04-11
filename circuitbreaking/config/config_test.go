@@ -1,6 +1,7 @@
 package circuitbreakingcfg
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -10,11 +11,10 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
-	"github.com/verygoodsoftwarenotvirus/platform/v5/reflection"
 
 	circuit "github.com/rubyist/circuitbreaker"
+	"github.com/shoenig/test"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -110,16 +110,19 @@ func TestProvideCircuitBreakerFromConfig(T *testing.T) {
 		cfg.EnsureDefaults()
 
 		ctx := t.Context()
-		i64Counter := &mockmetrics.Int64Counter{}
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On(reflection.GetMethodName(mp.NewInt64Counter), fmt.Sprintf("%s_circuit_breaker_tripped", cfg.Name), []metric.Int64CounterOption(nil)).Return(i64Counter, errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, fmt.Sprintf("%s_circuit_breaker_tripped", cfg.Name), counterName)
+				return &mockmetrics.Int64CounterMock{}, errors.New("arbitrary")
+			},
+		}
 
 		cb, err := ProvideCircuitBreakerFromConfig(ctx, cfg, logging.NewNoopLogger(), mp)
 		assert.Nil(t, cb)
 		assert.Error(t, err)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("with error providing second metric", func(t *testing.T) {
@@ -127,17 +130,25 @@ func TestProvideCircuitBreakerFromConfig(T *testing.T) {
 		cfg.EnsureDefaults()
 
 		ctx := t.Context()
-		i64Counter := &mockmetrics.Int64Counter{}
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On(reflection.GetMethodName(mp.NewInt64Counter), fmt.Sprintf("%s_circuit_breaker_tripped", cfg.Name), []metric.Int64CounterOption(nil)).Return(i64Counter, nil)
-		mp.On(reflection.GetMethodName(mp.NewInt64Counter), fmt.Sprintf("%s_circuit_breaker_failed", cfg.Name), []metric.Int64CounterOption(nil)).Return(i64Counter, errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				switch counterName {
+				case fmt.Sprintf("%s_circuit_breaker_tripped", cfg.Name):
+					return &mockmetrics.Int64CounterMock{}, nil
+				case fmt.Sprintf("%s_circuit_breaker_failed", cfg.Name):
+					return &mockmetrics.Int64CounterMock{}, errors.New("arbitrary")
+				}
+				t.Fatalf("unexpected NewInt64Counter call: %q", counterName)
+				return nil, nil
+			},
+		}
 
 		cb, err := ProvideCircuitBreakerFromConfig(ctx, cfg, logging.NewNoopLogger(), mp)
 		assert.Nil(t, cb)
 		assert.Error(t, err)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 2, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("with error providing third metric", func(t *testing.T) {
@@ -145,18 +156,26 @@ func TestProvideCircuitBreakerFromConfig(T *testing.T) {
 		cfg.EnsureDefaults()
 
 		ctx := t.Context()
-		i64Counter := &mockmetrics.Int64Counter{}
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On(reflection.GetMethodName(mp.NewInt64Counter), fmt.Sprintf("%s_circuit_breaker_tripped", cfg.Name), []metric.Int64CounterOption(nil)).Return(i64Counter, nil)
-		mp.On(reflection.GetMethodName(mp.NewInt64Counter), fmt.Sprintf("%s_circuit_breaker_failed", cfg.Name), []metric.Int64CounterOption(nil)).Return(i64Counter, nil)
-		mp.On(reflection.GetMethodName(mp.NewInt64Counter), fmt.Sprintf("%s_circuit_breaker_reset", cfg.Name), []metric.Int64CounterOption(nil)).Return(i64Counter, errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				switch counterName {
+				case fmt.Sprintf("%s_circuit_breaker_tripped", cfg.Name),
+					fmt.Sprintf("%s_circuit_breaker_failed", cfg.Name):
+					return &mockmetrics.Int64CounterMock{}, nil
+				case fmt.Sprintf("%s_circuit_breaker_reset", cfg.Name):
+					return &mockmetrics.Int64CounterMock{}, errors.New("arbitrary")
+				}
+				t.Fatalf("unexpected NewInt64Counter call: %q", counterName)
+				return nil, nil
+			},
+		}
 
 		cb, err := ProvideCircuitBreakerFromConfig(ctx, cfg, logging.NewNoopLogger(), mp)
 		assert.Nil(t, cb)
 		assert.Error(t, err)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 3, mp.NewInt64CounterCalls())
 	})
 }
 
@@ -271,13 +290,20 @@ func TestHandleCircuitBreakerEvents(T *testing.T) {
 	T.Run("handles all event types and exits on channel close", func(t *testing.T) {
 		ctx := t.Context()
 
-		i64Counter := &mockmetrics.Int64Counter{}
-		i64Counter.On("Add", mock.Anything, int64(1), []metric.AddOption(nil)).Return()
+		i64Counter := &mockmetrics.Int64CounterMock{
+			AddFunc: func(_ context.Context, _ int64, _ ...metric.AddOption) {},
+		}
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On(reflection.GetMethodName(mp.NewInt64Counter), "failure", []metric.Int64CounterOption(nil)).Return(i64Counter, nil)
-		mp.On(reflection.GetMethodName(mp.NewInt64Counter), "reset", []metric.Int64CounterOption(nil)).Return(i64Counter, nil)
-		mp.On(reflection.GetMethodName(mp.NewInt64Counter), "broken", []metric.Int64CounterOption(nil)).Return(i64Counter, nil)
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				switch counterName {
+				case "failure", "reset", "broken":
+					return i64Counter, nil
+				}
+				t.Fatalf("unexpected NewInt64Counter call: %q", counterName)
+				return nil, nil
+			},
+		}
 
 		failure, err := mp.NewInt64Counter("failure")
 		assert.NoError(t, err)
@@ -295,7 +321,8 @@ func TestHandleCircuitBreakerEvents(T *testing.T) {
 
 		handleCircuitBreakerEvents(ctx, logging.NewNoopLogger(), events, failure, reset, broken)
 
-		mock.AssertExpectationsForObjects(t, i64Counter, mp)
+		test.SliceLen(t, 3, mp.NewInt64CounterCalls())
+		test.SliceLen(t, 3, i64Counter.AddCalls())
 	})
 }
 

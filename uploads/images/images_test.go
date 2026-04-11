@@ -17,13 +17,25 @@ import (
 	"testing"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/v5/reflection"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/testutils"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
+
+// errorWriter is an http.ResponseWriter whose Write always returns an error.
+type errorWriter struct {
+	header http.Header
+}
+
+func (e *errorWriter) Header() http.Header {
+	if e.header == nil {
+		e.header = http.Header{}
+	}
+	return e.header
+}
+func (e *errorWriter) Write([]byte) (int, error) { return 0, errors.New("blah") }
+func (e *errorWriter) WriteHeader(int)           {}
 
 func newAvatarUploadRequest(t *testing.T, filename string, avatar io.Reader) *http.Request {
 	t.Helper()
@@ -238,9 +250,7 @@ func TestImage_Write(T *testing.T) {
 			Size:        12345,
 		}
 
-		res := &testutils.MockHTTPResponseWriter{}
-		res.On(reflection.GetMethodName(res.Header)).Return(http.Header{})
-		res.On(reflection.GetMethodName(res.Write), mock.IsType([]byte(nil))).Return(0, errors.New("blah"))
+		res := &errorWriter{}
 
 		assert.Error(t, i.Write(res))
 	})

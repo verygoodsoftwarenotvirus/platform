@@ -19,7 +19,6 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
@@ -28,7 +27,8 @@ import (
 
 type mockTracerProvider struct {
 	noop.TracerProvider
-	mock.Mock
+	forceFlushFunc  func(ctx context.Context) error
+	forceFlushCalls int
 }
 
 func (m *mockTracerProvider) Tracer(name string, opts ...trace.TracerOption) trace.Tracer {
@@ -36,7 +36,11 @@ func (m *mockTracerProvider) Tracer(name string, opts ...trace.TracerOption) tra
 }
 
 func (m *mockTracerProvider) ForceFlush(ctx context.Context) error {
-	return m.Called(ctx).Error(0)
+	m.forceFlushCalls++
+	if m.forceFlushFunc == nil {
+		return nil
+	}
+	return m.forceFlushFunc(ctx)
 }
 
 func generateTestTLSCerts(t *testing.T) (certFile, keyFile string) {
@@ -215,8 +219,9 @@ func TestServer_Shutdown(T *testing.T) {
 	T.Run("logs error when ForceFlush fails", func(t *testing.T) {
 		t.Parallel()
 
-		mtp := &mockTracerProvider{}
-		mtp.On("ForceFlush", mock.Anything).Return(errors.New("flush failed"))
+		mtp := &mockTracerProvider{
+			forceFlushFunc: func(_ context.Context) error { return errors.New("flush failed") },
+		}
 
 		cfg := &Config{Port: 0}
 		srv, err := NewGRPCServer(cfg, logging.NewNoopLogger(), mtp, nil, nil)
@@ -224,7 +229,7 @@ func TestServer_Shutdown(T *testing.T) {
 
 		srv.Shutdown(context.Background())
 
-		mock.AssertExpectationsForObjects(t, mtp)
+		assert.Equal(t, 1, mtp.forceFlushCalls)
 	})
 }
 

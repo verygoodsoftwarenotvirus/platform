@@ -14,8 +14,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/v5/reflection"
 
+	"github.com/shoenig/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/metric"
@@ -196,9 +196,12 @@ func TestProvideFeatureFlagManager(T *testing.T) {
 		cbCfg := circuitbreakingcfg.Config{}
 		cbCfg.EnsureDefaults()
 
-		i64Counter := &mockmetrics.Int64Counter{}
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On(reflection.GetMethodName(mp.NewInt64Counter), fmt.Sprintf("%s_circuit_breaker_tripped", cbCfg.Name), []metric.Int64CounterOption(nil)).Return(i64Counter, errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, fmt.Sprintf("%s_circuit_breaker_tripped", cbCfg.Name), counterName)
+				return &mockmetrics.Int64CounterMock{}, errors.New("arbitrary")
+			},
+		}
 
 		cfg := &Config{
 			Provider:       "",
@@ -208,5 +211,7 @@ func TestProvideFeatureFlagManager(T *testing.T) {
 		ffm, err := ProvideFeatureFlagManager(ctx, cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, http.DefaultClient)
 		require.Error(t, err)
 		require.Nil(t, ffm)
+
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 }

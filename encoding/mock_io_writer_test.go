@@ -2,19 +2,16 @@ package encoding
 
 import (
 	"io"
-
-	"github.com/stretchr/testify/mock"
 )
 
 var _ io.Writer = (*mockWriter)(nil)
 
-// mockWriter mocks a io.Writer.
+// mockWriter mocks an io.Writer.
 type mockWriter struct {
-	mock.Mock
+	WriteFunc func(p []byte) (int, error)
 }
 
 // Write implements the io.Writer interface.
 func (m *mockWriter) Write(p []byte) (int, error) {
-	returnVals := m.Called(p)
-	return returnVals.Int(0), returnVals.Error(1)
+	return m.WriteFunc(p)
 }

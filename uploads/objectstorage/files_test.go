@@ -97,8 +97,9 @@ func TestUploader_ReadFile(T *testing.T) {
 
 		ctx := t.Context()
 
-		cb := &cbmock.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(true)
+		cb := &cbmock.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return true },
+		}
 
 		saveCounter, readCounter, saveErrCounter, readErrCounter, latencyHist := noopUploaderMetrics(t)
 		u := &Uploader{
@@ -128,9 +129,10 @@ func TestUploader_ReadFile(T *testing.T) {
 		b := memblob.OpenBucket(&memblob.Options{})
 		require.NoError(t, b.WriteAll(ctx, exampleFilename, expectedContent, nil))
 
-		cb := &cbmock.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false)
-		cb.On("Succeeded").Return()
+		cb := &cbmock.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+			SucceededFunc:     func() {},
+		}
 
 		saveCounter, readCounter, saveErrCounter, readErrCounter, latencyHist := noopUploaderMetrics(t)
 		u := &Uploader{
@@ -179,8 +181,9 @@ func TestUploader_SaveFile(T *testing.T) {
 
 		ctx := t.Context()
 
-		cb := &cbmock.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(true)
+		cb := &cbmock.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return true },
+		}
 
 		saveCounter, readCounter, saveErrCounter, readErrCounter, latencyHist := noopUploaderMetrics(t)
 		u := &Uploader{
@@ -203,9 +206,10 @@ func TestUploader_SaveFile(T *testing.T) {
 
 		ctx := t.Context()
 
-		cb := &cbmock.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false)
-		cb.On("Failed").Return()
+		cb := &cbmock.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+			FailedFunc:        func() {},
+		}
 
 		b := memblob.OpenBucket(&memblob.Options{})
 		require.NoError(t, b.Close())

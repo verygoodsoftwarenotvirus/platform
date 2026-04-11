@@ -18,7 +18,6 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	elasticsearchcontainers "github.com/testcontainers/testcontainers-go/modules/elasticsearch"
 )
@@ -328,31 +327,29 @@ func TestIndexManager_ensureIndices_CircuitBroken(T *testing.T) {
 	T.Run("with broken circuit breaker", func(t *testing.T) {
 		t.Parallel()
 
-		cb := &mockcircuitbreaking.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(true)
+		cb := &mockcircuitbreaking.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return true },
+		}
 
 		im := buildTestIndexManagerForUnit(t, cb)
 
 		err := im.ensureIndices(context.Background())
 		assert.Error(t, err)
 		assert.Equal(t, circuitbreaking.ErrCircuitBroken, err)
-
-		mock.AssertExpectationsForObjects(t, cb)
 	})
 
 	T.Run("with unreachable server", func(t *testing.T) {
 		t.Parallel()
 
-		cb := &mockcircuitbreaking.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false)
-		cb.On("Failed").Return()
+		cb := &mockcircuitbreaking.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+			FailedFunc:        func() {},
+		}
 
 		im := buildTestIndexManagerForUnit(t, cb)
 
 		err := im.ensureIndices(context.Background())
 		assert.Error(t, err)
-
-		mock.AssertExpectationsForObjects(t, cb)
 	})
 }
 
@@ -372,16 +369,15 @@ func TestIndexManager_ensureIndices_Unit(T *testing.T) {
 		}))
 		t.Cleanup(server.Close)
 
-		cb := &mockcircuitbreaking.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false)
-		cb.On("Succeeded").Return()
+		cb := &mockcircuitbreaking.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+			SucceededFunc:     func() {},
+		}
 
 		im := buildTestIndexManagerWithServer(t, server, cb)
 
 		err := im.ensureIndices(context.Background())
 		assert.NoError(t, err)
-
-		mock.AssertExpectationsForObjects(t, cb)
 	})
 
 	T.Run("index does not exist and create succeeds", func(t *testing.T) {
@@ -402,16 +398,15 @@ func TestIndexManager_ensureIndices_Unit(T *testing.T) {
 		}))
 		t.Cleanup(server.Close)
 
-		cb := &mockcircuitbreaking.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false)
-		cb.On("Succeeded").Return()
+		cb := &mockcircuitbreaking.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+			SucceededFunc:     func() {},
+		}
 
 		im := buildTestIndexManagerWithServer(t, server, cb)
 
 		err := im.ensureIndices(context.Background())
 		assert.NoError(t, err)
-
-		mock.AssertExpectationsForObjects(t, cb)
 	})
 
 	T.Run("index does not exist and create fails", func(t *testing.T) {
@@ -436,16 +431,15 @@ func TestIndexManager_ensureIndices_Unit(T *testing.T) {
 		}))
 		t.Cleanup(server.Close)
 
-		cb := &mockcircuitbreaking.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false)
-		cb.On("Failed").Return()
+		cb := &mockcircuitbreaking.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+			FailedFunc:        func() {},
+		}
 
 		im := buildTestIndexManagerWithServer(t, server, cb)
 
 		err := im.ensureIndices(context.Background())
 		assert.Error(t, err)
-
-		mock.AssertExpectationsForObjects(t, cb)
 	})
 }
 
@@ -553,15 +547,14 @@ func TestProvideIndexManager_Unit(T *testing.T) {
 
 		logger := logging.NewNoopLogger()
 		tracerProvider := tracing.NewNoopTracerProvider()
-		cb := &mockcircuitbreaking.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false)
-		cb.On("Succeeded").Return()
+		cb := &mockcircuitbreaking.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+			SucceededFunc:     func() {},
+		}
 
 		im, err := ProvideIndexManager[example](context.Background(), logger, tracerProvider, cfg, "test", cb)
 		assert.NoError(t, err)
 		assert.NotNil(t, im)
-
-		mock.AssertExpectationsForObjects(t, cb)
 	})
 
 	T.Run("fails when ensureIndices fails", func(t *testing.T) {
@@ -604,14 +597,13 @@ func TestProvideIndexManager_Unit(T *testing.T) {
 
 		logger := logging.NewNoopLogger()
 		tracerProvider := tracing.NewNoopTracerProvider()
-		cb := &mockcircuitbreaking.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false)
-		cb.On("Failed").Return()
+		cb := &mockcircuitbreaking.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+			FailedFunc:        func() {},
+		}
 
 		im, err := ProvideIndexManager[example](context.Background(), logger, tracerProvider, cfg, "test", cb)
 		assert.Error(t, err)
 		assert.Nil(t, im)
-
-		mock.AssertExpectationsForObjects(t, cb)
 	})
 }

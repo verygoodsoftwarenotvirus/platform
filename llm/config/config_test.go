@@ -11,8 +11,8 @@ import (
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
+	"github.com/shoenig/test"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -159,14 +159,17 @@ func TestConfig_ProvideLLMProvider(T *testing.T) {
 			},
 		}
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", mock.AnythingOfType("string"), []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(_ string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				return metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary")
+			},
+		}
 
 		provider, err := cfg.ProvideLLMProvider(ctx, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp)
 		assert.Nil(t, provider)
 		assert.Error(t, err)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("anthropic provider with metrics error", func(t *testing.T) {
@@ -180,14 +183,17 @@ func TestConfig_ProvideLLMProvider(T *testing.T) {
 			},
 		}
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", mock.AnythingOfType("string"), []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(_ string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				return metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary")
+			},
+		}
 
 		provider, err := cfg.ProvideLLMProvider(ctx, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp)
 		assert.Nil(t, provider)
 		assert.Error(t, err)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 }
 

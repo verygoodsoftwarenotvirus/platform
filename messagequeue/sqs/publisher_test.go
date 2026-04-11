@@ -9,23 +9,24 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/messagequeue"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/v5/testutils"
 
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/metric"
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
 )
 
 type mockMessagePublisher struct {
-	mock.Mock
+	sendMessageFunc  func(ctx context.Context, input *sqs.SendMessageInput, optFns ...func(*sqs.Options)) (*sqs.SendMessageOutput, error)
+	sendMessageCalls int
 }
 
 func (m *mockMessagePublisher) SendMessage(ctx context.Context, input *sqs.SendMessageInput, optFns ...func(*sqs.Options)) (*sqs.SendMessageOutput, error) {
-	retVals := m.Called(ctx, input, optFns)
-	return retVals.Get(0).(*sqs.SendMessageOutput), retVals.Error(1)
+	m.sendMessageCalls++
+	return m.sendMessageFunc(ctx, input, optFns...)
 }
 
 func Test_sqsPublisher_Publish(T *testing.T) {
@@ -53,20 +54,17 @@ func Test_sqsPublisher_Publish(T *testing.T) {
 			Name: t.Name(),
 		}
 
-		mmp := &mockMessagePublisher{}
-		mmp.On(
-			"SendMessage",
-			testutils.ContextMatcher,
-			mock.MatchedBy(func(*sqs.SendMessageInput) bool { return true }),
-			mock.Anything,
-		).Return(&sqs.SendMessageOutput{}, nil)
+		mmp := &mockMessagePublisher{
+			sendMessageFunc: func(_ context.Context, _ *sqs.SendMessageInput, _ ...func(*sqs.Options)) (*sqs.SendMessageOutput, error) {
+				return &sqs.SendMessageOutput{}, nil
+			},
+		}
 
 		actual.publisher = mmp
 
 		err = actual.Publish(ctx, inputData)
 		assert.NoError(t, err)
-
-		mock.AssertExpectationsForObjects(t, mmp)
+		assert.Equal(t, 1, mmp.sendMessageCalls)
 	})
 
 	T.Run("with error encoding value", func(t *testing.T) {
@@ -121,19 +119,16 @@ func Test_sqsPublisher_PublishAsync(T *testing.T) {
 			Name: t.Name(),
 		}
 
-		mmp := &mockMessagePublisher{}
-		mmp.On(
-			"SendMessage",
-			testutils.ContextMatcher,
-			mock.MatchedBy(func(*sqs.SendMessageInput) bool { return true }),
-			mock.Anything,
-		).Return(&sqs.SendMessageOutput{}, nil)
+		mmp := &mockMessagePublisher{
+			sendMessageFunc: func(_ context.Context, _ *sqs.SendMessageInput, _ ...func(*sqs.Options)) (*sqs.SendMessageOutput, error) {
+				return &sqs.SendMessageOutput{}, nil
+			},
+		}
 
 		actual.publisher = mmp
 
 		actual.PublishAsync(ctx, inputData)
-
-		mock.AssertExpectationsForObjects(t, mmp)
+		assert.Equal(t, 1, mmp.sendMessageCalls)
 	})
 
 	T.Run("with error encoding value", func(t *testing.T) {
@@ -183,19 +178,16 @@ func Test_sqsPublisher_PublishAsync(T *testing.T) {
 			Name: t.Name(),
 		}
 
-		mmp := &mockMessagePublisher{}
-		mmp.On(
-			"SendMessage",
-			testutils.ContextMatcher,
-			mock.MatchedBy(func(*sqs.SendMessageInput) bool { return true }),
-			mock.Anything,
-		).Return((*sqs.SendMessageOutput)(nil), errors.New("send failed"))
+		mmp := &mockMessagePublisher{
+			sendMessageFunc: func(_ context.Context, _ *sqs.SendMessageInput, _ ...func(*sqs.Options)) (*sqs.SendMessageOutput, error) {
+				return nil, errors.New("send failed")
+			},
+		}
 
 		actual.publisher = mmp
 
 		actual.PublishAsync(ctx, inputData)
-
-		mock.AssertExpectationsForObjects(t, mmp)
+		assert.Equal(t, 1, mmp.sendMessageCalls)
 	})
 }
 
@@ -276,42 +268,56 @@ func Test_provideSQSPublisher(T *testing.T) {
 	T.Run("panics when first NewInt64Counter fails", func(t *testing.T) {
 		t.Parallel()
 
-		mp := &metrics.MockProvider{}
-		mp.On("NewInt64Counter", "t_published", mock.Anything).Return(metricnoop.Int64Counter{}, errors.New("forced error"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(name string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				if name == "t_published" {
+					return metricnoop.Int64Counter{}, errors.New("forced error")
+				}
+				t.Fatalf("unexpected NewInt64Counter call: %q", name)
+				return nil, nil
+			},
+		}
 
 		assert.Panics(t, func() {
 			provideSQSPublisher(logging.NewNoopLogger(), nil, tracing.NewNoopTracerProvider(), mp, "t")
 		})
-
-		mock.AssertExpectationsForObjects(t, mp)
 	})
 
 	T.Run("panics when second NewInt64Counter fails", func(t *testing.T) {
 		t.Parallel()
 
-		mp := &metrics.MockProvider{}
-		mp.On("NewInt64Counter", "t_published", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
-		mp.On("NewInt64Counter", "t_publish_errors", mock.Anything).Return(metricnoop.Int64Counter{}, errors.New("forced error"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(name string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				switch name {
+				case "t_published":
+					return metricnoop.Int64Counter{}, nil
+				case "t_publish_errors":
+					return metricnoop.Int64Counter{}, errors.New("forced error")
+				}
+				t.Fatalf("unexpected NewInt64Counter call: %q", name)
+				return nil, nil
+			},
+		}
 
 		assert.Panics(t, func() {
 			provideSQSPublisher(logging.NewNoopLogger(), nil, tracing.NewNoopTracerProvider(), mp, "t")
 		})
-
-		mock.AssertExpectationsForObjects(t, mp)
 	})
 
 	T.Run("panics when NewFloat64Histogram fails", func(t *testing.T) {
 		t.Parallel()
 
-		mp := &metrics.MockProvider{}
-		mp.On("NewInt64Counter", "t_published", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
-		mp.On("NewInt64Counter", "t_publish_errors", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
-		mp.On("NewFloat64Histogram", "t_publish_latency_ms", mock.Anything).Return(metricnoop.Float64Histogram{}, errors.New("forced error"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(string, ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				return metricnoop.Int64Counter{}, nil
+			},
+			NewFloat64HistogramFunc: func(string, ...metric.Float64HistogramOption) (metrics.Float64Histogram, error) {
+				return metricnoop.Float64Histogram{}, errors.New("forced error")
+			},
+		}
 
 		assert.Panics(t, func() {
 			provideSQSPublisher(logging.NewNoopLogger(), nil, tracing.NewNoopTracerProvider(), mp, "t")
 		})
-
-		mock.AssertExpectationsForObjects(t, mp)
 	})
 }

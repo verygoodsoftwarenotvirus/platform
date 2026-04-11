@@ -20,7 +20,6 @@ import (
 	vectorsearch "github.com/verygoodsoftwarenotvirus/platform/v5/search/vector"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -488,15 +487,16 @@ func TestUpsert(T *testing.T) {
 
 	T.Run("circuit breaker broken", func(t *testing.T) {
 		t.Parallel()
-		cb := &cbmock.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(true).Once()
+		cb := &cbmock.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return true },
+		}
 
 		idx := buildStubIndex(t, &qdrantStub{}, cb)
 
 		err := idx.Upsert(t.Context(), vectorsearch.Vector[doc]{ID: "a", Embedding: []float32{1, 0, 0}})
 		require.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
 
-		mock.AssertExpectationsForObjects(t, cb)
+		require.Len(t, cb.CannotProceedCalls(), 1)
 	})
 
 	T.Run("rejects empty ID", func(t *testing.T) {
@@ -568,15 +568,16 @@ func TestDelete(T *testing.T) {
 
 	T.Run("circuit breaker broken", func(t *testing.T) {
 		t.Parallel()
-		cb := &cbmock.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(true).Once()
+		cb := &cbmock.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return true },
+		}
 
 		idx := buildStubIndex(t, &qdrantStub{}, cb)
 
 		err := idx.Delete(t.Context(), "some-id")
 		require.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
 
-		mock.AssertExpectationsForObjects(t, cb)
+		require.Len(t, cb.CannotProceedCalls(), 1)
 	})
 
 	T.Run("successful delete", func(t *testing.T) {
@@ -616,15 +617,16 @@ func TestWipe(T *testing.T) {
 
 	T.Run("circuit breaker broken", func(t *testing.T) {
 		t.Parallel()
-		cb := &cbmock.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(true).Once()
+		cb := &cbmock.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return true },
+		}
 
 		idx := buildStubIndex(t, &qdrantStub{}, cb)
 
 		err := idx.Wipe(t.Context())
 		require.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
 
-		mock.AssertExpectationsForObjects(t, cb)
+		require.Len(t, cb.CannotProceedCalls(), 1)
 	})
 
 	T.Run("successful wipe", func(t *testing.T) {
@@ -725,15 +727,16 @@ func TestQuery(T *testing.T) {
 
 	T.Run("circuit breaker broken", func(t *testing.T) {
 		t.Parallel()
-		cb := &cbmock.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(true).Once()
+		cb := &cbmock.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return true },
+		}
 
 		idx := buildStubIndex(t, &qdrantStub{}, cb)
 
 		_, err := idx.Query(t.Context(), vectorsearch.QueryRequest{Embedding: []float32{1, 0, 0}, TopK: 5})
 		require.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
 
-		mock.AssertExpectationsForObjects(t, cb)
+		require.Len(t, cb.CannotProceedCalls(), 1)
 	})
 
 	T.Run("defaults TopK to 10", func(t *testing.T) {

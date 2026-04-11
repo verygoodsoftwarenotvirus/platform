@@ -256,8 +256,9 @@ func TestFeatureFlagManager_CanUseFeature(T *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		cb := &mockCircuitBreaker.MockCircuitBreaker{}
-		cb.On("CanProceed").Return(false)
+		cb := &mockCircuitBreaker.CircuitBreakerMock{
+			CanProceedFunc: func() bool { return false },
+		}
 
 		ffm := buildTestManager(t, cb)
 
@@ -296,8 +297,9 @@ func TestFeatureFlagManager_GetStringValue(T *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		cb := &mockCircuitBreaker.MockCircuitBreaker{}
-		cb.On("CanProceed").Return(false)
+		cb := &mockCircuitBreaker.CircuitBreakerMock{
+			CanProceedFunc: func() bool { return false },
+		}
 
 		ffm := buildTestManager(t, cb)
 
@@ -336,8 +338,9 @@ func TestFeatureFlagManager_GetInt64Value(T *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		cb := &mockCircuitBreaker.MockCircuitBreaker{}
-		cb.On("CanProceed").Return(false)
+		cb := &mockCircuitBreaker.CircuitBreakerMock{
+			CanProceedFunc: func() bool { return false },
+		}
 
 		ffm := buildTestManager(t, cb)
 
@@ -376,8 +379,9 @@ func TestFeatureFlagManager_GetFloat64Value(T *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		cb := &mockCircuitBreaker.MockCircuitBreaker{}
-		cb.On("CanProceed").Return(false)
+		cb := &mockCircuitBreaker.CircuitBreakerMock{
+			CanProceedFunc: func() bool { return false },
+		}
 
 		ffm := buildTestManager(t, cb)
 
@@ -418,8 +422,9 @@ func TestFeatureFlagManager_GetObjectValue(T *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		cb := &mockCircuitBreaker.MockCircuitBreaker{}
-		cb.On("CanProceed").Return(false)
+		cb := &mockCircuitBreaker.CircuitBreakerMock{
+			CanProceedFunc: func() bool { return false },
+		}
 
 		ffm := buildTestManager(t, cb)
 

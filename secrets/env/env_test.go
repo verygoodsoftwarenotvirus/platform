@@ -10,8 +10,8 @@ import (
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/secrets"
 
+	"github.com/shoenig/test"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -24,14 +24,18 @@ func TestNewEnvSecretSource(T *testing.T) {
 	T.Run("with error creating lookup counter", func(t *testing.T) {
 		t.Parallel()
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", name+"_lookups", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, name+"_lookups", counterName)
+				return metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary")
+			},
+		}
 
 		source, err := NewEnvSecretSource(nil, nil, mp)
 		require.Error(t, err)
 		assert.Nil(t, source)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("with error creating latency histogram", func(t *testing.T) {
@@ -41,15 +45,22 @@ func TestNewEnvSecretSource(T *testing.T) {
 		h, histErr := noopMP.NewFloat64Histogram("test")
 		require.NoError(t, histErr)
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", name+"_lookups", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
-		mp.On("NewFloat64Histogram", name+"_latency_ms", []metric.Float64HistogramOption(nil)).Return(h, errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(_ string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				return metrics.Int64CounterForTest(t, "x"), nil
+			},
+			NewFloat64HistogramFunc: func(histName string, _ ...metric.Float64HistogramOption) (metrics.Float64Histogram, error) {
+				test.EqOp(t, name+"_latency_ms", histName)
+				return h, errors.New("arbitrary")
+			},
+		}
 
 		source, err := NewEnvSecretSource(nil, nil, mp)
 		require.Error(t, err)
 		assert.Nil(t, source)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
+		test.SliceLen(t, 1, mp.NewFloat64HistogramCalls())
 	})
 }
 

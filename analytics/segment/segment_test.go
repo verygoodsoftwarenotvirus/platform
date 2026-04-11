@@ -11,7 +11,7 @@ import (
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/mock"
+	"github.com/shoenig/test"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -42,28 +42,41 @@ func TestNewSegmentEventReporter(T *testing.T) {
 	T.Run("with error creating event counter", func(t *testing.T) {
 		t.Parallel()
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", name+"_events", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, name+"_events", counterName)
+				return metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary")
+			},
+		}
 
 		collector, err := NewSegmentEventReporter(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, t.Name(), cbnoop.NewCircuitBreaker())
 		require.Error(t, err)
 		require.Nil(t, collector)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("with error creating error counter", func(t *testing.T) {
 		t.Parallel()
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", name+"_events", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
-		mp.On("NewInt64Counter", name+"_errors", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				switch counterName {
+				case name + "_events":
+					return metrics.Int64CounterForTest(t, "x"), nil
+				case name + "_errors":
+					return metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary")
+				}
+				t.Fatalf("unexpected NewInt64Counter call: %q", counterName)
+				return nil, nil
+			},
+		}
 
 		collector, err := NewSegmentEventReporter(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, t.Name(), cbnoop.NewCircuitBreaker())
 		require.Error(t, err)
 		require.Nil(t, collector)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 2, mp.NewInt64CounterCalls())
 	})
 }
 

@@ -17,6 +17,7 @@ import (
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
+	"github.com/shoenig/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/metric"
@@ -232,9 +233,12 @@ func TestProvideLocker(T *testing.T) {
 			},
 		}
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", "dlock-breaker_circuit_breaker_tripped", []metric.Int64CounterOption(nil)).
-			Return(&mockmetrics.Int64Counter{}, fmt.Errorf("counter init failure"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, "dlock-breaker_circuit_breaker_tripped", counterName)
+				return &mockmetrics.Int64CounterMock{}, fmt.Errorf("counter init failure")
+			},
+		}
 
 		l, err := ProvideLocker(
 			t.Context(),
@@ -247,6 +251,7 @@ func TestProvideLocker(T *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, l)
 		assert.Contains(t, err.Error(), "distributedlock circuit breaker")
-		mp.AssertExpectations(t)
+
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 }

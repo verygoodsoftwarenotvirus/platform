@@ -12,10 +12,9 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/v5/reflection"
 
+	"github.com/shoenig/test"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -177,19 +176,18 @@ func TestConfig_ProvideCollector(T *testing.T) {
 			},
 		}
 
-		i64Counter := &mockmetrics.Int64Counter{}
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On(
-			reflection.GetMethodName(mp.NewInt64Counter),
-			mock.AnythingOfType("string"),
-			[]metric.Int64CounterOption(nil),
-		).Return(i64Counter, errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(_ string, options ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.SliceEmpty(t, options)
+				return nil, errors.New("arbitrary")
+			},
+		}
 
 		reporter, err := cfg.ProvideCollector(ctx, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp)
 		assert.Nil(t, reporter)
 		assert.Error(t, err)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 }
 

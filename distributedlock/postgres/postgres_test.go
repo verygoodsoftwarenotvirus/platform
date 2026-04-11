@@ -236,12 +236,13 @@ func TestLocker_Acquire_Unit(T *testing.T) {
 		t.Parallel()
 		client, _ := buildSqlmockClient(t)
 		t.Cleanup(func() { _ = client.Close() })
-		cb := &cbmock.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(true)
+		cb := &cbmock.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return true },
+		}
 		l := newTestLockerWithCB(t, client, cb)
 		_, err := l.Acquire(t.Context(), "k", time.Minute)
 		require.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
-		cb.AssertExpectations(t)
+		require.NotEmpty(t, cb.CannotProceedCalls())
 	})
 
 	T.Run("Conn reservation failure", func(t *testing.T) {
@@ -313,10 +314,14 @@ func TestLocker_Release_Unit(T *testing.T) {
 		t.Parallel()
 		client, mock := buildSqlmockClient(t)
 		t.Cleanup(func() { _ = client.Close() })
-		cb := &cbmock.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false).Once()
-		cb.On("Succeeded").Return().Once()
-		cb.On("CannotProceed").Return(true).Once()
+		var cannotProceedCalls int
+		cb := &cbmock.CircuitBreakerMock{
+			CannotProceedFunc: func() bool {
+				cannotProceedCalls++
+				return cannotProceedCalls > 1 // first call (Acquire) proceeds, second (Release) is blocked
+			},
+			SucceededFunc: func() {},
+		}
 		l := newTestLockerWithCB(t, client, cb)
 
 		mock.ExpectQuery(`SELECT pg_try_advisory_lock`).
@@ -326,7 +331,8 @@ func TestLocker_Release_Unit(T *testing.T) {
 		h, err := l.Acquire(t.Context(), "k", time.Minute)
 		require.NoError(t, err)
 		require.ErrorIs(t, h.Release(t.Context()), circuitbreaking.ErrCircuitBroken)
-		cb.AssertExpectations(t)
+		require.Len(t, cb.CannotProceedCalls(), 2)
+		require.Len(t, cb.SucceededCalls(), 1)
 	})
 
 	T.Run("double release returns ErrLockNotHeld", func(t *testing.T) {
@@ -375,10 +381,11 @@ func TestLocker_Release_Unit(T *testing.T) {
 		t.Parallel()
 		client, mock := buildSqlmockClient(t)
 		t.Cleanup(func() { _ = client.Close() })
-		cb := &cbmock.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false)
-		cb.On("Succeeded").Return().Once()
-		cb.On("Failed").Return().Once()
+		cb := &cbmock.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+			SucceededFunc:     func() {},
+			FailedFunc:        func() {},
+		}
 		l := newTestLockerWithCB(t, client, cb)
 
 		mock.ExpectQuery(`SELECT pg_try_advisory_lock`).
@@ -391,7 +398,8 @@ func TestLocker_Release_Unit(T *testing.T) {
 		h, err := l.Acquire(t.Context(), "k", time.Minute)
 		require.NoError(t, err)
 		require.Error(t, h.Release(t.Context()))
-		cb.AssertExpectations(t)
+		require.Len(t, cb.SucceededCalls(), 1)
+		require.Len(t, cb.FailedCalls(), 1)
 	})
 }
 
@@ -436,10 +444,14 @@ func TestLocker_Refresh_Unit(T *testing.T) {
 		t.Parallel()
 		client, mock := buildSqlmockClient(t)
 		t.Cleanup(func() { _ = client.Close() })
-		cb := &cbmock.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false).Once()
-		cb.On("Succeeded").Return().Once()
-		cb.On("CannotProceed").Return(true).Once()
+		var cannotProceedCalls int
+		cb := &cbmock.CircuitBreakerMock{
+			CannotProceedFunc: func() bool {
+				cannotProceedCalls++
+				return cannotProceedCalls > 1 // first call (Acquire) proceeds, second (Refresh) is blocked
+			},
+			SucceededFunc: func() {},
+		}
 		l := newTestLockerWithCB(t, client, cb)
 
 		mock.ExpectQuery(`SELECT pg_try_advisory_lock`).
@@ -449,7 +461,8 @@ func TestLocker_Refresh_Unit(T *testing.T) {
 		h, err := l.Acquire(t.Context(), "k", time.Minute)
 		require.NoError(t, err)
 		require.ErrorIs(t, h.Refresh(t.Context(), time.Minute), circuitbreaking.ErrCircuitBroken)
-		cb.AssertExpectations(t)
+		require.Len(t, cb.CannotProceedCalls(), 2)
+		require.Len(t, cb.SucceededCalls(), 1)
 	})
 
 	T.Run("refresh after release returns ErrLockNotHeld", func(t *testing.T) {

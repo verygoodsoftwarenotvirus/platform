@@ -8,8 +8,8 @@ import (
 	analyticsmock "github.com/verygoodsoftwarenotvirus/platform/v5/analytics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/analytics/noop"
 
+	"github.com/shoenig/test"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -80,10 +80,15 @@ func TestMultiSourceEventReporter_TrackEvent(T *testing.T) {
 	T.Run("delegates to correct reporter", func(t *testing.T) {
 		t.Parallel()
 
-		mockReporter := &analyticsmock.EventReporter{}
-		mockReporter.On("EventOccurred", mock.AnythingOfType("*context.valueCtx"), "signup", "user1", mock.MatchedBy(func(props map[string]any) bool {
-			return props[SourcePropertyKey] == "ios" && props["plan"] == "pro"
-		})).Return(nil)
+		mockReporter := &analyticsmock.EventReporterMock{
+			EventOccurredFunc: func(_ context.Context, event, userID string, properties map[string]any) error {
+				assert.Equal(t, "signup", event)
+				assert.Equal(t, "user1", userID)
+				assert.Equal(t, "ios", properties[SourcePropertyKey])
+				assert.Equal(t, "pro", properties["plan"])
+				return nil
+			},
+		}
 
 		reporters := map[string]analytics.EventReporter{
 			"ios": mockReporter,
@@ -93,7 +98,7 @@ func TestMultiSourceEventReporter_TrackEvent(T *testing.T) {
 		err := m.TrackEvent(context.Background(), "ios", "signup", "user1", map[string]any{"plan": "pro"})
 		assert.NoError(t, err)
 
-		mock.AssertExpectationsForObjects(t, mockReporter)
+		test.SliceLen(t, 1, mockReporter.EventOccurredCalls())
 	})
 
 	T.Run("uses noop for unknown source", func(t *testing.T) {
@@ -112,10 +117,14 @@ func TestMultiSourceEventReporter_TrackAnonymousEvent(T *testing.T) {
 	T.Run("delegates to correct reporter", func(t *testing.T) {
 		t.Parallel()
 
-		mockReporter := &analyticsmock.EventReporter{}
-		mockReporter.On("EventOccurredAnonymous", mock.AnythingOfType("*context.valueCtx"), "page_view", "anon1", mock.MatchedBy(func(props map[string]any) bool {
-			return props[SourcePropertyKey] == "web"
-		})).Return(nil)
+		mockReporter := &analyticsmock.EventReporterMock{
+			EventOccurredAnonymousFunc: func(_ context.Context, event, anonymousID string, properties map[string]any) error {
+				assert.Equal(t, "page_view", event)
+				assert.Equal(t, "anon1", anonymousID)
+				assert.Equal(t, "web", properties[SourcePropertyKey])
+				return nil
+			},
+		}
 
 		reporters := map[string]analytics.EventReporter{
 			"web": mockReporter,
@@ -125,7 +134,7 @@ func TestMultiSourceEventReporter_TrackAnonymousEvent(T *testing.T) {
 		err := m.TrackAnonymousEvent(context.Background(), "web", "page_view", "anon1", map[string]any{})
 		assert.NoError(t, err)
 
-		mock.AssertExpectationsForObjects(t, mockReporter)
+		test.SliceLen(t, 1, mockReporter.EventOccurredAnonymousCalls())
 	})
 }
 

@@ -18,6 +18,7 @@ import (
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
+	"github.com/shoenig/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/metric"
@@ -235,9 +236,12 @@ func TestProvideEmailer(T *testing.T) {
 		cfg.CircuitBreaker.ErrorRate = 50
 		cfg.CircuitBreaker.MinimumSampleThreshold = 10
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", "email-breaker_circuit_breaker_tripped", []metric.Int64CounterOption(nil)).
-			Return(&mockmetrics.Int64Counter{}, fmt.Errorf("counter init failure"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, "email-breaker_circuit_breaker_tripped", counterName)
+				return &mockmetrics.Int64CounterMock{}, fmt.Errorf("counter init failure")
+			},
+		}
 
 		emailer, err := ProvideEmailer(
 			t.Context(),
@@ -249,6 +253,7 @@ func TestProvideEmailer(T *testing.T) {
 		)
 		require.Error(t, err)
 		assert.Nil(t, emailer)
-		mp.AssertExpectations(t)
+
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 }

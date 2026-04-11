@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/cache"
-	circuitbreakingmock2 "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/mock2"
+	mockcircuitbreaking "github.com/verygoodsoftwarenotvirus/platform/v5/circuitbreaking/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
-	metricsmock2 "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock2"
+	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/go-redis/redis/v8"
@@ -41,7 +41,7 @@ func gobEncodeExample(t *testing.T, e *example) string {
 	return buf.String()
 }
 
-func buildTestImpl(t *testing.T) (*redisCacheImpl[example], *redisClientMock, *circuitbreakingmock2.CircuitBreakerMock) {
+func buildTestImpl(t *testing.T) (*redisCacheImpl[example], *redisClientMock, *mockcircuitbreaking.CircuitBreakerMock) {
 	t.Helper()
 
 	mp := metrics.NewNoopMetricsProvider()
@@ -65,7 +65,7 @@ func buildTestImpl(t *testing.T) (*redisCacheImpl[example], *redisClientMock, *c
 	must.NoError(t, err)
 
 	client := &redisClientMock{}
-	cb := &circuitbreakingmock2.CircuitBreakerMock{}
+	cb := &mockcircuitbreaking.CircuitBreakerMock{}
 
 	return &redisCacheImpl[example]{
 		logger:           logging.NewNoopLogger(),
@@ -91,9 +91,9 @@ type counterResult struct {
 // newCounterProviderMock returns a metrics.Provider mock whose NewInt64Counter
 // implementation looks up the result keyed on the counter name. Unknown names
 // fail the test.
-func newCounterProviderMock(t *testing.T, results map[string]counterResult) *metricsmock2.ProviderMock {
+func newCounterProviderMock(t *testing.T, results map[string]counterResult) *mockmetrics.ProviderMock {
 	t.Helper()
-	return &metricsmock2.ProviderMock{
+	return &mockmetrics.ProviderMock{
 		NewInt64CounterFunc: func(metricName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
 			res, ok := results[metricName]
 			if !ok {
@@ -256,7 +256,7 @@ func TestNewRedisCache(T *testing.T) {
 		h, histErr := noopMP.NewFloat64Histogram("test")
 		must.NoError(t, histErr)
 
-		mp := &metricsmock2.ProviderMock{
+		mp := &mockmetrics.ProviderMock{
 			NewInt64CounterFunc: func(_ string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
 				return metrics.Int64CounterForTest(t, "x"), nil
 			},

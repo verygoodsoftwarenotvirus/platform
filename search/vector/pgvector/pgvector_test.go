@@ -13,17 +13,40 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/database"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/identifiers"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	vectorsearch "github.com/verygoodsoftwarenotvirus/platform/v5/search/vector"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	postgrescontainer "github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"go.opentelemetry.io/otel/metric"
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
 )
+
+// counterResult bundles the values a mocked NewInt64Counter call returns.
+type counterResult struct {
+	counter metrics.Int64Counter
+	err     error
+}
+
+// newCounterProviderMock returns a metrics.Provider mock whose NewInt64Counter
+// implementation looks up the result keyed on the counter name. Unknown names
+// fail the test.
+func newCounterProviderMock(t *testing.T, results map[string]counterResult) *mockmetrics.ProviderMock {
+	t.Helper()
+	return &mockmetrics.ProviderMock{
+		NewInt64CounterFunc: func(name string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+			res, ok := results[name]
+			if !ok {
+				t.Fatalf("unexpected NewInt64Counter call: %q", name)
+			}
+			return res.counter, res.err
+		},
+	}
+}
 
 const pgvectorImage = "pgvector/pgvector:pg16"
 
@@ -78,12 +101,12 @@ type doc struct {
 	Title string `json:"title"`
 }
 
-func provideTestIndex(t *testing.T, client database.Client, indexName string, dim int, metric vectorsearch.DistanceMetric) vectorsearch.Index[doc] {
+func provideTestIndex(t *testing.T, client database.Client, indexName string, dim int, distanceMetric vectorsearch.DistanceMetric) vectorsearch.Index[doc] {
 	t.Helper()
 
 	cfg := &Config{
 		Dimension: dim,
-		Metric:    metric,
+		Metric:    distanceMetric,
 	}
 	im, err := ProvideIndex[doc](t.Context(), nil, nil, nil, cfg, client, indexName, cbnoop.NewCircuitBreaker())
 	require.NoError(t, err)
@@ -139,88 +162,82 @@ func TestProvideIndex(T *testing.T) {
 	T.Run("error creating upsert counter", func(t *testing.T) {
 		t.Parallel()
 
-		mp := &metrics.MockProvider{}
-		mp.On("NewInt64Counter", "pgvector_index_upserts", mock.Anything).Return(metricnoop.Int64Counter{}, errors.New("forced error"))
+		mp := newCounterProviderMock(t, map[string]counterResult{
+			"pgvector_index_upserts": {counter: metricnoop.Int64Counter{}, err: errors.New("forced error")},
+		})
 
 		_, err := ProvideIndex[doc](t.Context(), nil, nil, mp, &Config{Dimension: 3, Metric: vectorsearch.DistanceCosine}, &testDBClient{}, "idx", cbnoop.NewCircuitBreaker())
 		require.Error(t, err)
-
-		mock.AssertExpectationsForObjects(t, mp)
 	})
 
 	T.Run("error creating delete counter", func(t *testing.T) {
 		t.Parallel()
 
-		mp := &metrics.MockProvider{}
-		mp.On("NewInt64Counter", "pgvector_index_upserts", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
-		mp.On("NewInt64Counter", "pgvector_index_deletes", mock.Anything).Return(metricnoop.Int64Counter{}, errors.New("forced error"))
+		mp := newCounterProviderMock(t, map[string]counterResult{
+			"pgvector_index_upserts": {counter: metricnoop.Int64Counter{}},
+			"pgvector_index_deletes": {counter: metricnoop.Int64Counter{}, err: errors.New("forced error")},
+		})
 
 		_, err := ProvideIndex[doc](t.Context(), nil, nil, mp, &Config{Dimension: 3, Metric: vectorsearch.DistanceCosine}, &testDBClient{}, "idx", cbnoop.NewCircuitBreaker())
 		require.Error(t, err)
-
-		mock.AssertExpectationsForObjects(t, mp)
 	})
 
 	T.Run("error creating wipe counter", func(t *testing.T) {
 		t.Parallel()
 
-		mp := &metrics.MockProvider{}
-		mp.On("NewInt64Counter", "pgvector_index_upserts", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
-		mp.On("NewInt64Counter", "pgvector_index_deletes", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
-		mp.On("NewInt64Counter", "pgvector_index_wipes", mock.Anything).Return(metricnoop.Int64Counter{}, errors.New("forced error"))
+		mp := newCounterProviderMock(t, map[string]counterResult{
+			"pgvector_index_upserts": {counter: metricnoop.Int64Counter{}},
+			"pgvector_index_deletes": {counter: metricnoop.Int64Counter{}},
+			"pgvector_index_wipes":   {counter: metricnoop.Int64Counter{}, err: errors.New("forced error")},
+		})
 
 		_, err := ProvideIndex[doc](t.Context(), nil, nil, mp, &Config{Dimension: 3, Metric: vectorsearch.DistanceCosine}, &testDBClient{}, "idx", cbnoop.NewCircuitBreaker())
 		require.Error(t, err)
-
-		mock.AssertExpectationsForObjects(t, mp)
 	})
 
 	T.Run("error creating query counter", func(t *testing.T) {
 		t.Parallel()
 
-		mp := &metrics.MockProvider{}
-		mp.On("NewInt64Counter", "pgvector_index_upserts", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
-		mp.On("NewInt64Counter", "pgvector_index_deletes", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
-		mp.On("NewInt64Counter", "pgvector_index_wipes", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
-		mp.On("NewInt64Counter", "pgvector_index_queries", mock.Anything).Return(metricnoop.Int64Counter{}, errors.New("forced error"))
+		mp := newCounterProviderMock(t, map[string]counterResult{
+			"pgvector_index_upserts": {counter: metricnoop.Int64Counter{}},
+			"pgvector_index_deletes": {counter: metricnoop.Int64Counter{}},
+			"pgvector_index_wipes":   {counter: metricnoop.Int64Counter{}},
+			"pgvector_index_queries": {counter: metricnoop.Int64Counter{}, err: errors.New("forced error")},
+		})
 
 		_, err := ProvideIndex[doc](t.Context(), nil, nil, mp, &Config{Dimension: 3, Metric: vectorsearch.DistanceCosine}, &testDBClient{}, "idx", cbnoop.NewCircuitBreaker())
 		require.Error(t, err)
-
-		mock.AssertExpectationsForObjects(t, mp)
 	})
 
 	T.Run("error creating error counter", func(t *testing.T) {
 		t.Parallel()
 
-		mp := &metrics.MockProvider{}
-		mp.On("NewInt64Counter", "pgvector_index_upserts", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
-		mp.On("NewInt64Counter", "pgvector_index_deletes", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
-		mp.On("NewInt64Counter", "pgvector_index_wipes", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
-		mp.On("NewInt64Counter", "pgvector_index_queries", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
-		mp.On("NewInt64Counter", "pgvector_index_errors", mock.Anything).Return(metricnoop.Int64Counter{}, errors.New("forced error"))
+		mp := newCounterProviderMock(t, map[string]counterResult{
+			"pgvector_index_upserts": {counter: metricnoop.Int64Counter{}},
+			"pgvector_index_deletes": {counter: metricnoop.Int64Counter{}},
+			"pgvector_index_wipes":   {counter: metricnoop.Int64Counter{}},
+			"pgvector_index_queries": {counter: metricnoop.Int64Counter{}},
+			"pgvector_index_errors":  {counter: metricnoop.Int64Counter{}, err: errors.New("forced error")},
+		})
 
 		_, err := ProvideIndex[doc](t.Context(), nil, nil, mp, &Config{Dimension: 3, Metric: vectorsearch.DistanceCosine}, &testDBClient{}, "idx", cbnoop.NewCircuitBreaker())
 		require.Error(t, err)
-
-		mock.AssertExpectationsForObjects(t, mp)
 	})
 
 	T.Run("error creating latency histogram", func(t *testing.T) {
 		t.Parallel()
 
-		mp := &metrics.MockProvider{}
-		mp.On("NewInt64Counter", "pgvector_index_upserts", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
-		mp.On("NewInt64Counter", "pgvector_index_deletes", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
-		mp.On("NewInt64Counter", "pgvector_index_wipes", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
-		mp.On("NewInt64Counter", "pgvector_index_queries", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
-		mp.On("NewInt64Counter", "pgvector_index_errors", mock.Anything).Return(metricnoop.Int64Counter{}, nil)
-		mp.On("NewFloat64Histogram", "pgvector_index_latency_ms", mock.Anything).Return(metricnoop.Float64Histogram{}, errors.New("forced error"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(string, ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				return metricnoop.Int64Counter{}, nil
+			},
+			NewFloat64HistogramFunc: func(string, ...metric.Float64HistogramOption) (metrics.Float64Histogram, error) {
+				return metricnoop.Float64Histogram{}, errors.New("forced error")
+			},
+		}
 
 		_, err := ProvideIndex[doc](t.Context(), nil, nil, mp, &Config{Dimension: 3, Metric: vectorsearch.DistanceCosine}, &testDBClient{}, "idx", cbnoop.NewCircuitBreaker())
 		require.Error(t, err)
-
-		mock.AssertExpectationsForObjects(t, mp)
 	})
 }
 

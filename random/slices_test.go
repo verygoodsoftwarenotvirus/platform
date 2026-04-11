@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestElement(T *testing.T) {
@@ -64,6 +64,6 @@ func TestElement(T *testing.T) {
 			"signal.",
 		}
 
-		assert.True(t, slices.Contains(exampleArray, Element(exampleArray)))
+		test.True(t, slices.Contains(exampleArray, Element(exampleArray)))
 	})
 }

@@ -6,8 +6,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 
 	"github.com/samber/do/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestRegisterLogger(T *testing.T) {
@@ -25,7 +25,7 @@ func TestRegisterLogger(T *testing.T) {
 		RegisterLogger(i)
 
 		l, err := do.Invoke[logging.Logger](i)
-		require.NoError(t, err)
-		assert.NotNil(t, l)
+		must.NoError(t, err)
+		test.NotNil(t, l)
 	})
 }

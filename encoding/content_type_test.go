@@ -6,7 +6,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func Test_clientEncoder_ContentType(T *testing.T) {
@@ -17,7 +17,7 @@ func Test_clientEncoder_ContentType(T *testing.T) {
 
 		e := ProvideClientEncoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), ContentTypeJSON)
 
-		assert.NotEmpty(t, e.ContentType())
+		test.NotEq(t, "", e.ContentType())
 	})
 }
 
@@ -27,7 +27,7 @@ func Test_buildContentType(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, buildContentType("test"))
+		test.NotNil(t, buildContentType("test"))
 	})
 }
 
@@ -37,25 +37,25 @@ func TestContentTypeToString(T *testing.T) {
 	T.Run("with JSON", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotEmpty(t, ContentTypeToString(ContentTypeJSON))
+		test.NotEq(t, "", ContentTypeToString(ContentTypeJSON))
 	})
 
 	T.Run("with XML", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotEmpty(t, ContentTypeToString(ContentTypeXML))
+		test.NotEq(t, "", ContentTypeToString(ContentTypeXML))
 	})
 
 	T.Run("with Emoji", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotEmpty(t, ContentTypeToString(ContentTypeEmoji))
+		test.NotEq(t, "", ContentTypeToString(ContentTypeEmoji))
 	})
 
 	T.Run("with invalid input", func(t *testing.T) {
 		t.Parallel()
 
-		assert.Empty(t, ContentTypeToString(nil))
+		test.EqOp(t, "", ContentTypeToString(nil))
 	})
 }
 
@@ -65,36 +65,36 @@ func Test_contentTypeFromString(T *testing.T) {
 	T.Run("with JSON", func(t *testing.T) {
 		t.Parallel()
 
-		assert.Equal(t, ContentTypeJSON, contentTypeFromString(contentTypeJSON))
+		test.EqOp(t, ContentTypeJSON, contentTypeFromString(contentTypeJSON))
 	})
 
 	T.Run("with XML", func(t *testing.T) {
 		t.Parallel()
 
-		assert.Equal(t, ContentTypeXML, contentTypeFromString(contentTypeXML))
+		test.EqOp(t, ContentTypeXML, contentTypeFromString(contentTypeXML))
 	})
 
 	T.Run("with TOML", func(t *testing.T) {
 		t.Parallel()
 
-		assert.Equal(t, ContentTypeTOML, contentTypeFromString(contentTypeTOML))
+		test.EqOp(t, ContentTypeTOML, contentTypeFromString(contentTypeTOML))
 	})
 
 	T.Run("with YAML", func(t *testing.T) {
 		t.Parallel()
 
-		assert.Equal(t, ContentTypeYAML, contentTypeFromString(contentTypeYAML))
+		test.EqOp(t, ContentTypeYAML, contentTypeFromString(contentTypeYAML))
 	})
 
 	T.Run("with Emoji", func(t *testing.T) {
 		t.Parallel()
 
-		assert.Equal(t, ContentTypeEmoji, contentTypeFromString(contentTypeEmoji))
+		test.EqOp(t, ContentTypeEmoji, contentTypeFromString(contentTypeEmoji))
 	})
 
 	T.Run("with unknown defaults to JSON", func(t *testing.T) {
 		t.Parallel()
 
-		assert.Equal(t, ContentTypeJSON, contentTypeFromString("unknown"))
+		test.EqOp(t, ContentTypeJSON, contentTypeFromString("unknown"))
 	})
 }

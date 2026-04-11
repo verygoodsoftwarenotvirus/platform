@@ -5,8 +5,8 @@ import (
 
 	vectorsearch "github.com/verygoodsoftwarenotvirus/platform/v5/search/vector"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 type example struct {
@@ -20,7 +20,7 @@ func TestNewIndex(T *testing.T) {
 		t.Parallel()
 
 		idx := NewIndex[example]()
-		assert.NotNil(t, idx)
+		test.NotNil(t, idx)
 	})
 }
 
@@ -31,7 +31,7 @@ func TestIndexManager_Upsert(T *testing.T) {
 		t.Parallel()
 
 		idx := NewIndex[example]()
-		require.NoError(t, idx.Upsert(t.Context(), vectorsearch.Vector[example]{
+		must.NoError(t, idx.Upsert(t.Context(), vectorsearch.Vector[example]{
 			ID:        "abc",
 			Embedding: []float32{0.1, 0.2, 0.3},
 			Metadata:  &example{Name: "doc"},
@@ -46,7 +46,7 @@ func TestIndexManager_Delete(T *testing.T) {
 		t.Parallel()
 
 		idx := NewIndex[example]()
-		require.NoError(t, idx.Delete(t.Context(), "abc", "def"))
+		must.NoError(t, idx.Delete(t.Context(), "abc", "def"))
 	})
 }
 
@@ -57,7 +57,7 @@ func TestIndexManager_Wipe(T *testing.T) {
 		t.Parallel()
 
 		idx := NewIndex[example]()
-		require.NoError(t, idx.Wipe(t.Context()))
+		must.NoError(t, idx.Wipe(t.Context()))
 	})
 }
 
@@ -72,7 +72,7 @@ func TestIndexManager_Query(T *testing.T) {
 			Embedding: []float32{0.1, 0.2, 0.3},
 			TopK:      10,
 		})
-		require.NoError(t, err)
-		assert.Empty(t, results)
+		must.NoError(t, err)
+		test.SliceEmpty(t, results)
 	})
 }

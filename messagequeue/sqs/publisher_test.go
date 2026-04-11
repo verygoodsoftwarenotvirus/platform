@@ -13,8 +13,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/metric"
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
 )
@@ -39,14 +39,14 @@ func Test_sqsPublisher_Publish(T *testing.T) {
 		logger := logging.NewNoopLogger()
 
 		provider := ProvideSQSPublisherProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		a, err := provider.ProvidePublisher(ctx, t.Name())
-		assert.NotNil(t, a)
-		assert.NoError(t, err)
+		test.NotNil(t, a)
+		test.NoError(t, err)
 
 		actual, ok := a.(*sqsPublisher)
-		require.True(t, ok)
+		must.True(t, ok)
 
 		inputData := &struct {
 			Name string `json:"name"`
@@ -63,8 +63,8 @@ func Test_sqsPublisher_Publish(T *testing.T) {
 		actual.publisher = mmp
 
 		err = actual.Publish(ctx, inputData)
-		assert.NoError(t, err)
-		assert.Equal(t, 1, mmp.sendMessageCalls)
+		test.NoError(t, err)
+		test.EqOp(t, 1, mmp.sendMessageCalls)
 	})
 
 	T.Run("with error encoding value", func(t *testing.T) {
@@ -74,14 +74,14 @@ func Test_sqsPublisher_Publish(T *testing.T) {
 		logger := logging.NewNoopLogger()
 
 		provider := ProvideSQSPublisherProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		a, err := provider.ProvidePublisher(ctx, t.Name())
-		assert.NotNil(t, a)
-		assert.NoError(t, err)
+		test.NotNil(t, a)
+		test.NoError(t, err)
 
 		actual, ok := a.(*sqsPublisher)
-		require.True(t, ok)
+		must.True(t, ok)
 
 		inputData := &struct {
 			Name json.Number `json:"name"`
@@ -90,7 +90,7 @@ func Test_sqsPublisher_Publish(T *testing.T) {
 		}
 
 		err = actual.Publish(ctx, inputData)
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 }
 
@@ -104,14 +104,14 @@ func Test_sqsPublisher_PublishAsync(T *testing.T) {
 		logger := logging.NewNoopLogger()
 
 		provider := ProvideSQSPublisherProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		a, err := provider.ProvidePublisher(ctx, t.Name())
-		assert.NotNil(t, a)
-		assert.NoError(t, err)
+		test.NotNil(t, a)
+		test.NoError(t, err)
 
 		actual, ok := a.(*sqsPublisher)
-		require.True(t, ok)
+		must.True(t, ok)
 
 		inputData := &struct {
 			Name string `json:"name"`
@@ -128,7 +128,7 @@ func Test_sqsPublisher_PublishAsync(T *testing.T) {
 		actual.publisher = mmp
 
 		actual.PublishAsync(ctx, inputData)
-		assert.Equal(t, 1, mmp.sendMessageCalls)
+		test.EqOp(t, 1, mmp.sendMessageCalls)
 	})
 
 	T.Run("with error encoding value", func(t *testing.T) {
@@ -138,14 +138,14 @@ func Test_sqsPublisher_PublishAsync(T *testing.T) {
 		logger := logging.NewNoopLogger()
 
 		provider := ProvideSQSPublisherProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		a, err := provider.ProvidePublisher(ctx, t.Name())
-		assert.NotNil(t, a)
-		assert.NoError(t, err)
+		test.NotNil(t, a)
+		test.NoError(t, err)
 
 		actual, ok := a.(*sqsPublisher)
-		require.True(t, ok)
+		must.True(t, ok)
 
 		inputData := &struct {
 			Name json.Number `json:"name"`
@@ -163,14 +163,14 @@ func Test_sqsPublisher_PublishAsync(T *testing.T) {
 		logger := logging.NewNoopLogger()
 
 		provider := ProvideSQSPublisherProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		a, err := provider.ProvidePublisher(ctx, t.Name())
-		assert.NotNil(t, a)
-		assert.NoError(t, err)
+		test.NotNil(t, a)
+		test.NoError(t, err)
 
 		actual, ok := a.(*sqsPublisher)
-		require.True(t, ok)
+		must.True(t, ok)
 
 		inputData := &struct {
 			Name string `json:"name"`
@@ -187,7 +187,7 @@ func Test_sqsPublisher_PublishAsync(T *testing.T) {
 		actual.publisher = mmp
 
 		actual.PublishAsync(ctx, inputData)
-		assert.Equal(t, 1, mmp.sendMessageCalls)
+		test.EqOp(t, 1, mmp.sendMessageCalls)
 	})
 }
 
@@ -201,7 +201,7 @@ func TestProvideSQSPublisherProvider(T *testing.T) {
 		logger := logging.NewNoopLogger()
 
 		actual := ProvideSQSPublisherProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil)
-		assert.NotNil(t, actual)
+		test.NotNil(t, actual)
 	})
 }
 
@@ -215,11 +215,11 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 		logger := logging.NewNoopLogger()
 
 		provider := ProvideSQSPublisherProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		actual, err := provider.ProvidePublisher(ctx, t.Name())
-		assert.NotNil(t, actual)
-		assert.NoError(t, err)
+		test.NotNil(t, actual)
+		test.NoError(t, err)
 	})
 
 	T.Run("with cache hit", func(t *testing.T) {
@@ -229,15 +229,15 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 		logger := logging.NewNoopLogger()
 
 		provider := ProvideSQSPublisherProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		actual, err := provider.ProvidePublisher(ctx, t.Name())
-		assert.NotNil(t, actual)
-		assert.NoError(t, err)
+		test.NotNil(t, actual)
+		test.NoError(t, err)
 
 		actual, err = provider.ProvidePublisher(ctx, t.Name())
-		assert.NotNil(t, actual)
-		assert.NoError(t, err)
+		test.NotNil(t, actual)
+		test.NoError(t, err)
 	})
 
 	T.Run("with empty topic", func(t *testing.T) {
@@ -247,11 +247,11 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 		logger := logging.NewNoopLogger()
 
 		provider := ProvideSQSPublisherProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		actual, err := provider.ProvidePublisher(ctx, "")
-		assert.Nil(t, actual)
-		assert.ErrorIs(t, err, messagequeue.ErrEmptyTopicName)
+		test.Nil(t, actual)
+		test.ErrorIs(t, err, messagequeue.ErrEmptyTopicName)
 	})
 }
 
@@ -262,7 +262,7 @@ func Test_provideSQSPublisher(T *testing.T) {
 		t.Parallel()
 
 		publisher := provideSQSPublisher(logging.NewNoopLogger(), nil, tracing.NewNoopTracerProvider(), nil, "test-topic")
-		require.NotNil(t, publisher)
+		must.NotNil(t, publisher)
 	})
 
 	T.Run("panics when first NewInt64Counter fails", func(t *testing.T) {
@@ -278,7 +278,7 @@ func Test_provideSQSPublisher(T *testing.T) {
 			},
 		}
 
-		assert.Panics(t, func() {
+		test.Panic(t, func() {
 			provideSQSPublisher(logging.NewNoopLogger(), nil, tracing.NewNoopTracerProvider(), mp, "t")
 		})
 	})
@@ -299,7 +299,7 @@ func Test_provideSQSPublisher(T *testing.T) {
 			},
 		}
 
-		assert.Panics(t, func() {
+		test.Panic(t, func() {
 			provideSQSPublisher(logging.NewNoopLogger(), nil, tracing.NewNoopTracerProvider(), mp, "t")
 		})
 	})
@@ -316,7 +316,7 @@ func Test_provideSQSPublisher(T *testing.T) {
 			},
 		}
 
-		assert.Panics(t, func() {
+		test.Panic(t, func() {
 			provideSQSPublisher(logging.NewNoopLogger(), nil, tracing.NewNoopTracerProvider(), mp, "t")
 		})
 	})

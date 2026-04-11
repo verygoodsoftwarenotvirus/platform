@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestExponentialBackoffPolicy_Execute(T *testing.T) {
@@ -25,8 +25,8 @@ func TestExponentialBackoffPolicy_Execute(T *testing.T) {
 			return nil
 		})
 
-		require.NoError(t, err)
-		assert.Equal(t, 1, attempts)
+		must.NoError(t, err)
+		test.EqOp(t, 1, attempts)
 	})
 
 	T.Run("success after retries", func(t *testing.T) {
@@ -49,8 +49,8 @@ func TestExponentialBackoffPolicy_Execute(T *testing.T) {
 			return nil
 		})
 
-		require.NoError(t, err)
-		assert.Equal(t, 3, attempts)
+		must.NoError(t, err)
+		test.EqOp(t, 3, attempts)
 	})
 
 	T.Run("returns last error after max attempts", func(t *testing.T) {
@@ -74,9 +74,9 @@ func TestExponentialBackoffPolicy_Execute(T *testing.T) {
 			return expectedErr
 		})
 
-		require.Error(t, err)
-		assert.Equal(t, expectedErr, err)
-		assert.Equal(t, 3, attempts)
+		must.Error(t, err)
+		test.ErrorIs(t, err, expectedErr)
+		test.EqOp(t, 3, attempts)
 	})
 
 	T.Run("respects context cancellation", func(t *testing.T) {
@@ -94,7 +94,7 @@ func TestExponentialBackoffPolicy_Execute(T *testing.T) {
 			return errors.New("fail")
 		})
 
-		require.Error(t, err)
-		assert.ErrorIs(t, err, context.Canceled)
+		must.Error(t, err)
+		test.ErrorIs(t, err, context.Canceled)
 	})
 }

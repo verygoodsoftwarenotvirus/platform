@@ -12,8 +12,8 @@ import (
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/metric"
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
 )
@@ -30,7 +30,7 @@ func buildRedisBackedConsumer(t *testing.T, cfg *Config, topic string, handlerFu
 	)
 
 	consumer, err := provider.ProvideConsumer(t.Context(), topic, handlerFunc)
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	return consumer
 }
@@ -49,7 +49,7 @@ func Test_redisConsumer_Consume(T *testing.T) {
 		}
 		defer func() {
 			if containerShutdown != nil {
-				assert.NoError(t, containerShutdown(ctx))
+				test.NoError(t, containerShutdown(ctx))
 			}
 		}()
 
@@ -58,14 +58,14 @@ func Test_redisConsumer_Consume(T *testing.T) {
 		}
 
 		consumer := buildRedisBackedConsumer(t, cfg, t.Name(), hf)
-		require.NotNil(t, consumer)
+		must.NotNil(t, consumer)
 
 		stopChan := make(chan bool)
 		errorsChan := make(chan error)
 		go consumer.Consume(ctx, stopChan, errorsChan)
 
 		publisher := buildRedisBackedPublisher(t, cfg, t.Name())
-		require.NoError(t, publisher.Publish(ctx, []byte("blah")))
+		must.NoError(t, publisher.Publish(ctx, []byte("blah")))
 
 		<-time.After(time.Second)
 		stopChan <- true
@@ -82,7 +82,7 @@ func Test_redisConsumer_Consume(T *testing.T) {
 		}
 		defer func() {
 			if containerShutdown != nil {
-				assert.NoError(t, containerShutdown(ctx))
+				test.NoError(t, containerShutdown(ctx))
 			}
 		}()
 
@@ -92,18 +92,18 @@ func Test_redisConsumer_Consume(T *testing.T) {
 		}
 
 		consumer := buildRedisBackedConsumer(t, cfg, t.Name(), hf)
-		require.NotNil(t, consumer)
+		must.NotNil(t, consumer)
 
 		stopChan := make(chan bool)
 		errorsChan := make(chan error)
 		go consumer.Consume(ctx, stopChan, errorsChan)
 
 		publisher := buildRedisBackedPublisher(t, cfg, t.Name())
-		require.NoError(t, publisher.Publish(ctx, []byte("blah")))
+		must.NoError(t, publisher.Publish(ctx, []byte("blah")))
 
 		receivedErr := <-errorsChan
-		assert.Error(t, receivedErr)
-		assert.Equal(t, anticipatedError, receivedErr)
+		test.Error(t, receivedErr)
+		test.ErrorIs(t, receivedErr, anticipatedError)
 
 		stopChan <- true
 	})
@@ -121,13 +121,13 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 		}
 
 		conPro := ProvideRedisConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil, cfg)
-		require.NotNil(t, conPro)
+		must.NotNil(t, conPro)
 
 		ctx := t.Context()
 
 		actual, err := conPro.ProvideConsumer(ctx, t.Name(), nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, actual)
+		test.NoError(t, err)
+		test.NotNil(t, actual)
 	})
 
 	T.Run("hitting cache", func(t *testing.T) {
@@ -139,17 +139,17 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 		}
 
 		conPro := ProvideRedisConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil, cfg)
-		require.NotNil(t, conPro)
+		must.NotNil(t, conPro)
 
 		ctx := t.Context()
 
 		actual, err := conPro.ProvideConsumer(ctx, t.Name(), nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, actual)
+		test.NoError(t, err)
+		test.NotNil(t, actual)
 
 		actual, err = conPro.ProvideConsumer(ctx, t.Name(), nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, actual)
+		test.NoError(t, err)
+		test.NotNil(t, actual)
 	})
 
 	T.Run("with empty topic", func(t *testing.T) {
@@ -161,11 +161,11 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 		}
 
 		conPro := ProvideRedisConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil, cfg)
-		require.NotNil(t, conPro)
+		must.NotNil(t, conPro)
 
 		actual, err := conPro.ProvideConsumer(t.Context(), "", nil)
-		assert.Nil(t, actual)
-		assert.ErrorIs(t, err, ErrEmptyInputProvided)
+		test.Nil(t, actual)
+		test.ErrorIs(t, err, ErrEmptyInputProvided)
 	})
 }
 
@@ -181,7 +181,7 @@ func Test_provideRedisConsumer(T *testing.T) {
 			},
 		}
 
-		assert.Panics(t, func() {
+		test.Panic(t, func() {
 			provideRedisConsumer(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, nil, "t", nil)
 		})
 	})

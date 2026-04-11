@@ -7,7 +7,7 @@ import (
 	fake "github.com/brianvoe/gofakeit/v7"
 	"github.com/go-faker/faker/v4"
 	"github.com/go-faker/faker/v4/pkg/options"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 )
 
 // BuildFakeTime builds a fake time.
@@ -18,7 +18,7 @@ func BuildFakeTime() time.Time {
 // BuildFakeForTest builds a fake instance of insert-struct-here for a test.
 func BuildFakeForTest[X any](t *testing.T) (x *X) {
 	t.Helper()
-	require.NoError(t, faker.FakeData(&x, options.WithRecursionMaxDepth(0)))
+	must.NoError(t, faker.FakeData(&x, options.WithRecursionMaxDepth(0)))
 	return x
 }
 

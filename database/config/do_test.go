@@ -10,8 +10,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/samber/do/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestRegisterClientConfig(T *testing.T) {
@@ -31,8 +31,8 @@ func TestRegisterClientConfig(T *testing.T) {
 		RegisterClientConfig(i)
 
 		cc, err := do.Invoke[database.ClientConfig](i)
-		require.NoError(t, err)
-		assert.NotNil(t, cc)
+		must.NoError(t, err)
+		test.NotNil(t, cc)
 	})
 }
 
@@ -61,12 +61,12 @@ func TestRegisterDatabase(T *testing.T) {
 		RegisterDatabase(i)
 
 		client, err := do.Invoke[database.Client](i)
-		require.NoError(t, err)
-		assert.NotNil(t, client)
+		must.NoError(t, err)
+		test.NotNil(t, client)
 
 		cc, err := do.Invoke[database.ClientConfig](i)
-		require.NoError(t, err)
-		assert.NotNil(t, cc)
+		must.NoError(t, err)
+		test.NotNil(t, cc)
 	})
 }
 
@@ -80,6 +80,6 @@ func TestProvideClientConfig(T *testing.T) {
 			Provider: ProviderPostgres,
 		}
 		cc := ProvideClientConfig(cfg)
-		require.NotNil(t, cc)
+		must.NotNil(t, cc)
 	})
 }

@@ -12,7 +12,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/shoenig/test"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -26,8 +26,8 @@ func TestNewPostHogEventReporter(T *testing.T) {
 		cfg := &Config{APIKey: t.Name()}
 
 		collector, err := NewPostHogEventReporter(logger, tracing.NewNoopTracerProvider(), nil, cfg.APIKey, cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
-		require.NotNil(t, collector)
+		must.NoError(t, err)
+		must.NotNil(t, collector)
 	})
 
 	T.Run("with empty API key", func(t *testing.T) {
@@ -37,8 +37,8 @@ func TestNewPostHogEventReporter(T *testing.T) {
 		cfg := &Config{}
 
 		collector, err := NewPostHogEventReporter(logger, tracing.NewNoopTracerProvider(), nil, cfg.APIKey, cbnoop.NewCircuitBreaker())
-		require.Error(t, err)
-		require.Nil(t, collector)
+		must.Error(t, err)
+		must.Nil(t, collector)
 	})
 
 	T.Run("with error creating event counter", func(t *testing.T) {
@@ -52,8 +52,8 @@ func TestNewPostHogEventReporter(T *testing.T) {
 		}
 
 		collector, err := NewPostHogEventReporter(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, t.Name(), cbnoop.NewCircuitBreaker())
-		require.Error(t, err)
-		require.Nil(t, collector)
+		must.Error(t, err)
+		must.Nil(t, collector)
 
 		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
@@ -75,8 +75,8 @@ func TestNewPostHogEventReporter(T *testing.T) {
 		}
 
 		collector, err := NewPostHogEventReporter(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, t.Name(), cbnoop.NewCircuitBreaker())
-		require.Error(t, err)
-		require.Nil(t, collector)
+		must.Error(t, err)
+		must.Nil(t, collector)
 
 		test.SliceLen(t, 2, mp.NewInt64CounterCalls())
 	})
@@ -92,8 +92,8 @@ func TestPostHogEventReporter_Close(T *testing.T) {
 		cfg := &Config{APIKey: t.Name()}
 
 		collector, err := NewPostHogEventReporter(logger, tracing.NewNoopTracerProvider(), nil, cfg.APIKey, cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
-		require.NotNil(t, collector)
+		must.NoError(t, err)
+		must.NotNil(t, collector)
 
 		collector.Close()
 	})
@@ -114,10 +114,10 @@ func TestPostHogEventReporter_AddUser(T *testing.T) {
 		}
 
 		collector, err := NewPostHogEventReporter(logger, tracing.NewNoopTracerProvider(), nil, cfg.APIKey, cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
-		require.NotNil(t, collector)
+		must.NoError(t, err)
+		must.NotNil(t, collector)
 
-		require.NoError(t, collector.AddUser(ctx, exampleUserID, properties))
+		must.NoError(t, collector.AddUser(ctx, exampleUserID, properties))
 	})
 }
 
@@ -136,10 +136,10 @@ func TestPostHogEventReporter_EventOccurred(T *testing.T) {
 		}
 
 		collector, err := NewPostHogEventReporter(logger, tracing.NewNoopTracerProvider(), nil, cfg.APIKey, cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
-		require.NotNil(t, collector)
+		must.NoError(t, err)
+		must.NotNil(t, collector)
 
-		require.NoError(t, collector.EventOccurred(ctx, t.Name(), exampleUserID, properties))
+		must.NoError(t, collector.EventOccurred(ctx, t.Name(), exampleUserID, properties))
 	})
 }
 
@@ -158,9 +158,9 @@ func TestPostHogEventReporter_EventOccurredAnonymous(T *testing.T) {
 		}
 
 		collector, err := NewPostHogEventReporter(logger, tracing.NewNoopTracerProvider(), nil, cfg.APIKey, cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
-		require.NotNil(t, collector)
+		must.NoError(t, err)
+		must.NotNil(t, collector)
 
-		require.NoError(t, collector.EventOccurredAnonymous(ctx, t.Name(), exampleAnonymousID, properties))
+		must.NoError(t, collector.EventOccurredAnonymous(ctx, t.Name(), exampleAnonymousID, properties))
 	})
 }

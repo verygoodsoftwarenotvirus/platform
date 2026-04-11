@@ -8,8 +8,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 type whatever struct {
@@ -23,24 +23,24 @@ func TestNewCompressor(T *testing.T) {
 		t.Parallel()
 
 		comp, err := NewCompressor(algoZstd)
-		require.NoError(t, err)
-		require.NotNil(t, comp)
+		must.NoError(t, err)
+		must.NotNil(t, comp)
 	})
 
 	T.Run("s2", func(t *testing.T) {
 		t.Parallel()
 
 		comp, err := NewCompressor(algoS2)
-		require.NoError(t, err)
-		require.NotNil(t, comp)
+		must.NoError(t, err)
+		must.NotNil(t, comp)
 	})
 
 	T.Run("invalid algo", func(t *testing.T) {
 		t.Parallel()
 
 		comp, err := NewCompressor(algo(t.Name()))
-		require.Error(t, err)
-		require.Nil(t, comp)
+		must.Error(t, err)
+		must.Nil(t, comp)
 	})
 }
 
@@ -52,7 +52,7 @@ func Test_compressor_CompressBytes(T *testing.T) {
 
 		ctx := t.Context()
 		comp, err := NewCompressor(algoZstd)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		x := &whatever{
 			Name: "testing",
@@ -62,10 +62,10 @@ func Test_compressor_CompressBytes(T *testing.T) {
 
 		expected := "KLUv_QQAmQAAeyJuYW1lIjoidGVzdGluZyJ9Ch6HXww="
 		compressed, err := comp.CompressBytes(encoder.MustEncodeJSON(ctx, x))
-		assert.NoError(t, err)
+		test.NoError(t, err)
 		actual := base64.URLEncoding.EncodeToString(compressed)
 
-		assert.Equal(t, expected, actual)
+		test.EqOp(t, expected, actual)
 	})
 
 	T.Run("s2", func(t *testing.T) {
@@ -73,7 +73,7 @@ func Test_compressor_CompressBytes(T *testing.T) {
 
 		ctx := t.Context()
 		comp, err := NewCompressor(algoS2)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		x := &whatever{
 			Name: "testing",
@@ -83,10 +83,10 @@ func Test_compressor_CompressBytes(T *testing.T) {
 
 		expected := "_wYAAFMyc1R3TwEXAABui7jXeyJuYW1lIjoidGVzdGluZyJ9Cg=="
 		compressed, err := comp.CompressBytes(encoder.MustEncodeJSON(ctx, x))
-		assert.NoError(t, err)
+		test.NoError(t, err)
 		actual := base64.URLEncoding.EncodeToString(compressed)
 
-		assert.Equal(t, expected, actual)
+		test.EqOp(t, expected, actual)
 	})
 
 	T.Run("invalid algo", func(t *testing.T) {
@@ -94,7 +94,7 @@ func Test_compressor_CompressBytes(T *testing.T) {
 
 		ctx := t.Context()
 		comp, err := NewCompressor(algoS2)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		comp.(*compressor).algo = "invalid"
 
@@ -105,8 +105,8 @@ func Test_compressor_CompressBytes(T *testing.T) {
 		encoder := encoding.ProvideServerEncoderDecoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), encoding.ContentTypeJSON)
 
 		compressed, err := comp.CompressBytes(encoder.MustEncodeJSON(ctx, x))
-		assert.Error(t, err)
-		assert.Nil(t, compressed)
+		test.Error(t, err)
+		test.Nil(t, compressed)
 	})
 }
 
@@ -124,7 +124,7 @@ func Test_compressor_DecompressBytes(T *testing.T) {
 
 			ctx := t.Context()
 			comp, err := NewCompressor(a)
-			require.NoError(t, err)
+			must.NoError(t, err)
 
 			x := &whatever{
 				Name: "testing",
@@ -133,15 +133,15 @@ func Test_compressor_DecompressBytes(T *testing.T) {
 			encoder := encoding.ProvideServerEncoderDecoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), encoding.ContentTypeJSON)
 
 			compressed, err := comp.CompressBytes(encoder.MustEncodeJSON(ctx, x))
-			assert.NoError(t, err)
+			test.NoError(t, err)
 
 			decompressed, err := comp.DecompressBytes(compressed)
-			assert.NoError(t, err)
+			test.NoError(t, err)
 
 			var y *whatever
-			require.NoError(t, encoder.DecodeBytes(ctx, decompressed, &y))
+			must.NoError(t, encoder.DecodeBytes(ctx, decompressed, &y))
 
-			assert.Equal(t, x, y)
+			test.Eq(t, x, y)
 		})
 	}
 
@@ -150,7 +150,7 @@ func Test_compressor_DecompressBytes(T *testing.T) {
 
 		ctx := t.Context()
 		comp, err := NewCompressor(algoZstd)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		x := &whatever{
 			Name: "testing",
@@ -159,34 +159,34 @@ func Test_compressor_DecompressBytes(T *testing.T) {
 		encoder := encoding.ProvideServerEncoderDecoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), encoding.ContentTypeJSON)
 
 		compressed, err := comp.CompressBytes(encoder.MustEncodeJSON(ctx, x))
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		comp.(*compressor).algo = "invalid"
 
 		decompressed, err := comp.DecompressBytes(compressed)
-		assert.Error(t, err)
-		assert.Nil(t, decompressed)
+		test.Error(t, err)
+		test.Nil(t, decompressed)
 	})
 
 	T.Run("with invalid zstd data", func(t *testing.T) {
 		t.Parallel()
 
 		comp, err := NewCompressor(algoZstd)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		decompressed, err := comp.DecompressBytes([]byte("not valid zstd data"))
-		assert.Error(t, err)
-		assert.Nil(t, decompressed)
+		test.Error(t, err)
+		test.Nil(t, decompressed)
 	})
 
 	T.Run("with invalid s2 data", func(t *testing.T) {
 		t.Parallel()
 
 		comp, err := NewCompressor(algoS2)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		decompressed, err := comp.DecompressBytes([]byte("not valid s2 data"))
-		assert.Error(t, err)
-		assert.Nil(t, decompressed)
+		test.Error(t, err)
+		test.Nil(t, decompressed)
 	})
 }

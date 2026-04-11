@@ -5,8 +5,8 @@ import (
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestConfig_ValidateWithContext(T *testing.T) {
@@ -20,7 +20,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider: ProviderSSE,
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("WebSocket provider", func(t *testing.T) {
@@ -31,7 +31,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider: ProviderWebSocket,
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx), "websocket provider requires websocket config")
+		test.Error(t, cfg.ValidateWithContext(ctx), test.Sprintf("websocket provider requires websocket config"))
 	})
 
 	T.Run("invalid provider", func(t *testing.T) {
@@ -42,7 +42,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider: "invalid",
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 }
 
@@ -56,8 +56,8 @@ func TestProvideEventStreamUpgrader(T *testing.T) {
 			Provider: ProviderSSE,
 		})
 
-		require.NoError(t, err)
-		assert.NotNil(t, upgrader)
+		must.NoError(t, err)
+		test.NotNil(t, upgrader)
 	})
 
 	T.Run("WebSocket", func(t *testing.T) {
@@ -67,8 +67,8 @@ func TestProvideEventStreamUpgrader(T *testing.T) {
 			Provider: ProviderWebSocket,
 		})
 
-		require.NoError(t, err)
-		assert.NotNil(t, upgrader)
+		must.NoError(t, err)
+		test.NotNil(t, upgrader)
 	})
 
 	T.Run("invalid provider", func(t *testing.T) {
@@ -76,7 +76,7 @@ func TestProvideEventStreamUpgrader(T *testing.T) {
 
 		_, err := ProvideEventStreamUpgrader(nil, tracing.NewNoopTracerProvider(), &Config{})
 
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 }
 
@@ -90,8 +90,8 @@ func TestProvideBidirectionalEventStreamUpgrader(T *testing.T) {
 			Provider: ProviderSSE,
 		})
 
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "SSE does not support bidirectional")
+		test.Error(t, err)
+		test.StrContains(t, err.Error(), "SSE does not support bidirectional")
 	})
 
 	T.Run("WebSocket", func(t *testing.T) {
@@ -101,8 +101,8 @@ func TestProvideBidirectionalEventStreamUpgrader(T *testing.T) {
 			Provider: ProviderWebSocket,
 		})
 
-		require.NoError(t, err)
-		assert.NotNil(t, upgrader)
+		must.NoError(t, err)
+		test.NotNil(t, upgrader)
 	})
 
 	T.Run("invalid provider", func(t *testing.T) {
@@ -110,6 +110,6 @@ func TestProvideBidirectionalEventStreamUpgrader(T *testing.T) {
 
 		_, err := ProvideBidirectionalEventStreamUpgrader(nil, tracing.NewNoopTracerProvider(), &Config{})
 
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 }

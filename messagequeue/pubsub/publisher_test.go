@@ -10,8 +10,8 @@ import (
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/metric"
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
 )
@@ -23,7 +23,7 @@ func TestBuildPubSubPublisher(T *testing.T) {
 		t.Parallel()
 
 		publisher := buildPubSubPublisher(logging.NewNoopLogger(), nil, tracing.NewNoopTracerProvider(), nil, "test-topic")
-		require.NotNil(t, publisher)
+		must.NotNil(t, publisher)
 	})
 
 	T.Run("panics when first NewInt64Counter fails", func(t *testing.T) {
@@ -39,7 +39,7 @@ func TestBuildPubSubPublisher(T *testing.T) {
 			},
 		}
 
-		assert.Panics(t, func() {
+		test.Panic(t, func() {
 			buildPubSubPublisher(logging.NewNoopLogger(), nil, tracing.NewNoopTracerProvider(), mp, "t")
 		})
 	})
@@ -60,7 +60,7 @@ func TestBuildPubSubPublisher(T *testing.T) {
 			},
 		}
 
-		assert.Panics(t, func() {
+		test.Panic(t, func() {
 			buildPubSubPublisher(logging.NewNoopLogger(), nil, tracing.NewNoopTracerProvider(), mp, "t")
 		})
 	})
@@ -77,7 +77,7 @@ func TestBuildPubSubPublisher(T *testing.T) {
 			},
 		}
 
-		assert.Panics(t, func() {
+		test.Panic(t, func() {
 			buildPubSubPublisher(logging.NewNoopLogger(), nil, tracing.NewNoopTracerProvider(), mp, "t")
 		})
 	})
@@ -90,7 +90,7 @@ func TestProvidePubSubPublisherProvider(T *testing.T) {
 		t.Parallel()
 
 		provider := ProvidePubSubPublisherProvider(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, nil, "test-project")
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 	})
 }
 
@@ -101,7 +101,7 @@ func TestPublisherProvider_Ping(T *testing.T) {
 		t.Parallel()
 
 		p := &publisherProvider{}
-		assert.NoError(t, p.Ping(t.Context()))
+		test.NoError(t, p.Ping(t.Context()))
 	})
 }
 
@@ -113,7 +113,7 @@ func TestPublisherProvider_qualifyTopicName(T *testing.T) {
 
 		p := &publisherProvider{projectID: "my-project"}
 		result := p.qualifyTopicName("projects/my-project/topics/my-topic")
-		assert.Equal(t, "projects/my-project/topics/my-topic", result)
+		test.EqOp(t, "projects/my-project/topics/my-topic", result)
 	})
 
 	T.Run("unqualified", func(t *testing.T) {
@@ -121,7 +121,7 @@ func TestPublisherProvider_qualifyTopicName(T *testing.T) {
 
 		p := &publisherProvider{projectID: "my-project"}
 		result := p.qualifyTopicName("my-topic")
-		assert.Equal(t, "projects/my-project/topics/my-topic", result)
+		test.EqOp(t, "projects/my-project/topics/my-topic", result)
 	})
 }
 
@@ -134,7 +134,7 @@ func TestPublisherProvider_ProvidePublisher(T *testing.T) {
 		provider := ProvidePubSubPublisherProvider(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, nil, "test-project")
 
 		pub, err := provider.ProvidePublisher(t.Context(), "")
-		assert.Nil(t, pub)
-		assert.ErrorIs(t, err, messagequeue.ErrEmptyTopicName)
+		test.Nil(t, pub)
+		test.ErrorIs(t, err, messagequeue.ErrEmptyTopicName)
 	})
 }

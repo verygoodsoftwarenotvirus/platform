@@ -12,7 +12,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 )
 
 type emailResponse struct {
@@ -34,8 +34,8 @@ func TestNewPostmarkEmailer(T *testing.T) {
 		config := &Config{ServerToken: t.Name()}
 
 		client, err := NewPostmarkEmailer(config, logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
-		require.NotNil(t, client)
-		require.NoError(t, err)
+		must.NotNil(t, client)
+		must.NoError(t, err)
 	})
 
 	T.Run("with missing config", func(t *testing.T) {
@@ -44,8 +44,8 @@ func TestNewPostmarkEmailer(T *testing.T) {
 		logger := logging.NewNoopLogger()
 
 		client, err := NewPostmarkEmailer(nil, logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
-		require.Nil(t, client)
-		require.Error(t, err)
+		must.Nil(t, client)
+		must.Error(t, err)
 	})
 
 	T.Run("with missing server token", func(t *testing.T) {
@@ -56,8 +56,8 @@ func TestNewPostmarkEmailer(T *testing.T) {
 		config := &Config{}
 
 		client, err := NewPostmarkEmailer(config, logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
-		require.Nil(t, client)
-		require.Error(t, err)
+		must.Nil(t, client)
+		must.Error(t, err)
 	})
 
 	T.Run("with missing HTTP client", func(t *testing.T) {
@@ -68,8 +68,8 @@ func TestNewPostmarkEmailer(T *testing.T) {
 		config := &Config{ServerToken: t.Name()}
 
 		client, err := NewPostmarkEmailer(config, logger, tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker(), nil)
-		require.Nil(t, client)
-		require.Error(t, err)
+		must.Nil(t, client)
+		must.Error(t, err)
 	})
 }
 
@@ -94,8 +94,8 @@ func TestPostmarkEmailer_SendEmail(T *testing.T) {
 		cfg := &Config{ServerToken: t.Name(), BaseURL: ts.URL}
 
 		c, err := NewPostmarkEmailer(cfg, logger, tracing.NewNoopTracerProvider(), ts.Client(), cbnoop.NewCircuitBreaker(), nil)
-		require.NotNil(t, c)
-		require.NoError(t, err)
+		must.NotNil(t, c)
+		must.NoError(t, err)
 
 		ctx := t.Context()
 		details := &email.OutboundEmailMessage{
@@ -107,7 +107,7 @@ func TestPostmarkEmailer_SendEmail(T *testing.T) {
 			HTMLContent: t.Name(),
 		}
 
-		require.NoError(t, c.SendEmail(ctx, details))
+		must.NoError(t, c.SendEmail(ctx, details))
 	})
 
 	T.Run("with error executing request", func(t *testing.T) {
@@ -125,8 +125,8 @@ func TestPostmarkEmailer_SendEmail(T *testing.T) {
 		cfg := &Config{ServerToken: t.Name(), BaseURL: ts.URL}
 
 		c, err := NewPostmarkEmailer(cfg, logger, tracing.NewNoopTracerProvider(), client, cbnoop.NewCircuitBreaker(), nil)
-		require.NotNil(t, c)
-		require.NoError(t, err)
+		must.NotNil(t, c)
+		must.NoError(t, err)
 
 		ctx := t.Context()
 		details := &email.OutboundEmailMessage{
@@ -139,7 +139,7 @@ func TestPostmarkEmailer_SendEmail(T *testing.T) {
 		}
 
 		err = c.SendEmail(ctx, details)
-		require.Error(t, err)
+		must.Error(t, err)
 	})
 
 	T.Run("with invalid response code", func(t *testing.T) {
@@ -154,8 +154,8 @@ func TestPostmarkEmailer_SendEmail(T *testing.T) {
 		cfg := &Config{ServerToken: t.Name(), BaseURL: ts.URL}
 
 		c, err := NewPostmarkEmailer(cfg, logger, tracing.NewNoopTracerProvider(), ts.Client(), cbnoop.NewCircuitBreaker(), nil)
-		require.NotNil(t, c)
-		require.NoError(t, err)
+		must.NotNil(t, c)
+		must.NoError(t, err)
 
 		ctx := t.Context()
 		details := &email.OutboundEmailMessage{
@@ -168,6 +168,6 @@ func TestPostmarkEmailer_SendEmail(T *testing.T) {
 		}
 
 		err = c.SendEmail(ctx, details)
-		require.Error(t, err)
+		must.Error(t, err)
 	})
 }

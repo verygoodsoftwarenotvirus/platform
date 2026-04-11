@@ -9,8 +9,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func Test_cleanString(T *testing.T) {
@@ -19,7 +19,7 @@ func Test_cleanString(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotEmpty(t, cleanString(t.Name()))
+		test.NotEq(t, "", cleanString(t.Name()))
 	})
 }
 
@@ -38,7 +38,7 @@ func TestQueuesConfig_ValidateWithContext(T *testing.T) {
 			WebhookExecutionRequestsTopicName: "webhook-execution-requests",
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(t.Context()))
+		test.NoError(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("missing fields", func(t *testing.T) {
@@ -46,7 +46,7 @@ func TestQueuesConfig_ValidateWithContext(T *testing.T) {
 
 		cfg := &QueuesConfig{}
 
-		assert.Error(t, cfg.ValidateWithContext(t.Context()))
+		test.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 }
 
@@ -57,8 +57,8 @@ func TestProvideConsumerProvider(T *testing.T) {
 		t.Parallel()
 
 		p, err := ProvideConsumerProvider(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, nil)
-		assert.Nil(t, p)
-		assert.ErrorIs(t, err, ErrNilConfig)
+		test.Nil(t, p)
+		test.ErrorIs(t, err, ErrNilConfig)
 	})
 
 	T.Run("with redis provider", func(t *testing.T) {
@@ -71,8 +71,8 @@ func TestProvideConsumerProvider(T *testing.T) {
 		}
 
 		p, err := ProvideConsumerProvider(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cfg)
-		assert.NoError(t, err)
-		assert.NotNil(t, p)
+		test.NoError(t, err)
+		test.NotNil(t, p)
 	})
 
 	T.Run("with SQS provider", func(t *testing.T) {
@@ -86,8 +86,8 @@ func TestProvideConsumerProvider(T *testing.T) {
 		}
 
 		p, err := ProvideConsumerProvider(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cfg)
-		assert.NoError(t, err)
-		assert.NotNil(t, p)
+		test.NoError(t, err)
+		test.NotNil(t, p)
 	})
 
 	T.Run("with kafka provider", func(t *testing.T) {
@@ -101,8 +101,8 @@ func TestProvideConsumerProvider(T *testing.T) {
 		}
 
 		p, err := ProvideConsumerProvider(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cfg)
-		assert.NoError(t, err)
-		assert.NotNil(t, p)
+		test.NoError(t, err)
+		test.NotNil(t, p)
 	})
 
 	T.Run("with pubsub provider and empty project ID", func(t *testing.T) {
@@ -116,16 +116,16 @@ func TestProvideConsumerProvider(T *testing.T) {
 		}
 
 		p, err := ProvideConsumerProvider(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cfg)
-		assert.Nil(t, p)
-		assert.Error(t, err)
+		test.Nil(t, p)
+		test.Error(t, err)
 	})
 
 	T.Run("with unknown provider falls back to noop", func(t *testing.T) {
 		t.Parallel()
 
 		p, err := ProvideConsumerProvider(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, &Config{})
-		assert.NoError(t, err)
-		assert.NotNil(t, p)
+		test.NoError(t, err)
+		test.NotNil(t, p)
 	})
 }
 
@@ -142,8 +142,8 @@ func TestProvideConsumerProvider_PubSubEmulator(t *testing.T) {
 	}
 
 	p, err := ProvideConsumerProvider(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cfg)
-	require.NoError(t, err)
-	assert.NotNil(t, p)
+	must.NoError(t, err)
+	test.NotNil(t, p)
 }
 
 func TestProvidePublisherProvider(T *testing.T) {
@@ -153,8 +153,8 @@ func TestProvidePublisherProvider(T *testing.T) {
 		t.Parallel()
 
 		p, err := ProvidePublisherProvider(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, nil)
-		assert.Nil(t, p)
-		assert.ErrorIs(t, err, ErrNilConfig)
+		test.Nil(t, p)
+		test.ErrorIs(t, err, ErrNilConfig)
 	})
 
 	T.Run("with redis provider", func(t *testing.T) {
@@ -167,8 +167,8 @@ func TestProvidePublisherProvider(T *testing.T) {
 		}
 
 		p, err := ProvidePublisherProvider(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cfg)
-		assert.NoError(t, err)
-		assert.NotNil(t, p)
+		test.NoError(t, err)
+		test.NotNil(t, p)
 	})
 
 	T.Run("with SQS provider", func(t *testing.T) {
@@ -182,8 +182,8 @@ func TestProvidePublisherProvider(T *testing.T) {
 		}
 
 		p, err := ProvidePublisherProvider(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cfg)
-		assert.NoError(t, err)
-		assert.NotNil(t, p)
+		test.NoError(t, err)
+		test.NotNil(t, p)
 	})
 
 	T.Run("with kafka provider", func(t *testing.T) {
@@ -197,8 +197,8 @@ func TestProvidePublisherProvider(T *testing.T) {
 		}
 
 		p, err := ProvidePublisherProvider(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cfg)
-		assert.NoError(t, err)
-		assert.NotNil(t, p)
+		test.NoError(t, err)
+		test.NotNil(t, p)
 	})
 
 	T.Run("with pubsub provider and empty project ID", func(t *testing.T) {
@@ -212,16 +212,16 @@ func TestProvidePublisherProvider(T *testing.T) {
 		}
 
 		p, err := ProvidePublisherProvider(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cfg)
-		assert.Nil(t, p)
-		assert.Error(t, err)
+		test.Nil(t, p)
+		test.Error(t, err)
 	})
 
 	T.Run("with unknown provider falls back to noop", func(t *testing.T) {
 		t.Parallel()
 
 		p, err := ProvidePublisherProvider(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, &Config{})
-		assert.NoError(t, err)
-		assert.NotNil(t, p)
+		test.NoError(t, err)
+		test.NotNil(t, p)
 	})
 }
 
@@ -238,6 +238,6 @@ func TestProvidePublisherProvider_PubSubEmulator(t *testing.T) {
 	}
 
 	p, err := ProvidePublisherProvider(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cfg)
-	require.NoError(t, err)
-	assert.NotNil(t, p)
+	must.NoError(t, err)
+	test.NotNil(t, p)
 }

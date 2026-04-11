@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestNewEventReporter(T *testing.T) {
@@ -15,7 +15,7 @@ func TestNewEventReporter(T *testing.T) {
 		t.Parallel()
 
 		r := NewEventReporter()
-		require.NotNil(t, r)
+		must.NotNil(t, r)
 	})
 }
 
@@ -26,7 +26,7 @@ func TestEventReporter_Close(T *testing.T) {
 		t.Parallel()
 
 		r := NewEventReporter()
-		assert.NotPanics(t, func() {
+		test.NotPanic(t, func() {
 			r.Close()
 		})
 	})
@@ -40,7 +40,7 @@ func TestEventReporter_AddUser(T *testing.T) {
 
 		r := NewEventReporter()
 		err := r.AddUser(context.Background(), "user123", map[string]any{"key": "value"})
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 }
 
@@ -52,7 +52,7 @@ func TestEventReporter_EventOccurred(T *testing.T) {
 
 		r := NewEventReporter()
 		err := r.EventOccurred(context.Background(), "event_name", "user123", map[string]any{"key": "value"})
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 }
 
@@ -64,6 +64,6 @@ func TestEventReporter_EventOccurredAnonymous(T *testing.T) {
 
 		r := NewEventReporter()
 		err := r.EventOccurredAnonymous(context.Background(), "event_name", "anon123", map[string]any{"key": "value"})
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 }

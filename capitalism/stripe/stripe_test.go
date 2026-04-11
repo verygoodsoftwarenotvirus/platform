@@ -15,8 +15,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/random"
 
 	"github.com/shoenig/test"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 	"github.com/stripe/stripe-go/v75"
 	"github.com/stripe/stripe-go/v75/webhook"
 )
@@ -35,7 +34,7 @@ func TestNewStripePaymentManager(T *testing.T) {
 		logger := logging.NewNoopLogger()
 		pm := ProvideStripePaymentManager(logger, tracing.NewNoopTracerProvider(), &Config{})
 
-		assert.NotNil(t, pm)
+		test.NotNil(t, pm)
 	})
 
 	T.Run("nil config", func(t *testing.T) {
@@ -44,7 +43,7 @@ func TestNewStripePaymentManager(T *testing.T) {
 		logger := logging.NewNoopLogger()
 		pm := ProvideStripePaymentManager(logger, tracing.NewNoopTracerProvider(), nil)
 
-		assert.NotNil(t, pm)
+		test.NotNil(t, pm)
 	})
 }
 
@@ -73,8 +72,8 @@ func Test_stripePaymentManager_HandleSubscriptionEventWebhook(T *testing.T) {
 		}
 
 		rawMessage, err := json.Marshal(paymentIntent)
-		require.NoError(t, err)
-		require.NotNil(t, rawMessage)
+		must.NoError(t, err)
+		must.NotNil(t, rawMessage)
 
 		exampleInput := &stripe.Event{
 			APIResource: stripe.APIResource{},
@@ -96,8 +95,8 @@ func Test_stripePaymentManager_HandleSubscriptionEventWebhook(T *testing.T) {
 		jsonBytes := pm.encoderDecoder.MustEncode(ctx, exampleInput)
 
 		secret, err := random.GenerateHexEncodedString(ctx, 32)
-		require.NoError(t, err)
-		require.NotEmpty(t, secret)
+		must.NoError(t, err)
+		must.NotEq(t, "", secret)
 		pm.webhookSecret = secret
 
 		now := time.Now()
@@ -108,7 +107,7 @@ func Test_stripePaymentManager_HandleSubscriptionEventWebhook(T *testing.T) {
 		})
 
 		event, err := webhook.ConstructEvent(signedPayload.Payload, signedPayload.Header, signedPayload.Secret)
-		require.NoError(t, err)
+		must.NoError(t, err)
 		eventPayload := pm.encoderDecoder.MustEncode(ctx, event)
 
 		encoderDecoder := &mockencoding.ServerEncoderDecoderMock{
@@ -119,12 +118,12 @@ func Test_stripePaymentManager_HandleSubscriptionEventWebhook(T *testing.T) {
 		pm.encoderDecoder = encoderDecoder
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://whatever.whocares.gov", bytes.NewReader(eventPayload))
-		require.NoError(t, err)
-		require.NotNil(t, req)
+		must.NoError(t, err)
+		must.NotNil(t, req)
 		req.Header.Set(stripeSignatureHeaderKey, signedPayload.Header)
 
 		err = pm.HandleEventWebhook(req)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		test.SliceLen(t, 1, encoderDecoder.DecodeBytesCalls())
 	})
@@ -136,12 +135,12 @@ func Test_stripePaymentManager_HandleSubscriptionEventWebhook(T *testing.T) {
 		pm := ProvideStripePaymentManager(nil, nil, &Config{}).(*stripePaymentManager)
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://whatever.whocares.gov", http.NoBody)
-		require.NoError(t, err)
-		require.NotNil(t, req)
+		must.NoError(t, err)
+		must.NotNil(t, req)
 		req.Body = &errReader{}
 
 		err = pm.HandleEventWebhook(req)
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 
 	T.Run("with invalid signature", func(t *testing.T) {
@@ -152,12 +151,12 @@ func Test_stripePaymentManager_HandleSubscriptionEventWebhook(T *testing.T) {
 		pm.webhookSecret = "some_secret"
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://whatever.whocares.gov", bytes.NewReader([]byte(`{}`)))
-		require.NoError(t, err)
-		require.NotNil(t, req)
+		must.NoError(t, err)
+		must.NotNil(t, req)
 		req.Header.Set(stripeSignatureHeaderKey, "invalid_signature")
 
 		err = pm.HandleEventWebhook(req)
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 
 	T.Run("with decode error for payment intent", func(t *testing.T) {
@@ -169,7 +168,7 @@ func Test_stripePaymentManager_HandleSubscriptionEventWebhook(T *testing.T) {
 		paymentIntent := &stripe.PaymentIntent{}
 
 		rawMessage, err := json.Marshal(paymentIntent)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		exampleInput := &stripe.Event{
 			APIVersion: "2023-08-16",
@@ -181,8 +180,8 @@ func Test_stripePaymentManager_HandleSubscriptionEventWebhook(T *testing.T) {
 		jsonBytes := pm.encoderDecoder.MustEncode(ctx, exampleInput)
 
 		secret, err := random.GenerateHexEncodedString(ctx, 32)
-		require.NoError(t, err)
-		require.NotEmpty(t, secret)
+		must.NoError(t, err)
+		must.NotEq(t, "", secret)
 		pm.webhookSecret = secret
 
 		signedPayload := webhook.GenerateTestSignedPayload(&webhook.UnsignedPayload{
@@ -192,7 +191,7 @@ func Test_stripePaymentManager_HandleSubscriptionEventWebhook(T *testing.T) {
 		})
 
 		event, err := webhook.ConstructEvent(signedPayload.Payload, signedPayload.Header, signedPayload.Secret)
-		require.NoError(t, err)
+		must.NoError(t, err)
 		eventPayload := pm.encoderDecoder.MustEncode(ctx, event)
 
 		encoderDecoder := &mockencoding.ServerEncoderDecoderMock{
@@ -203,12 +202,12 @@ func Test_stripePaymentManager_HandleSubscriptionEventWebhook(T *testing.T) {
 		pm.encoderDecoder = encoderDecoder
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://whatever.whocares.gov", bytes.NewReader(eventPayload))
-		require.NoError(t, err)
-		require.NotNil(t, req)
+		must.NoError(t, err)
+		must.NotNil(t, req)
 		req.Header.Set(stripeSignatureHeaderKey, signedPayload.Header)
 
 		err = pm.HandleEventWebhook(req)
-		assert.Error(t, err)
+		test.Error(t, err)
 
 		test.SliceLen(t, 1, encoderDecoder.DecodeBytesCalls())
 	})
@@ -229,8 +228,8 @@ func Test_stripePaymentManager_HandleSubscriptionEventWebhook(T *testing.T) {
 		jsonBytes := pm.encoderDecoder.MustEncode(ctx, exampleInput)
 
 		secret, err := random.GenerateHexEncodedString(ctx, 32)
-		require.NoError(t, err)
-		require.NotEmpty(t, secret)
+		must.NoError(t, err)
+		must.NotEq(t, "", secret)
 		pm.webhookSecret = secret
 
 		signedPayload := webhook.GenerateTestSignedPayload(&webhook.UnsignedPayload{
@@ -240,15 +239,15 @@ func Test_stripePaymentManager_HandleSubscriptionEventWebhook(T *testing.T) {
 		})
 
 		event, err := webhook.ConstructEvent(signedPayload.Payload, signedPayload.Header, signedPayload.Secret)
-		require.NoError(t, err)
+		must.NoError(t, err)
 		eventPayload := pm.encoderDecoder.MustEncode(ctx, event)
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://whatever.whocares.gov", bytes.NewReader(eventPayload))
-		require.NoError(t, err)
-		require.NotNil(t, req)
+		must.NoError(t, err)
+		must.NotNil(t, req)
 		req.Header.Set(stripeSignatureHeaderKey, signedPayload.Header)
 
 		err = pm.HandleEventWebhook(req)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 }

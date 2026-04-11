@@ -9,7 +9,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/testutils"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestNewRouteParamManager(T *testing.T) {
@@ -18,7 +18,7 @@ func TestNewRouteParamManager(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, NewRouteParamManager())
+		test.NotNil(t, NewRouteParamManager())
 	})
 }
 
@@ -48,7 +48,7 @@ func Test_BuildRouteParamIDFetcher(T *testing.T) {
 		)
 
 		actual := fn(req)
-		assert.Equal(t, expected, actual)
+		test.EqOp(t, expected, actual)
 	})
 
 	T.Run("with invalid value somehow", func(t *testing.T) {
@@ -77,7 +77,7 @@ func Test_BuildRouteParamIDFetcher(T *testing.T) {
 		)
 
 		actual := fn(req)
-		assert.Equal(t, expected, actual)
+		test.EqOp(t, expected, actual)
 	})
 }
 
@@ -108,6 +108,6 @@ func Test_BuildRouteParamStringIDFetcher(T *testing.T) {
 		)
 
 		actual := fn(req)
-		assert.Equal(t, expected, actual)
+		test.EqOp(t, expected, actual)
 	})
 }

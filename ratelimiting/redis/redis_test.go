@@ -10,8 +10,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/shoenig/test"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -46,13 +45,13 @@ func buildTestRateLimiter(t *testing.T) (*rateLimiter, *mockRedisClient) {
 	mp := metrics.NewNoopMetricsProvider()
 
 	allowedCounter, err := mp.NewInt64Counter(redisName + "_allowed")
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	rejectedCounter, err := mp.NewInt64Counter(redisName + "_rejected")
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	errorCounter, err := mp.NewInt64Counter(redisName + "_errors")
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	return &rateLimiter{
 		client:          client,
@@ -75,7 +74,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Addresses: []string{"localhost:6379"},
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with empty addresses", func(t *testing.T) {
@@ -87,7 +86,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Addresses: []string{},
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with nil addresses", func(t *testing.T) {
@@ -97,7 +96,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 
 		cfg := &Config{}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 }
 
@@ -114,8 +113,8 @@ func TestNewRedisRateLimiter(T *testing.T) {
 		}
 
 		rl, err := NewRedisRateLimiter(cfg, nil, 10)
-		assert.NoError(t, err)
-		assert.NotNil(t, rl)
+		test.NoError(t, err)
+		test.NotNil(t, rl)
 	})
 
 	T.Run("with multiple addresses", func(t *testing.T) {
@@ -128,8 +127,8 @@ func TestNewRedisRateLimiter(T *testing.T) {
 		}
 
 		rl, err := NewRedisRateLimiter(cfg, nil, 10)
-		assert.NoError(t, err)
-		assert.NotNil(t, rl)
+		test.NoError(t, err)
+		test.NotNil(t, rl)
 	})
 
 	T.Run("with error creating allowed counter", func(t *testing.T) {
@@ -147,8 +146,8 @@ func TestNewRedisRateLimiter(T *testing.T) {
 		}
 
 		rl, err := NewRedisRateLimiter(cfg, mp, 10)
-		assert.Error(t, err)
-		assert.Nil(t, rl)
+		test.Error(t, err)
+		test.Nil(t, rl)
 
 		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
@@ -174,8 +173,8 @@ func TestNewRedisRateLimiter(T *testing.T) {
 		}
 
 		rl, err := NewRedisRateLimiter(cfg, mp, 10)
-		assert.Error(t, err)
-		assert.Nil(t, rl)
+		test.Error(t, err)
+		test.Nil(t, rl)
 
 		test.SliceLen(t, 2, mp.NewInt64CounterCalls())
 	})
@@ -201,8 +200,8 @@ func TestNewRedisRateLimiter(T *testing.T) {
 		}
 
 		rl, err := NewRedisRateLimiter(cfg, mp, 10)
-		assert.Error(t, err)
-		assert.Nil(t, rl)
+		test.Error(t, err)
+		test.Nil(t, rl)
 
 		test.SliceLen(t, 3, mp.NewInt64CounterCalls())
 	})
@@ -222,11 +221,11 @@ func Test_rateLimiter_Allow(T *testing.T) {
 		client.evalFunc = func(_ context.Context, _ string, _ []string, _ ...any) *redis.Cmd { return cmd }
 
 		allowed, err := rl.Allow(ctx, "test-key")
-		assert.NoError(t, err)
-		assert.True(t, allowed)
+		test.NoError(t, err)
+		test.True(t, allowed)
 
-		require.Len(t, client.evalCalls, 1)
-		assert.Equal(t, slidingWindowScript, client.evalCalls[0].script)
+		must.SliceLen(t, 1, client.evalCalls)
+		test.EqOp(t, slidingWindowScript, client.evalCalls[0].script)
 	})
 
 	T.Run("rejected", func(t *testing.T) {
@@ -240,10 +239,10 @@ func Test_rateLimiter_Allow(T *testing.T) {
 		client.evalFunc = func(_ context.Context, _ string, _ []string, _ ...any) *redis.Cmd { return cmd }
 
 		allowed, err := rl.Allow(ctx, "test-key")
-		assert.NoError(t, err)
-		assert.False(t, allowed)
+		test.NoError(t, err)
+		test.False(t, allowed)
 
-		require.Len(t, client.evalCalls, 1)
+		must.SliceLen(t, 1, client.evalCalls)
 	})
 
 	T.Run("with eval error", func(t *testing.T) {
@@ -257,10 +256,10 @@ func Test_rateLimiter_Allow(T *testing.T) {
 		client.evalFunc = func(_ context.Context, _ string, _ []string, _ ...any) *redis.Cmd { return cmd }
 
 		allowed, err := rl.Allow(ctx, "test-key")
-		assert.Error(t, err)
-		assert.False(t, allowed)
+		test.Error(t, err)
+		test.False(t, allowed)
 
-		require.Len(t, client.evalCalls, 1)
+		must.SliceLen(t, 1, client.evalCalls)
 	})
 }
 
@@ -274,8 +273,8 @@ func Test_rateLimiter_Close(T *testing.T) {
 		client.closeFunc = func() error { return nil }
 
 		err := rl.Close()
-		assert.NoError(t, err)
-		assert.Equal(t, 1, client.closeCalls)
+		test.NoError(t, err)
+		test.EqOp(t, 1, client.closeCalls)
 	})
 
 	T.Run("with close error", func(t *testing.T) {
@@ -285,7 +284,7 @@ func Test_rateLimiter_Close(T *testing.T) {
 		client.closeFunc = func() error { return errors.New("close failed") }
 
 		err := rl.Close()
-		assert.Error(t, err)
-		assert.Equal(t, 1, client.closeCalls)
+		test.Error(t, err)
+		test.EqOp(t, 1, client.closeCalls)
 	})
 }

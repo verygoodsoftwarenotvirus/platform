@@ -13,7 +13,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 )
 
 type sendEmailResponse struct {
@@ -31,8 +31,8 @@ func TestNewResendEmailer(T *testing.T) {
 		config := &Config{APIToken: t.Name()}
 
 		client, err := NewResendEmailer(config, logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
-		require.NotNil(t, client)
-		require.NoError(t, err)
+		must.NotNil(t, client)
+		must.NoError(t, err)
 	})
 
 	T.Run("with missing config", func(t *testing.T) {
@@ -41,8 +41,8 @@ func TestNewResendEmailer(T *testing.T) {
 		logger := logging.NewNoopLogger()
 
 		client, err := NewResendEmailer(nil, logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
-		require.Nil(t, client)
-		require.Error(t, err)
+		must.Nil(t, client)
+		must.Error(t, err)
 	})
 
 	T.Run("with missing config API token", func(t *testing.T) {
@@ -53,8 +53,8 @@ func TestNewResendEmailer(T *testing.T) {
 		config := &Config{}
 
 		client, err := NewResendEmailer(config, logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
-		require.Nil(t, client)
-		require.Error(t, err)
+		must.Nil(t, client)
+		must.Error(t, err)
 	})
 
 	T.Run("with missing HTTP client", func(t *testing.T) {
@@ -65,8 +65,8 @@ func TestNewResendEmailer(T *testing.T) {
 		config := &Config{APIToken: t.Name()}
 
 		client, err := NewResendEmailer(config, logger, tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker(), nil)
-		require.Nil(t, client)
-		require.Error(t, err)
+		must.Nil(t, client)
+		must.Error(t, err)
 	})
 }
 
@@ -85,11 +85,11 @@ func TestResendEmailer_SendEmail(T *testing.T) {
 		cfg := &Config{APIToken: t.Name()}
 
 		c, err := NewResendEmailer(cfg, logger, tracing.NewNoopTracerProvider(), ts.Client(), cbnoop.NewCircuitBreaker(), nil)
-		require.NotNil(t, c)
-		require.NoError(t, err)
+		must.NotNil(t, c)
+		must.NoError(t, err)
 
 		baseURL, err := url.Parse(ts.URL + "/")
-		require.NoError(t, err)
+		must.NoError(t, err)
 		c.client.BaseURL = baseURL
 
 		ctx := t.Context()
@@ -102,7 +102,7 @@ func TestResendEmailer_SendEmail(T *testing.T) {
 			HTMLContent: t.Name(),
 		}
 
-		require.NoError(t, c.SendEmail(ctx, details))
+		must.NoError(t, c.SendEmail(ctx, details))
 	})
 
 	T.Run("with error executing request", func(t *testing.T) {
@@ -120,11 +120,11 @@ func TestResendEmailer_SendEmail(T *testing.T) {
 		cfg := &Config{APIToken: t.Name()}
 
 		c, err := NewResendEmailer(cfg, logger, tracing.NewNoopTracerProvider(), client, cbnoop.NewCircuitBreaker(), nil)
-		require.NotNil(t, c)
-		require.NoError(t, err)
+		must.NotNil(t, c)
+		must.NoError(t, err)
 
 		baseURL, err := url.Parse(ts.URL + "/")
-		require.NoError(t, err)
+		must.NoError(t, err)
 		c.client.BaseURL = baseURL
 
 		ctx := t.Context()
@@ -138,7 +138,7 @@ func TestResendEmailer_SendEmail(T *testing.T) {
 		}
 
 		err = c.SendEmail(ctx, details)
-		require.Error(t, err)
+		must.Error(t, err)
 	})
 
 	T.Run("with invalid response code", func(t *testing.T) {
@@ -153,11 +153,11 @@ func TestResendEmailer_SendEmail(T *testing.T) {
 		cfg := &Config{APIToken: t.Name()}
 
 		c, err := NewResendEmailer(cfg, logger, tracing.NewNoopTracerProvider(), ts.Client(), cbnoop.NewCircuitBreaker(), nil)
-		require.NotNil(t, c)
-		require.NoError(t, err)
+		must.NotNil(t, c)
+		must.NoError(t, err)
 
 		baseURL, err := url.Parse(ts.URL + "/")
-		require.NoError(t, err)
+		must.NoError(t, err)
 		c.client.BaseURL = baseURL
 
 		ctx := t.Context()
@@ -171,6 +171,6 @@ func TestResendEmailer_SendEmail(T *testing.T) {
 		}
 
 		err = c.SendEmail(ctx, details)
-		require.Error(t, err)
+		must.Error(t, err)
 	})
 }

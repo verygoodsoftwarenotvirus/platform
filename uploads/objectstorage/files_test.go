@@ -10,8 +10,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	"gocloud.dev/blob/memblob"
 )
 
@@ -20,19 +20,19 @@ func noopUploaderMetrics(t *testing.T) (saveCounter, readCounter, saveErrCounter
 	mp := metrics.NewNoopMetricsProvider()
 
 	saveCounter, err := mp.NewInt64Counter("test_saves")
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	readCounter, err = mp.NewInt64Counter("test_reads")
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	saveErrCounter, err = mp.NewInt64Counter("test_save_errors")
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	readErrCounter, err = mp.NewInt64Counter("test_read_errors")
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	latencyHist, err = mp.NewFloat64Histogram("test_latency")
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	return saveCounter, readCounter, saveErrCounter, readErrCounter, latencyHist
 }
@@ -48,7 +48,7 @@ func TestUploader_ReadFile(T *testing.T) {
 		expectedContent := []byte(t.Name())
 
 		b := memblob.OpenBucket(&memblob.Options{})
-		require.NoError(t, b.WriteAll(ctx, exampleFilename, expectedContent, nil))
+		must.NoError(t, b.WriteAll(ctx, exampleFilename, expectedContent, nil))
 
 		saveCounter, readCounter, saveErrCounter, readErrCounter, latencyHist := noopUploaderMetrics(t)
 		u := &Uploader{
@@ -64,8 +64,8 @@ func TestUploader_ReadFile(T *testing.T) {
 		}
 
 		x, err := u.ReadFile(ctx, exampleFilename)
-		assert.NoError(t, err)
-		assert.Equal(t, expectedContent, x)
+		test.NoError(t, err)
+		test.Eq(t, expectedContent, x)
 	})
 
 	T.Run("with invalid file", func(t *testing.T) {
@@ -88,8 +88,8 @@ func TestUploader_ReadFile(T *testing.T) {
 		}
 
 		x, err := u.ReadFile(ctx, exampleFilename)
-		assert.Error(t, err)
-		assert.Nil(t, x)
+		test.Error(t, err)
+		test.Nil(t, x)
 	})
 
 	T.Run("with broken circuit breaker", func(t *testing.T) {
@@ -115,8 +115,8 @@ func TestUploader_ReadFile(T *testing.T) {
 		}
 
 		x, err := u.ReadFile(ctx, "anything.txt")
-		assert.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
-		assert.Nil(t, x)
+		test.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
+		test.Nil(t, x)
 	})
 
 	T.Run("with mock circuit breaker on successful read", func(t *testing.T) {
@@ -127,7 +127,7 @@ func TestUploader_ReadFile(T *testing.T) {
 		expectedContent := []byte(t.Name())
 
 		b := memblob.OpenBucket(&memblob.Options{})
-		require.NoError(t, b.WriteAll(ctx, exampleFilename, expectedContent, nil))
+		must.NoError(t, b.WriteAll(ctx, exampleFilename, expectedContent, nil))
 
 		cb := &cbmock.CircuitBreakerMock{
 			CannotProceedFunc: func() bool { return false },
@@ -148,8 +148,8 @@ func TestUploader_ReadFile(T *testing.T) {
 		}
 
 		x, err := u.ReadFile(ctx, exampleFilename)
-		assert.NoError(t, err)
-		assert.Equal(t, expectedContent, x)
+		test.NoError(t, err)
+		test.Eq(t, expectedContent, x)
 	})
 }
 
@@ -173,7 +173,7 @@ func TestUploader_SaveFile(T *testing.T) {
 			latencyHist:    latencyHist,
 		}
 
-		assert.NoError(t, u.SaveFile(ctx, "test_file.txt", []byte(t.Name())))
+		test.NoError(t, u.SaveFile(ctx, "test_file.txt", []byte(t.Name())))
 	})
 
 	T.Run("with broken circuit breaker", func(t *testing.T) {
@@ -198,7 +198,7 @@ func TestUploader_SaveFile(T *testing.T) {
 			latencyHist:    latencyHist,
 		}
 
-		assert.ErrorIs(t, u.SaveFile(ctx, "test_file.txt", []byte(t.Name())), circuitbreaking.ErrCircuitBroken)
+		test.ErrorIs(t, u.SaveFile(ctx, "test_file.txt", []byte(t.Name())), circuitbreaking.ErrCircuitBroken)
 	})
 
 	T.Run("with write error", func(t *testing.T) {
@@ -212,7 +212,7 @@ func TestUploader_SaveFile(T *testing.T) {
 		}
 
 		b := memblob.OpenBucket(&memblob.Options{})
-		require.NoError(t, b.Close())
+		must.NoError(t, b.Close())
 
 		saveCounter, readCounter, saveErrCounter, readErrCounter, latencyHist := noopUploaderMetrics(t)
 		u := &Uploader{
@@ -227,7 +227,7 @@ func TestUploader_SaveFile(T *testing.T) {
 			latencyHist:    latencyHist,
 		}
 
-		assert.Error(t, u.SaveFile(ctx, "test_file.txt", []byte(t.Name())))
+		test.Error(t, u.SaveFile(ctx, "test_file.txt", []byte(t.Name())))
 	})
 
 	T.Run("can be read back after save", func(t *testing.T) {
@@ -249,10 +249,10 @@ func TestUploader_SaveFile(T *testing.T) {
 			latencyHist:    latencyHist,
 		}
 
-		require.NoError(t, u.SaveFile(ctx, "roundtrip.txt", content))
+		must.NoError(t, u.SaveFile(ctx, "roundtrip.txt", content))
 
 		actual, err := u.ReadFile(ctx, "roundtrip.txt")
-		assert.NoError(t, err)
-		assert.Equal(t, content, actual)
+		test.NoError(t, err)
+		test.Eq(t, content, actual)
 	})
 }

@@ -11,8 +11,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/secrets"
 
 	"github.com/shoenig/test"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -32,8 +31,8 @@ func TestNewEnvSecretSource(T *testing.T) {
 		}
 
 		source, err := NewEnvSecretSource(nil, nil, mp)
-		require.Error(t, err)
-		assert.Nil(t, source)
+		must.Error(t, err)
+		test.Nil(t, source)
 
 		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
@@ -43,7 +42,7 @@ func TestNewEnvSecretSource(T *testing.T) {
 
 		noopMP := metrics.NewNoopMetricsProvider()
 		h, histErr := noopMP.NewFloat64Histogram("test")
-		require.NoError(t, histErr)
+		must.NoError(t, histErr)
 
 		mp := &mockmetrics.ProviderMock{
 			NewInt64CounterFunc: func(_ string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
@@ -56,8 +55,8 @@ func TestNewEnvSecretSource(T *testing.T) {
 		}
 
 		source, err := NewEnvSecretSource(nil, nil, mp)
-		require.Error(t, err)
-		assert.Nil(t, source)
+		must.Error(t, err)
+		test.Nil(t, source)
 
 		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 		test.SliceLen(t, 1, mp.NewFloat64HistogramCalls())
@@ -72,31 +71,31 @@ func TestEnvSecretSource_GetSecret(T *testing.T) {
 
 		key := "TEST_SECRET_" + t.Name()
 		value := "secret-value"
-		require.NoError(t, os.Setenv(key, value))
+		must.NoError(t, os.Setenv(key, value))
 		t.Cleanup(func() { _ = os.Unsetenv(key) })
 
 		source, err := NewEnvSecretSource(nil, nil, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 		ctx := context.Background()
 
 		got, err := source.GetSecret(ctx, key)
-		require.NoError(t, err)
-		assert.Equal(t, value, got)
+		must.NoError(t, err)
+		test.EqOp(t, value, got)
 	})
 
 	T.Run("returns empty for unset env var", func(t *testing.T) {
 		t.Parallel()
 
 		key := "TEST_SECRET_UNSET_" + t.Name()
-		require.NoError(t, os.Unsetenv(key))
+		must.NoError(t, os.Unsetenv(key))
 
 		source, err := NewEnvSecretSource(nil, nil, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 		ctx := context.Background()
 
 		got, err := source.GetSecret(ctx, key)
-		require.NoError(t, err)
-		assert.Empty(t, got)
+		must.NoError(t, err)
+		test.EqOp(t, "", got)
 	})
 }
 
@@ -107,9 +106,9 @@ func TestEnvSecretSource_Close(T *testing.T) {
 		t.Parallel()
 
 		source, err := NewEnvSecretSource(nil, nil, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		err = source.Close()
-		require.NoError(t, err)
+		must.NoError(t, err)
 	})
 }

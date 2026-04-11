@@ -11,8 +11,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/routing"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func buildRouterForTest() routing.Router {
@@ -25,7 +25,7 @@ func TestNewRouter(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, NewRouter(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider(), &Config{}))
+		test.NotNil(t, NewRouter(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider(), &Config{}))
 	})
 }
 
@@ -35,7 +35,7 @@ func Test_buildChiMux(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, buildChiMux(logging.NewNoopLogger(), tracing.NewTracerForTest(t.Name()), metrics.NewNoopMetricsProvider(), &Config{}))
+		test.NotNil(t, buildChiMux(logging.NewNoopLogger(), tracing.NewTracerForTest(t.Name()), metrics.NewNoopMetricsProvider(), &Config{}))
 	})
 }
 
@@ -45,7 +45,7 @@ func Test_convertMiddleware(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, convertMiddleware(func(http.Handler) http.Handler { return nil }))
+		test.NotNil(t, convertMiddleware(func(http.Handler) http.Handler { return nil }))
 	})
 }
 
@@ -70,7 +70,7 @@ func Test_router_AddRoute(T *testing.T) {
 		}
 
 		for _, method := range methods {
-			assert.NoError(t, r.AddRoute(method, "/path", nil))
+			test.NoError(t, r.AddRoute(method, "/path", nil))
 		}
 	})
 
@@ -79,7 +79,7 @@ func Test_router_AddRoute(T *testing.T) {
 
 		r := buildRouterForTest()
 
-		assert.Error(t, r.AddRoute("blah", "/path", nil))
+		test.Error(t, r.AddRoute("blah", "/path", nil))
 	})
 }
 
@@ -151,7 +151,7 @@ func Test_router_Handler(T *testing.T) {
 
 		r := buildRouterForTest()
 
-		assert.NotNil(t, r.Handler())
+		test.NotNil(t, r.Handler())
 	})
 }
 
@@ -175,7 +175,7 @@ func Test_router_LogRoutes(T *testing.T) {
 
 		r := buildRouterForTest()
 
-		assert.NoError(t, r.AddRoute(http.MethodGet, "/path", nil))
+		test.NoError(t, r.AddRoute(http.MethodGet, "/path", nil))
 
 		r.Routes()
 	})
@@ -237,7 +237,7 @@ func Test_router_Route(T *testing.T) {
 
 		r := buildRouterForTest()
 
-		assert.NotNil(t, r.Route("/test", func(routing.Router) {}))
+		test.NotNil(t, r.Route("/test", func(routing.Router) {}))
 	})
 }
 
@@ -261,7 +261,7 @@ func Test_router_WithMiddleware(T *testing.T) {
 
 		r := buildRouterForTest()
 
-		assert.NotNil(t, r.WithMiddleware())
+		test.NotNil(t, r.WithMiddleware())
 	})
 }
 
@@ -273,7 +273,7 @@ func Test_router_clone(T *testing.T) {
 
 		r := buildRouter(nil, nil, tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider(), &Config{})
 
-		assert.NotNil(t, r.clone())
+		test.NotNil(t, r.clone())
 	})
 }
 
@@ -289,11 +289,11 @@ func Test_router_BuildRouteParamIDFetcher(T *testing.T) {
 		exampleKey := "blah"
 
 		rf := r.BuildRouteParamIDFetcher(l, exampleKey, "desc")
-		assert.NotNil(t, rf)
+		test.NotNil(t, rf)
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/blah", http.NoBody)
-		assert.NoError(t, err)
-		require.NotNil(t, req)
+		test.NoError(t, err)
+		must.NotNil(t, req)
 
 		expected := uint64(123456)
 
@@ -305,7 +305,7 @@ func Test_router_BuildRouteParamIDFetcher(T *testing.T) {
 		}))
 
 		actual := rf(req)
-		assert.Equal(t, expected, actual)
+		test.EqOp(t, expected, actual)
 	})
 
 	T.Run("without appropriate value attached to context", func(t *testing.T) {
@@ -317,14 +317,14 @@ func Test_router_BuildRouteParamIDFetcher(T *testing.T) {
 		exampleKey := "blah"
 
 		rf := r.BuildRouteParamIDFetcher(l, exampleKey, "desc")
-		assert.NotNil(t, rf)
+		test.NotNil(t, rf)
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/blah", http.NoBody)
-		assert.NoError(t, err)
-		require.NotNil(t, req)
+		test.NoError(t, err)
+		must.NotNil(t, req)
 
 		actual := rf(req)
-		assert.Zero(t, actual)
+		test.EqOp(t, uint64(0), actual)
 	})
 }
 
@@ -339,11 +339,11 @@ func Test_router_BuildRouteParamStringIDFetcher(T *testing.T) {
 		exampleKey := "blah"
 
 		rf := r.BuildRouteParamStringIDFetcher(exampleKey)
-		assert.NotNil(t, rf)
+		test.NotNil(t, rf)
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/blah", http.NoBody)
-		assert.NoError(t, err)
-		require.NotNil(t, req)
+		test.NoError(t, err)
+		must.NotNil(t, req)
 
 		expected := "fake_user_id"
 
@@ -355,6 +355,6 @@ func Test_router_BuildRouteParamStringIDFetcher(T *testing.T) {
 		}))
 
 		actual := rf(req)
-		assert.Equal(t, expected, actual)
+		test.EqOp(t, expected, actual)
 	})
 }

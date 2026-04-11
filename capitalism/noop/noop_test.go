@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestPaymentManager_HandleEventWebhook(T *testing.T) {
@@ -15,9 +15,9 @@ func TestPaymentManager_HandleEventWebhook(T *testing.T) {
 		t.Parallel()
 		mgr := NewPaymentManager()
 		req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "https://example.com/webhook", http.NoBody)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
-		assert.NoError(t, mgr.HandleEventWebhook(req))
+		test.NoError(t, mgr.HandleEventWebhook(req))
 	})
 }
 

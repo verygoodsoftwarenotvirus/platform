@@ -10,7 +10,7 @@ import (
 	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v5/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/types"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestPlatformMapper_Map(T *testing.T) {
@@ -19,72 +19,72 @@ func TestPlatformMapper_Map(T *testing.T) {
 	T.Run("nil error returns ok=false", func(t *testing.T) {
 		t.Parallel()
 		_, _, ok := PlatformMapper.Map(nil)
-		assert.False(t, ok)
+		test.False(t, ok)
 	})
 
 	T.Run("sql.ErrNoRows maps to ErrDataNotFound", func(t *testing.T) {
 		t.Parallel()
 		code, msg, ok := PlatformMapper.Map(sql.ErrNoRows)
-		assert.True(t, ok)
-		assert.Equal(t, types.ErrDataNotFound, code)
-		assert.Equal(t, "data not found", msg)
+		test.True(t, ok)
+		test.EqOp(t, types.ErrDataNotFound, code)
+		test.EqOp(t, "data not found", msg)
 	})
 
 	T.Run("ErrUserAlreadyExists maps to ErrValidatingRequestInput", func(t *testing.T) {
 		t.Parallel()
 		code, msg, ok := PlatformMapper.Map(database.ErrUserAlreadyExists)
-		assert.True(t, ok)
-		assert.Equal(t, types.ErrValidatingRequestInput, code)
-		assert.Equal(t, "user already exists", msg)
+		test.True(t, ok)
+		test.EqOp(t, types.ErrValidatingRequestInput, code)
+		test.EqOp(t, "user already exists", msg)
 	})
 
 	T.Run("ErrCircuitBroken maps to ErrCircuitBroken", func(t *testing.T) {
 		t.Parallel()
 		code, msg, ok := PlatformMapper.Map(circuitbreaking.ErrCircuitBroken)
-		assert.True(t, ok)
-		assert.Equal(t, types.ErrCircuitBroken, code)
-		assert.Equal(t, "service temporarily unavailable", msg)
+		test.True(t, ok)
+		test.EqOp(t, types.ErrCircuitBroken, code)
+		test.EqOp(t, "service temporarily unavailable", msg)
 	})
 
 	T.Run("ErrNilInputParameter maps to ErrValidatingRequestInput", func(t *testing.T) {
 		t.Parallel()
 		code, _, ok := PlatformMapper.Map(platformerrors.ErrNilInputParameter)
-		assert.True(t, ok)
-		assert.Equal(t, types.ErrValidatingRequestInput, code)
+		test.True(t, ok)
+		test.EqOp(t, types.ErrValidatingRequestInput, code)
 	})
 
 	T.Run("ErrEmptyInputParameter maps to ErrValidatingRequestInput", func(t *testing.T) {
 		t.Parallel()
 		code, _, ok := PlatformMapper.Map(platformerrors.ErrEmptyInputParameter)
-		assert.True(t, ok)
-		assert.Equal(t, types.ErrValidatingRequestInput, code)
+		test.True(t, ok)
+		test.EqOp(t, types.ErrValidatingRequestInput, code)
 	})
 
 	T.Run("ErrNilInputProvided maps to ErrValidatingRequestInput", func(t *testing.T) {
 		t.Parallel()
 		code, _, ok := PlatformMapper.Map(platformerrors.ErrNilInputProvided)
-		assert.True(t, ok)
-		assert.Equal(t, types.ErrValidatingRequestInput, code)
+		test.True(t, ok)
+		test.EqOp(t, types.ErrValidatingRequestInput, code)
 	})
 
 	T.Run("ErrInvalidIDProvided maps to ErrValidatingRequestInput", func(t *testing.T) {
 		t.Parallel()
 		code, _, ok := PlatformMapper.Map(platformerrors.ErrInvalidIDProvided)
-		assert.True(t, ok)
-		assert.Equal(t, types.ErrValidatingRequestInput, code)
+		test.True(t, ok)
+		test.EqOp(t, types.ErrValidatingRequestInput, code)
 	})
 
 	T.Run("ErrEmptyInputProvided maps to ErrValidatingRequestInput", func(t *testing.T) {
 		t.Parallel()
 		code, _, ok := PlatformMapper.Map(platformerrors.ErrEmptyInputProvided)
-		assert.True(t, ok)
-		assert.Equal(t, types.ErrValidatingRequestInput, code)
+		test.True(t, ok)
+		test.EqOp(t, types.ErrValidatingRequestInput, code)
 	})
 
 	T.Run("unknown error returns ok=false", func(t *testing.T) {
 		t.Parallel()
 		_, _, ok := PlatformMapper.Map(errors.New("nope"))
-		assert.False(t, ok)
+		test.False(t, ok)
 	})
 }
 
@@ -94,43 +94,43 @@ func TestToAPIError(T *testing.T) {
 	T.Run("nil error", func(t *testing.T) {
 		t.Parallel()
 		code, msg := ToAPIError(nil)
-		assert.Equal(t, types.ErrNothingSpecific, code)
-		assert.Empty(t, msg)
+		test.EqOp(t, types.ErrNothingSpecific, code)
+		test.EqOp(t, "", msg)
 	})
 
 	T.Run("known platform error uses PlatformMapper", func(t *testing.T) {
 		t.Parallel()
 		code, msg := ToAPIError(sql.ErrNoRows)
-		assert.Equal(t, types.ErrDataNotFound, code)
-		assert.Equal(t, "data not found", msg)
+		test.EqOp(t, types.ErrDataNotFound, code)
+		test.EqOp(t, "data not found", msg)
 	})
 
 	T.Run("unknown error returns fallback", func(t *testing.T) {
 		t.Parallel()
 		code, msg := ToAPIError(errors.New("totally unknown error that no mapper handles"))
-		assert.Equal(t, types.ErrTalkingToDatabase, code)
-		assert.Equal(t, "an error occurred", msg)
+		test.EqOp(t, types.ErrTalkingToDatabase, code)
+		test.EqOp(t, "an error occurred", msg)
 	})
 
 	T.Run("circuit broken error", func(t *testing.T) {
 		t.Parallel()
 		code, msg := ToAPIError(circuitbreaking.ErrCircuitBroken)
-		assert.Equal(t, types.ErrCircuitBroken, code)
-		assert.Equal(t, "service temporarily unavailable", msg)
+		test.EqOp(t, types.ErrCircuitBroken, code)
+		test.EqOp(t, "service temporarily unavailable", msg)
 	})
 
 	T.Run("ErrNilInputParameter", func(t *testing.T) {
 		t.Parallel()
 		code, msg := ToAPIError(platformerrors.ErrNilInputParameter)
-		assert.Equal(t, types.ErrValidatingRequestInput, code)
-		assert.Equal(t, "invalid input", msg)
+		test.EqOp(t, types.ErrValidatingRequestInput, code)
+		test.EqOp(t, "invalid input", msg)
 	})
 
 	T.Run("ErrUserAlreadyExists", func(t *testing.T) {
 		t.Parallel()
 		code, msg := ToAPIError(database.ErrUserAlreadyExists)
-		assert.Equal(t, types.ErrValidatingRequestInput, code)
-		assert.Equal(t, "user already exists", msg)
+		test.EqOp(t, types.ErrValidatingRequestInput, code)
+		test.EqOp(t, "user already exists", msg)
 	})
 }
 
@@ -159,7 +159,7 @@ func TestRegisterHTTPErrorMapper(T *testing.T) {
 		RegisterHTTPErrorMapper(mapper)
 
 		code, msg := ToAPIError(customErr)
-		assert.Equal(t, types.ErrorCode("E_CUSTOM"), code)
-		assert.Equal(t, "custom message", msg)
+		test.EqOp(t, types.ErrorCode("E_CUSTOM"), code)
+		test.EqOp(t, "custom message", msg)
 	})
 }

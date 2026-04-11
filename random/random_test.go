@@ -6,8 +6,8 @@ import (
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 type erroneousReader struct{}
@@ -25,8 +25,8 @@ func TestGenerateBase32EncodedString(T *testing.T) {
 		ctx := t.Context()
 
 		actual, err := GenerateBase32EncodedString(ctx, 32)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, actual)
+		test.NoError(t, err)
+		test.NotEq(t, "", actual)
 	})
 }
 
@@ -39,8 +39,8 @@ func TestGenerateBase64EncodedString(T *testing.T) {
 		ctx := t.Context()
 
 		actual, err := GenerateBase64EncodedString(ctx, 32)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, actual)
+		test.NoError(t, err)
+		test.NotEq(t, "", actual)
 	})
 }
 
@@ -53,8 +53,8 @@ func TestGenerateRawBytes(T *testing.T) {
 		ctx := t.Context()
 
 		actual, err := GenerateRawBytes(ctx, 32)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, actual)
+		test.NoError(t, err)
+		test.SliceNotEmpty(t, actual)
 	})
 }
 
@@ -70,9 +70,9 @@ func TestStandardSecretGenerator_GenerateBase32EncodedString(T *testing.T) {
 		s := NewGenerator(nil, tracing.NewNoopTracerProvider())
 		value, err := s.GenerateBase32EncodedString(ctx, exampleLength)
 
-		assert.NotEmpty(t, value)
-		assert.Greater(t, len(value), exampleLength)
-		assert.NoError(t, err)
+		test.NotEq(t, "", value)
+		test.Greater(t, exampleLength, len(value))
+		test.NoError(t, err)
 	})
 
 	T.Run("with error reading from secure PRNG", func(t *testing.T) {
@@ -82,12 +82,12 @@ func TestStandardSecretGenerator_GenerateBase32EncodedString(T *testing.T) {
 		exampleLength := 123
 
 		s, ok := NewGenerator(nil, tracing.NewNoopTracerProvider()).(*standardGenerator)
-		require.True(t, ok)
+		must.True(t, ok)
 		s.randReader = &erroneousReader{}
 		value, err := s.GenerateBase32EncodedString(ctx, exampleLength)
 
-		assert.Empty(t, value)
-		assert.Error(t, err)
+		test.EqOp(t, "", value)
+		test.Error(t, err)
 	})
 }
 
@@ -103,9 +103,9 @@ func TestStandardSecretGenerator_GenerateBase64EncodedString(T *testing.T) {
 		s := NewGenerator(nil, tracing.NewNoopTracerProvider())
 		value, err := s.GenerateBase64EncodedString(ctx, exampleLength)
 
-		assert.NotEmpty(t, value)
-		assert.Greater(t, len(value), exampleLength)
-		assert.NoError(t, err)
+		test.NotEq(t, "", value)
+		test.Greater(t, exampleLength, len(value))
+		test.NoError(t, err)
 	})
 
 	T.Run("with error reading from secure PRNG", func(t *testing.T) {
@@ -115,12 +115,12 @@ func TestStandardSecretGenerator_GenerateBase64EncodedString(T *testing.T) {
 		exampleLength := 123
 
 		s, ok := NewGenerator(nil, tracing.NewNoopTracerProvider()).(*standardGenerator)
-		require.True(t, ok)
+		must.True(t, ok)
 		s.randReader = &erroneousReader{}
 		value, err := s.GenerateBase64EncodedString(ctx, exampleLength)
 
-		assert.Empty(t, value)
-		assert.Error(t, err)
+		test.EqOp(t, "", value)
+		test.Error(t, err)
 	})
 }
 
@@ -136,9 +136,9 @@ func TestStandardSecretGenerator_GenerateRawBytes(T *testing.T) {
 		s := NewGenerator(nil, tracing.NewNoopTracerProvider())
 		value, err := s.GenerateRawBytes(ctx, exampleLength)
 
-		assert.NotEmpty(t, value)
-		assert.Equal(t, len(value), exampleLength)
-		assert.NoError(t, err)
+		test.SliceNotEmpty(t, value)
+		test.EqOp(t, exampleLength, len(value))
+		test.NoError(t, err)
 	})
 
 	T.Run("with error reading from secure PRNG", func(t *testing.T) {
@@ -148,12 +148,12 @@ func TestStandardSecretGenerator_GenerateRawBytes(T *testing.T) {
 		exampleLength := 123
 
 		s, ok := NewGenerator(nil, tracing.NewNoopTracerProvider()).(*standardGenerator)
-		require.True(t, ok)
+		must.True(t, ok)
 		s.randReader = &erroneousReader{}
 		value, err := s.GenerateRawBytes(ctx, exampleLength)
 
-		assert.Empty(t, value)
-		assert.Error(t, err)
+		test.SliceEmpty(t, value)
+		test.Error(t, err)
 	})
 }
 
@@ -165,7 +165,7 @@ func TestMustGenerateRawBytes(T *testing.T) {
 		ctx := t.Context()
 
 		result := MustGenerateRawBytes(ctx, 32)
-		assert.NotEmpty(t, result)
+		test.SliceNotEmpty(t, result)
 	})
 }
 
@@ -177,7 +177,7 @@ func TestGenerateHexEncodedString(T *testing.T) {
 		ctx := t.Context()
 
 		result, err := GenerateHexEncodedString(ctx, 32)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, result)
+		test.NoError(t, err)
+		test.NotEq(t, "", result)
 	})
 }

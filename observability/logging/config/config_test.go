@@ -6,8 +6,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging/otelgrpc"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 // NOTE: ValidateWithContext calls validation.ValidateStructWithContext(ctx, &cfg, ...),
@@ -28,7 +28,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider:    ProviderZerolog,
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 }
 
@@ -44,8 +44,8 @@ func TestConfig_ProvideLogger(T *testing.T) {
 		}
 
 		l, err := cfg.ProvideLogger(ctx)
-		assert.NoError(t, err)
-		assert.NotNil(t, l)
+		test.NoError(t, err)
+		test.NotNil(t, l)
 	})
 
 	T.Run("zap provider", func(t *testing.T) {
@@ -57,8 +57,8 @@ func TestConfig_ProvideLogger(T *testing.T) {
 		}
 
 		l, err := cfg.ProvideLogger(ctx)
-		assert.NoError(t, err)
-		assert.NotNil(t, l)
+		test.NoError(t, err)
+		test.NotNil(t, l)
 	})
 
 	T.Run("slog provider", func(t *testing.T) {
@@ -70,8 +70,8 @@ func TestConfig_ProvideLogger(T *testing.T) {
 		}
 
 		l, err := cfg.ProvideLogger(ctx)
-		assert.NoError(t, err)
-		assert.NotNil(t, l)
+		test.NoError(t, err)
+		test.NotNil(t, l)
 	})
 
 	T.Run("otelslog provider", func(t *testing.T) {
@@ -85,8 +85,8 @@ func TestConfig_ProvideLogger(T *testing.T) {
 		}
 
 		l, err := cfg.ProvideLogger(ctx)
-		assert.NoError(t, err)
-		assert.NotNil(t, l)
+		test.NoError(t, err)
+		test.NotNil(t, l)
 	})
 
 	T.Run("otelslog provider with nil otelslog config returns error", func(t *testing.T) {
@@ -99,8 +99,8 @@ func TestConfig_ProvideLogger(T *testing.T) {
 		}
 
 		l, err := cfg.ProvideLogger(ctx)
-		assert.Error(t, err)
-		assert.Nil(t, l)
+		test.Error(t, err)
+		test.Nil(t, l)
 	})
 
 	T.Run("no provider falls back to noop", func(t *testing.T) {
@@ -110,8 +110,8 @@ func TestConfig_ProvideLogger(T *testing.T) {
 		cfg := &Config{}
 
 		l, err := cfg.ProvideLogger(ctx)
-		assert.NoError(t, err)
-		assert.NotNil(t, l)
+		test.NoError(t, err)
+		test.NotNil(t, l)
 	})
 }
 
@@ -127,7 +127,7 @@ func TestProvideLogger(T *testing.T) {
 		}
 
 		l, err := ProvideLogger(ctx, cfg)
-		require.NoError(t, err)
-		assert.NotNil(t, l)
+		must.NoError(t, err)
+		test.NotNil(t, l)
 	})
 }

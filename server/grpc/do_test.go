@@ -7,8 +7,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/samber/do/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	"google.golang.org/grpc"
 )
 
@@ -29,7 +29,7 @@ func TestRegisterGRPCServer(T *testing.T) {
 		RegisterGRPCServer(i)
 
 		srv, err := do.Invoke[*Server](i)
-		require.NoError(t, err)
-		assert.NotNil(t, srv)
+		must.NoError(t, err)
+		test.NotNil(t, srv)
 	})
 }

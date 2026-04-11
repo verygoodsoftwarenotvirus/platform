@@ -7,8 +7,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestConfig_ValidateWithContext(T *testing.T) {
@@ -24,7 +24,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Stripe:   &stripe.Config{APIKey: t.Name()},
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("returns nil when not enabled", func(t *testing.T) {
@@ -35,7 +35,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Enabled: false,
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with invalid config", func(t *testing.T) {
@@ -47,7 +47,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider: StripeProvider,
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 }
 
@@ -63,8 +63,8 @@ func TestProvideCapitalismImplementation(T *testing.T) {
 		}
 
 		pm, err := ProvideCapitalismImplementation(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), cfg)
-		require.NoError(t, err)
-		assert.NotNil(t, pm)
+		must.NoError(t, err)
+		test.NotNil(t, pm)
 	})
 
 	T.Run("with unknown provider", func(t *testing.T) {
@@ -75,7 +75,7 @@ func TestProvideCapitalismImplementation(T *testing.T) {
 		}
 
 		pm, err := ProvideCapitalismImplementation(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), cfg)
-		assert.Nil(t, pm)
-		assert.Error(t, err)
+		test.Nil(t, pm)
+		test.Error(t, err)
 	})
 }

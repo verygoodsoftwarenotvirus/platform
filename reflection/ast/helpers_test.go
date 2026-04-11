@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestGetModulePath(T *testing.T) {
@@ -19,12 +19,12 @@ func TestGetModulePath(T *testing.T) {
 
 		dir := t.TempDir()
 		err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module github.com/example/test\n\ngo 1.21\n"), 0o600)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		path, err := GetModulePath(dir)
 
-		require.NoError(t, err)
-		assert.Equal(t, "github.com/example/test", path)
+		must.NoError(t, err)
+		test.EqOp(t, "github.com/example/test", path)
 	})
 
 	T.Run("returns error when go.mod does not exist", func(t *testing.T) {
@@ -32,8 +32,8 @@ func TestGetModulePath(T *testing.T) {
 
 		path, err := GetModulePath(t.TempDir())
 
-		assert.Empty(t, path)
-		assert.Error(t, err)
+		test.EqOp(t, "", path)
+		test.Error(t, err)
 	})
 
 	T.Run("returns error when no module directive found", func(t *testing.T) {
@@ -41,12 +41,12 @@ func TestGetModulePath(T *testing.T) {
 
 		dir := t.TempDir()
 		err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("go 1.21\n"), 0o600)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		path, err := GetModulePath(dir)
 
-		assert.Empty(t, path)
-		assert.Error(t, err)
+		test.EqOp(t, "", path)
+		test.Error(t, err)
 	})
 }
 
@@ -65,8 +65,8 @@ func TestBuildImportMap(T *testing.T) {
 
 		result := BuildImportMap(file)
 
-		assert.Equal(t, "fmt", result["fmt"])
-		assert.Equal(t, "github.com/example/pkg", result["pkg"])
+		test.EqOp(t, "fmt", result["fmt"])
+		test.EqOp(t, "github.com/example/pkg", result["pkg"])
 	})
 
 	T.Run("handles aliased imports", func(t *testing.T) {
@@ -83,7 +83,7 @@ func TestBuildImportMap(T *testing.T) {
 
 		result := BuildImportMap(file)
 
-		assert.Equal(t, "fmt", result["myfmt"])
+		test.EqOp(t, "fmt", result["myfmt"])
 	})
 
 	T.Run("excludes blank and dot imports", func(t *testing.T) {
@@ -104,7 +104,7 @@ func TestBuildImportMap(T *testing.T) {
 
 		result := BuildImportMap(file)
 
-		assert.Empty(t, result)
+		test.MapEmpty(t, result)
 	})
 
 	T.Run("skips imports with nil path", func(t *testing.T) {
@@ -118,7 +118,7 @@ func TestBuildImportMap(T *testing.T) {
 
 		result := BuildImportMap(file)
 
-		assert.Empty(t, result)
+		test.MapEmpty(t, result)
 	})
 }
 
@@ -136,9 +136,9 @@ func TestFilterModuleImports(T *testing.T) {
 
 		result := FilterModuleImports(imports, "github.com/example/mod")
 
-		assert.Len(t, result, 2)
-		assert.Equal(t, "observability/logging", result["logging"])
-		assert.Equal(t, "errors", result["errors"])
+		test.MapLen(t, 2, result)
+		test.EqOp(t, "observability/logging", result["logging"])
+		test.EqOp(t, "errors", result["errors"])
 	})
 
 	T.Run("returns empty map when no module imports", func(t *testing.T) {
@@ -150,7 +150,7 @@ func TestFilterModuleImports(T *testing.T) {
 
 		result := FilterModuleImports(imports, "github.com/example/mod")
 
-		assert.Empty(t, result)
+		test.MapEmpty(t, result)
 	})
 }
 
@@ -160,33 +160,33 @@ func TestGetTagValue(T *testing.T) {
 	T.Run("extracts tag value", func(t *testing.T) {
 		t.Parallel()
 
-		assert.Equal(t, "name", GetTagValue(`json:"name"`, "json"))
+		test.EqOp(t, "name", GetTagValue(`json:"name"`, "json"))
 	})
 
 	T.Run("extracts tag value with omitempty", func(t *testing.T) {
 		t.Parallel()
 
-		assert.Equal(t, "name", GetTagValue(`json:"name,omitempty"`, "json"))
+		test.EqOp(t, "name", GetTagValue(`json:"name,omitempty"`, "json"))
 	})
 
 	T.Run("extracts from multiple tags", func(t *testing.T) {
 		t.Parallel()
 
 		tag := `json:"name" env:"MY_VAR"`
-		assert.Equal(t, "name", GetTagValue(tag, "json"))
-		assert.Equal(t, "MY_VAR", GetTagValue(tag, "env"))
+		test.EqOp(t, "name", GetTagValue(tag, "json"))
+		test.EqOp(t, "MY_VAR", GetTagValue(tag, "env"))
 	})
 
 	T.Run("returns empty for missing key", func(t *testing.T) {
 		t.Parallel()
 
-		assert.Equal(t, "", GetTagValue(`json:"name"`, "xml"))
+		test.EqOp(t, "", GetTagValue(`json:"name"`, "xml"))
 	})
 
 	T.Run("handles backtick-wrapped tags", func(t *testing.T) {
 		t.Parallel()
 
-		assert.Equal(t, "name", GetTagValue("`json:\"name\"`", "json"))
+		test.EqOp(t, "name", GetTagValue("`json:\"name\"`", "json"))
 	})
 }
 
@@ -216,8 +216,8 @@ func TestGetStructFields(T *testing.T) {
 
 		fields := GetStructFields(st)
 
-		assert.Equal(t, "string", fields["Name"])
-		assert.Equal(t, "logging.Logger", fields["Logger"])
+		test.EqOp(t, "string", fields["Name"])
+		test.EqOp(t, "logging.Logger", fields["Logger"])
 	})
 
 	T.Run("excludes underscore fields", func(t *testing.T) {
@@ -236,7 +236,7 @@ func TestGetStructFields(T *testing.T) {
 
 		fields := GetStructFields(st)
 
-		assert.Empty(t, fields)
+		test.MapEmpty(t, fields)
 	})
 
 	T.Run("handles multiple names per field", func(t *testing.T) {
@@ -258,7 +258,7 @@ func TestGetStructFields(T *testing.T) {
 
 		fields := GetStructFields(st)
 
-		assert.Equal(t, "int", fields["X"])
-		assert.Equal(t, "int", fields["Y"])
+		test.EqOp(t, "int", fields["X"])
+		test.EqOp(t, "int", fields["Y"])
 	})
 }

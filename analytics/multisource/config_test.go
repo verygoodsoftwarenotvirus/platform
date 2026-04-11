@@ -10,8 +10,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestProvideMultiSourceEventReporter(T *testing.T) {
@@ -23,9 +23,9 @@ func TestProvideMultiSourceEventReporter(T *testing.T) {
 		ctx := t.Context()
 
 		reporter, err := ProvideMultiSourceEventReporter(ctx, nil, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider())
-		require.NoError(t, err)
-		require.NotNil(t, reporter)
-		assert.Empty(t, reporter.reporters)
+		must.NoError(t, err)
+		must.NotNil(t, reporter)
+		test.MapEmpty(t, reporter.reporters)
 	})
 
 	T.Run("with valid segment source", func(t *testing.T) {
@@ -40,9 +40,9 @@ func TestProvideMultiSourceEventReporter(T *testing.T) {
 		}
 
 		reporter, err := ProvideMultiSourceEventReporter(ctx, sources, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider())
-		require.NoError(t, err)
-		require.NotNil(t, reporter)
-		assert.Len(t, reporter.reporters, 1)
+		must.NoError(t, err)
+		must.NotNil(t, reporter)
+		test.MapLen(t, 1, reporter.reporters)
 	})
 
 	T.Run("with invalid source falls back to noop", func(t *testing.T) {
@@ -57,9 +57,9 @@ func TestProvideMultiSourceEventReporter(T *testing.T) {
 		}
 
 		reporter, err := ProvideMultiSourceEventReporter(ctx, sources, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider())
-		require.NoError(t, err)
-		require.NotNil(t, reporter)
-		assert.Len(t, reporter.reporters, 1)
+		must.NoError(t, err)
+		must.NotNil(t, reporter)
+		test.MapLen(t, 1, reporter.reporters)
 	})
 
 	T.Run("with unrecognized provider uses noop", func(t *testing.T) {
@@ -73,9 +73,9 @@ func TestProvideMultiSourceEventReporter(T *testing.T) {
 		}
 
 		reporter, err := ProvideMultiSourceEventReporter(ctx, sources, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider())
-		require.NoError(t, err)
-		require.NotNil(t, reporter)
-		assert.Len(t, reporter.reporters, 1)
+		must.NoError(t, err)
+		must.NotNil(t, reporter)
+		test.MapLen(t, 1, reporter.reporters)
 	})
 
 	T.Run("with multiple posthog sources reuses shared reporter", func(t *testing.T) {
@@ -94,9 +94,9 @@ func TestProvideMultiSourceEventReporter(T *testing.T) {
 		}
 
 		reporter, err := ProvideMultiSourceEventReporter(ctx, sources, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider())
-		require.NoError(t, err)
-		require.NotNil(t, reporter)
-		assert.Len(t, reporter.reporters, 2)
+		must.NoError(t, err)
+		must.NotNil(t, reporter)
+		test.MapLen(t, 2, reporter.reporters)
 	})
 
 	T.Run("with empty proxy sources map", func(t *testing.T) {
@@ -106,8 +106,8 @@ func TestProvideMultiSourceEventReporter(T *testing.T) {
 		sources := map[string]*analyticscfg.SourceConfig{}
 
 		reporter, err := ProvideMultiSourceEventReporter(ctx, sources, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider())
-		require.NoError(t, err)
-		require.NotNil(t, reporter)
-		assert.Empty(t, reporter.reporters)
+		must.NoError(t, err)
+		must.NotNil(t, reporter)
+		test.MapEmpty(t, reporter.reporters)
 	})
 }

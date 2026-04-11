@@ -18,8 +18,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/shoenig/test"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -47,7 +46,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 				KeyPrefix: "lock:",
 			},
 		}
-		assert.NoError(t, cfg.ValidateWithContext(t.Context()))
+		test.NoError(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("postgres provider", func(t *testing.T) {
@@ -56,43 +55,43 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider: PostgresProvider,
 			Postgres: &pglock.Config{},
 		}
-		assert.NoError(t, cfg.ValidateWithContext(t.Context()))
+		test.NoError(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("memory provider", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Provider: MemoryProvider}
-		assert.NoError(t, cfg.ValidateWithContext(t.Context()))
+		test.NoError(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("noop provider", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Provider: NoopProvider}
-		assert.NoError(t, cfg.ValidateWithContext(t.Context()))
+		test.NoError(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("redis without config", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Provider: RedisProvider}
-		assert.Error(t, cfg.ValidateWithContext(t.Context()))
+		test.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("postgres without config", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Provider: PostgresProvider}
-		assert.Error(t, cfg.ValidateWithContext(t.Context()))
+		test.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("invalid provider", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Provider: "made-up"}
-		assert.Error(t, cfg.ValidateWithContext(t.Context()))
+		test.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("empty provider is valid (noop)", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{}
-		assert.NoError(t, cfg.ValidateWithContext(t.Context()))
+		test.NoError(t, cfg.ValidateWithContext(t.Context()))
 	})
 }
 
@@ -109,7 +108,7 @@ func TestProvideLocker(T *testing.T) {
 			metrics.NewNoopMetricsProvider(),
 			nil,
 		)
-		assert.ErrorIs(t, err, distributedlock.ErrNilConfig)
+		test.ErrorIs(t, err, distributedlock.ErrNilConfig)
 	})
 
 	T.Run("memory provider returns a working locker", func(t *testing.T) {
@@ -122,11 +121,11 @@ func TestProvideLocker(T *testing.T) {
 			metrics.NewNoopMetricsProvider(),
 			nil,
 		)
-		require.NoError(t, err)
-		require.NotNil(t, l)
+		must.NoError(t, err)
+		must.NotNil(t, l)
 		lock, err := l.Acquire(t.Context(), "k", time.Second)
-		require.NoError(t, err)
-		require.NoError(t, lock.Release(t.Context()))
+		must.NoError(t, err)
+		must.NoError(t, lock.Release(t.Context()))
 	})
 
 	T.Run("noop provider", func(t *testing.T) {
@@ -139,8 +138,8 @@ func TestProvideLocker(T *testing.T) {
 			metrics.NewNoopMetricsProvider(),
 			nil,
 		)
-		require.NoError(t, err)
-		require.NotNil(t, l)
+		must.NoError(t, err)
+		must.NotNil(t, l)
 	})
 
 	T.Run("unknown provider returns noop", func(t *testing.T) {
@@ -153,8 +152,8 @@ func TestProvideLocker(T *testing.T) {
 			metrics.NewNoopMetricsProvider(),
 			nil,
 		)
-		require.NoError(t, err)
-		require.NotNil(t, l)
+		must.NoError(t, err)
+		must.NotNil(t, l)
 	})
 
 	T.Run("empty provider returns noop", func(t *testing.T) {
@@ -167,8 +166,8 @@ func TestProvideLocker(T *testing.T) {
 			metrics.NewNoopMetricsProvider(),
 			nil,
 		)
-		require.NoError(t, err)
-		require.NotNil(t, l)
+		must.NoError(t, err)
+		must.NotNil(t, l)
 	})
 
 	T.Run("provider with whitespace returns noop", func(t *testing.T) {
@@ -181,8 +180,8 @@ func TestProvideLocker(T *testing.T) {
 			metrics.NewNoopMetricsProvider(),
 			nil,
 		)
-		require.NoError(t, err)
-		require.NotNil(t, l)
+		must.NoError(t, err)
+		must.NotNil(t, l)
 	})
 
 	T.Run("redis provider", func(t *testing.T) {
@@ -201,8 +200,8 @@ func TestProvideLocker(T *testing.T) {
 			metrics.NewNoopMetricsProvider(),
 			nil,
 		)
-		require.NoError(t, err)
-		require.NotNil(t, l)
+		must.NoError(t, err)
+		must.NotNil(t, l)
 	})
 
 	T.Run("postgres provider", func(t *testing.T) {
@@ -218,8 +217,8 @@ func TestProvideLocker(T *testing.T) {
 			metrics.NewNoopMetricsProvider(),
 			&stubDBClient{},
 		)
-		require.NoError(t, err)
-		require.NotNil(t, l)
+		must.NoError(t, err)
+		must.NotNil(t, l)
 	})
 
 	T.Run("circuit breaker init failure", func(t *testing.T) {
@@ -248,9 +247,9 @@ func TestProvideLocker(T *testing.T) {
 			mp,
 			nil,
 		)
-		require.Error(t, err)
-		assert.Nil(t, l)
-		assert.Contains(t, err.Error(), "distributedlock circuit breaker")
+		must.Error(t, err)
+		test.Nil(t, l)
+		test.StrContains(t, err.Error(), "distributedlock circuit breaker")
 
 		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})

@@ -7,8 +7,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/random"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestStandardEncryptor(T *testing.T) {
@@ -20,18 +20,18 @@ func TestStandardEncryptor(T *testing.T) {
 		ctx := t.Context()
 		expected := t.Name()
 		secret, err := random.GenerateHexEncodedString(ctx, 16)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		encryptor, err := NewEncryptorDecryptor(tracing.NewNoopTracerProvider(), logging.NewNoopLogger(), []byte(secret))
-		require.NotNil(t, encryptor)
-		require.NoError(t, err)
+		must.NotNil(t, encryptor)
+		must.NoError(t, err)
 
 		encrypted, err := encryptor.Encrypt(ctx, expected)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, encrypted)
+		test.NoError(t, err)
+		test.NotEq(t, "", encrypted)
 
 		actual, err := encryptor.Decrypt(ctx, encrypted)
-		assert.NoError(t, err)
-		assert.Equal(t, expected, actual)
+		test.NoError(t, err)
+		test.EqOp(t, expected, actual)
 	})
 }

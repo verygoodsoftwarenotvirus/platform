@@ -13,8 +13,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/retry"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -70,10 +70,10 @@ func buildConnectionString(t *testing.T, container *postgres.PostgresContainer, 
 	ctx := t.Context()
 
 	containerPort, err := container.MappedPort(ctx, "5432/tcp")
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	host, err := container.Host(ctx)
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	return fmt.Sprintf("postgres://%s:%s@%s/%s", username, password, net.JoinHostPort(host, containerPort.Port()), dbName)
 }
@@ -97,11 +97,11 @@ func buildDatabaseConnectionForTest(t *testing.T, ctx context.Context) (*sql.DB,
 		)
 		return containerErr
 	})
-	require.NoError(t, err)
-	require.NotNil(t, container)
+	must.NoError(t, err)
+	must.NotNil(t, container)
 
 	db, err := sql.Open("pgx", container.MustConnectionString(ctx, "sslmode=disable"))
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	return db, container
 }
@@ -150,7 +150,7 @@ func TestQuoteIdent(T *testing.T) {
 		T.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result := quoteIdent(tt.input)
-			assert.Equal(t, tt.expected, result)
+			test.EqOp(t, tt.expected, result)
 		})
 	}
 }
@@ -200,7 +200,7 @@ word'`,
 		T.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result := quoteLiteral(tt.input)
-			assert.Equal(t, tt.expected, result)
+			test.EqOp(t, tt.expected, result)
 		})
 	}
 }
@@ -274,7 +274,7 @@ func TestIsValidPrivilege(T *testing.T) {
 		T.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result := isValidPrivilege(tt.privilege)
-			assert.Equal(t, tt.expected, result)
+			test.EqOp(t, tt.expected, result)
 		})
 	}
 }
@@ -299,12 +299,12 @@ func TestManager_CreateUser(T *testing.T) {
 		password := "testpass123"
 
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Verify user was created
 		exists, err := mgr.UserExists(ctx, username)
-		assert.NoError(t, err)
-		assert.True(t, exists)
+		test.NoError(t, err)
+		test.True(t, exists)
 	})
 
 	T.Run("duplicate user", func(t *testing.T) {
@@ -325,11 +325,11 @@ func TestManager_CreateUser(T *testing.T) {
 
 		// Create user first time
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Try to create same user again
 		err = mgr.CreateUser(ctx, username, password)
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 
 	T.Run("special characters in username", func(t *testing.T) {
@@ -349,12 +349,12 @@ func TestManager_CreateUser(T *testing.T) {
 		password := "testpass123"
 
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Verify user was created
 		exists, err := mgr.UserExists(ctx, username)
-		assert.NoError(t, err)
-		assert.True(t, exists)
+		test.NoError(t, err)
+		test.True(t, exists)
 	})
 
 	T.Run("special characters in password", func(t *testing.T) {
@@ -374,12 +374,12 @@ func TestManager_CreateUser(T *testing.T) {
 		password := `pass'word"with"quotes`
 
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Verify user was created
 		exists, err := mgr.UserExists(ctx, username)
-		assert.NoError(t, err)
-		assert.True(t, exists)
+		test.NoError(t, err)
+		test.True(t, exists)
 	})
 }
 
@@ -404,21 +404,21 @@ func TestManager_DeleteUser(T *testing.T) {
 
 		// Create user first
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Verify user exists
 		exists, err := mgr.UserExists(ctx, username)
-		assert.NoError(t, err)
-		assert.True(t, exists)
+		test.NoError(t, err)
+		test.True(t, exists)
 
 		// Delete user
 		err = mgr.DeleteUser(ctx, username)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Verify user no longer exists
 		exists, err = mgr.UserExists(ctx, username)
-		assert.NoError(t, err)
-		assert.False(t, exists)
+		test.NoError(t, err)
+		test.False(t, exists)
 	})
 
 	T.Run("delete non-existent user", func(t *testing.T) {
@@ -438,7 +438,7 @@ func TestManager_DeleteUser(T *testing.T) {
 
 		// Delete non-existent user should not error due to IF EXISTS
 		err := mgr.DeleteUser(ctx, username)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 
 	T.Run("special characters in username", func(t *testing.T) {
@@ -459,16 +459,16 @@ func TestManager_DeleteUser(T *testing.T) {
 
 		// Create user first
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Delete user
 		err = mgr.DeleteUser(ctx, username)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Verify user no longer exists
 		exists, err := mgr.UserExists(ctx, username)
-		assert.NoError(t, err)
-		assert.False(t, exists)
+		test.NoError(t, err)
+		test.False(t, exists)
 	})
 }
 
@@ -493,12 +493,12 @@ func TestManager_UserExists(T *testing.T) {
 
 		// Create user
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Check if user exists
 		exists, err := mgr.UserExists(ctx, username)
-		assert.NoError(t, err)
-		assert.True(t, exists)
+		test.NoError(t, err)
+		test.True(t, exists)
 	})
 
 	T.Run("non-existing user", func(t *testing.T) {
@@ -518,8 +518,8 @@ func TestManager_UserExists(T *testing.T) {
 
 		// Check if user exists
 		exists, err := mgr.UserExists(ctx, username)
-		assert.NoError(t, err)
-		assert.False(t, exists)
+		test.NoError(t, err)
+		test.False(t, exists)
 	})
 
 	T.Run("special characters in username", func(t *testing.T) {
@@ -540,12 +540,12 @@ func TestManager_UserExists(T *testing.T) {
 
 		// Create user
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Check if user exists
 		exists, err := mgr.UserExists(ctx, username)
-		assert.NoError(t, err)
-		assert.True(t, exists)
+		test.NoError(t, err)
+		test.True(t, exists)
 	})
 }
 
@@ -571,16 +571,16 @@ func TestManager_CreateDatabase(T *testing.T) {
 
 		// Create user first
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Create database
 		err = mgr.CreateDatabase(ctx, databaseName, username)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Verify database was created
 		exists, err := mgr.DatabaseExists(ctx, databaseName)
-		assert.NoError(t, err)
-		assert.True(t, exists)
+		test.NoError(t, err)
+		test.True(t, exists)
 	})
 
 	T.Run("duplicate database", func(t *testing.T) {
@@ -602,15 +602,15 @@ func TestManager_CreateDatabase(T *testing.T) {
 
 		// Create user first
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Create database first time
 		err = mgr.CreateDatabase(ctx, databaseName, username)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Try to create same database again
 		err = mgr.CreateDatabase(ctx, databaseName, username)
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 
 	T.Run("special characters in database name", func(t *testing.T) {
@@ -632,16 +632,16 @@ func TestManager_CreateDatabase(T *testing.T) {
 
 		// Create user first
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Create database
 		err = mgr.CreateDatabase(ctx, databaseName, username)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Verify database was created
 		exists, err := mgr.DatabaseExists(ctx, databaseName)
-		assert.NoError(t, err)
-		assert.True(t, exists)
+		test.NoError(t, err)
+		test.True(t, exists)
 	})
 
 	T.Run("special characters in owner name", func(t *testing.T) {
@@ -663,16 +663,16 @@ func TestManager_CreateDatabase(T *testing.T) {
 
 		// Create user first
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Create database
 		err = mgr.CreateDatabase(ctx, databaseName, username)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Verify database was created
 		exists, err := mgr.DatabaseExists(ctx, databaseName)
-		assert.NoError(t, err)
-		assert.True(t, exists)
+		test.NoError(t, err)
+		test.True(t, exists)
 	})
 }
 
@@ -698,25 +698,25 @@ func TestManager_DeleteDatabase(T *testing.T) {
 
 		// Create user first
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Create database
 		err = mgr.CreateDatabase(ctx, databaseName, username)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Verify database exists
 		exists, err := mgr.DatabaseExists(ctx, databaseName)
-		assert.NoError(t, err)
-		assert.True(t, exists)
+		test.NoError(t, err)
+		test.True(t, exists)
 
 		// Delete database
 		err = mgr.DeleteDatabase(ctx, databaseName)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Verify database no longer exists
 		exists, err = mgr.DatabaseExists(ctx, databaseName)
-		assert.NoError(t, err)
-		assert.False(t, exists)
+		test.NoError(t, err)
+		test.False(t, exists)
 	})
 
 	T.Run("delete non-existent database", func(t *testing.T) {
@@ -736,7 +736,7 @@ func TestManager_DeleteDatabase(T *testing.T) {
 
 		// Delete non-existent database should not error due to IF EXISTS
 		err := mgr.DeleteDatabase(ctx, databaseName)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 
 	T.Run("special characters in database name", func(t *testing.T) {
@@ -758,20 +758,20 @@ func TestManager_DeleteDatabase(T *testing.T) {
 
 		// Create user first
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Create database
 		err = mgr.CreateDatabase(ctx, databaseName, username)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Delete database
 		err = mgr.DeleteDatabase(ctx, databaseName)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Verify database no longer exists
 		exists, err := mgr.DatabaseExists(ctx, databaseName)
-		assert.NoError(t, err)
-		assert.False(t, exists)
+		test.NoError(t, err)
+		test.False(t, exists)
 	})
 }
 
@@ -797,16 +797,16 @@ func TestManager_DatabaseExists(T *testing.T) {
 
 		// Create user first
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Create database
 		err = mgr.CreateDatabase(ctx, databaseName, username)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Check if database exists
 		exists, err := mgr.DatabaseExists(ctx, databaseName)
-		assert.NoError(t, err)
-		assert.True(t, exists)
+		test.NoError(t, err)
+		test.True(t, exists)
 	})
 
 	T.Run("non-existing database", func(t *testing.T) {
@@ -826,8 +826,8 @@ func TestManager_DatabaseExists(T *testing.T) {
 
 		// Check if database exists
 		exists, err := mgr.DatabaseExists(ctx, databaseName)
-		assert.NoError(t, err)
-		assert.False(t, exists)
+		test.NoError(t, err)
+		test.False(t, exists)
 	})
 
 	T.Run("special characters in database name", func(t *testing.T) {
@@ -849,16 +849,16 @@ func TestManager_DatabaseExists(T *testing.T) {
 
 		// Create user first
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Create database
 		err = mgr.CreateDatabase(ctx, databaseName, username)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Check if database exists
 		exists, err := mgr.DatabaseExists(ctx, databaseName)
-		assert.NoError(t, err)
-		assert.True(t, exists)
+		test.NoError(t, err)
+		test.True(t, exists)
 	})
 }
 
@@ -884,15 +884,15 @@ func TestManager_UserCanAccessDatabase(T *testing.T) {
 
 		// Create user and database
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		err = mgr.CreateDatabase(ctx, databaseName, username)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Check access
 		canAccess, err := mgr.UserCanAccessDatabase(ctx, username, databaseName)
-		assert.NoError(t, err)
-		assert.True(t, canAccess)
+		test.NoError(t, err)
+		test.True(t, canAccess)
 	})
 
 	T.Run("user does not have access", func(t *testing.T) {
@@ -915,22 +915,22 @@ func TestManager_UserCanAccessDatabase(T *testing.T) {
 
 		// Create user and database with different owner
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		err = mgr.CreateUser(ctx, ownerUsername, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		err = mgr.CreateDatabase(ctx, databaseName, ownerUsername)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Grant CONNECT privilege to the user for the database
 		_, err = adminDB.ExecContext(ctx, fmt.Sprintf("GRANT CONNECT ON DATABASE %s TO %s", quoteIdent(databaseName), quoteIdent(username)))
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Check access - user should have access now
 		canAccess, err := mgr.UserCanAccessDatabase(ctx, username, databaseName)
-		assert.NoError(t, err)
-		assert.True(t, canAccess)
+		test.NoError(t, err)
+		test.True(t, canAccess)
 	})
 
 	T.Run("non-existent user", func(t *testing.T) {
@@ -951,8 +951,8 @@ func TestManager_UserCanAccessDatabase(T *testing.T) {
 
 		// Check access for non-existent user - should return error
 		canAccess, err := mgr.UserCanAccessDatabase(ctx, username, databaseName)
-		assert.Error(t, err)
-		assert.False(t, canAccess)
+		test.Error(t, err)
+		test.False(t, canAccess)
 	})
 
 	T.Run("non-existent database", func(t *testing.T) {
@@ -974,12 +974,12 @@ func TestManager_UserCanAccessDatabase(T *testing.T) {
 
 		// Create user
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Check access to non-existent database - should return error
 		canAccess, err := mgr.UserCanAccessDatabase(ctx, username, databaseName)
-		assert.Error(t, err)
-		assert.False(t, canAccess)
+		test.Error(t, err)
+		test.False(t, canAccess)
 	})
 
 	T.Run("special characters in usernames and database names", func(t *testing.T) {
@@ -1001,15 +1001,15 @@ func TestManager_UserCanAccessDatabase(T *testing.T) {
 
 		// Create user and database
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		err = mgr.CreateDatabase(ctx, databaseName, username)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Check access
 		canAccess, err := mgr.UserCanAccessDatabase(ctx, username, databaseName)
-		assert.NoError(t, err)
-		assert.True(t, canAccess)
+		test.NoError(t, err)
+		test.True(t, canAccess)
 	})
 }
 
@@ -1037,18 +1037,18 @@ func TestManager_GrantUserAccessToTable(T *testing.T) {
 
 		// Create user and database
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		err = mgr.CreateDatabase(ctx, databaseName, username)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Create a test table
 		_, err = adminDB.ExecContext(ctx, fmt.Sprintf("CREATE TABLE %s.%s (id SERIAL PRIMARY KEY, name TEXT)", quoteIdent(schema), quoteIdent(table)))
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Grant access
 		err = mgr.GrantUserAccessToTable(ctx, username, schema, table, "SELECT")
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 
 	T.Run("all valid privileges", func(t *testing.T) {
@@ -1072,19 +1072,19 @@ func TestManager_GrantUserAccessToTable(T *testing.T) {
 
 		// Create user and database
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		err = mgr.CreateDatabase(ctx, databaseName, username)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Create a test table
 		_, err = adminDB.ExecContext(ctx, fmt.Sprintf("CREATE TABLE %s.%s (id SERIAL PRIMARY KEY, name TEXT)", quoteIdent(schema), quoteIdent(table)))
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		privileges := []string{"SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"}
 		for _, privilege := range privileges {
 			err = mgr.GrantUserAccessToTable(ctx, username, schema, table, privilege)
-			assert.NoError(t, err, "Failed to grant %s privilege", privilege)
+			test.NoError(t, err, test.Sprintf("Failed to grant %s privilege", privilege))
 		}
 	})
 
@@ -1109,19 +1109,19 @@ func TestManager_GrantUserAccessToTable(T *testing.T) {
 
 		// Create user and database
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		err = mgr.CreateDatabase(ctx, databaseName, username)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Create a test table
 		_, err = adminDB.ExecContext(ctx, fmt.Sprintf("CREATE TABLE %s.%s (id SERIAL PRIMARY KEY, name TEXT)", quoteIdent(schema), quoteIdent(table)))
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Try to grant invalid privilege
 		err = mgr.GrantUserAccessToTable(ctx, username, schema, table, "INVALID_PRIVILEGE")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid privilege")
+		test.Error(t, err)
+		test.StrContains(t, err.Error(), "invalid privilege")
 	})
 
 	T.Run("case sensitive privilege", func(t *testing.T) {
@@ -1145,19 +1145,19 @@ func TestManager_GrantUserAccessToTable(T *testing.T) {
 
 		// Create user and database
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		err = mgr.CreateDatabase(ctx, databaseName, username)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Create a test table
 		_, err = adminDB.ExecContext(ctx, fmt.Sprintf("CREATE TABLE %s.%s (id SERIAL PRIMARY KEY, name TEXT)", quoteIdent(schema), quoteIdent(table)))
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Try to grant lowercase privilege (should fail)
 		err = mgr.GrantUserAccessToTable(ctx, username, schema, table, "select")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid privilege")
+		test.Error(t, err)
+		test.StrContains(t, err.Error(), "invalid privilege")
 	})
 
 	T.Run("special characters in identifiers", func(t *testing.T) {
@@ -1181,21 +1181,21 @@ func TestManager_GrantUserAccessToTable(T *testing.T) {
 
 		// Create user and database
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		err = mgr.CreateDatabase(ctx, databaseName, username)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Create schema and table
 		_, err = adminDB.ExecContext(ctx, fmt.Sprintf("CREATE SCHEMA %s", quoteIdent(schema)))
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		_, err = adminDB.ExecContext(ctx, fmt.Sprintf("CREATE TABLE %s.%s (id SERIAL PRIMARY KEY, name TEXT)", quoteIdent(schema), quoteIdent(table)))
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Grant access
 		err = mgr.GrantUserAccessToTable(ctx, username, schema, table, "SELECT")
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 
 	T.Run("non-existent user", func(t *testing.T) {
@@ -1217,11 +1217,11 @@ func TestManager_GrantUserAccessToTable(T *testing.T) {
 
 		// Create a test table
 		_, err := adminDB.ExecContext(ctx, fmt.Sprintf("CREATE TABLE %s.%s (id SERIAL PRIMARY KEY, name TEXT)", quoteIdent(schema), quoteIdent(table)))
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Try to grant access to non-existent user
 		err = mgr.GrantUserAccessToTable(ctx, username, schema, table, "SELECT")
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 
 	T.Run("non-existent table", func(t *testing.T) {
@@ -1244,11 +1244,11 @@ func TestManager_GrantUserAccessToTable(T *testing.T) {
 
 		// Create user
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Try to grant access to non-existent table
 		err = mgr.GrantUserAccessToTable(ctx, username, schema, table, "SELECT")
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 }
 
@@ -1274,12 +1274,12 @@ func TestManager_SQLInjectionProtection(T *testing.T) {
 
 		// This should not cause SQL injection due to proper quoting
 		err := mgr.CreateUser(ctx, maliciousUsername, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Verify the user was created with the literal name (not executed as SQL)
 		exists, err := mgr.UserExists(ctx, maliciousUsername)
-		assert.NoError(t, err)
-		assert.True(t, exists)
+		test.NoError(t, err)
+		test.True(t, exists)
 	})
 
 	T.Run("password injection in CreateUser", func(t *testing.T) {
@@ -1301,12 +1301,12 @@ func TestManager_SQLInjectionProtection(T *testing.T) {
 
 		// This should not cause SQL injection due to proper quoting
 		err := mgr.CreateUser(ctx, username, maliciousPassword)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Verify the user was created
 		exists, err := mgr.UserExists(ctx, username)
-		assert.NoError(t, err)
-		assert.True(t, exists)
+		test.NoError(t, err)
+		test.True(t, exists)
 	})
 
 	T.Run("database name injection in CreateDatabase", func(t *testing.T) {
@@ -1329,16 +1329,16 @@ func TestManager_SQLInjectionProtection(T *testing.T) {
 
 		// Create user first
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// This should not cause SQL injection due to proper quoting
 		err = mgr.CreateDatabase(ctx, maliciousDbName, username)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Verify the database was created with the literal name
 		exists, err := mgr.DatabaseExists(ctx, maliciousDbName)
-		assert.NoError(t, err)
-		assert.True(t, exists)
+		test.NoError(t, err)
+		test.True(t, exists)
 	})
 
 	T.Run("table name injection in GrantUserAccessToTable", func(t *testing.T) {
@@ -1363,18 +1363,18 @@ func TestManager_SQLInjectionProtection(T *testing.T) {
 
 		// Create user and database
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		err = mgr.CreateDatabase(ctx, databaseName, username)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Create a test table with the malicious name
 		_, err = adminDB.ExecContext(ctx, fmt.Sprintf("CREATE TABLE %s.%s (id SERIAL PRIMARY KEY, name TEXT)", quoteIdent(schema), quoteIdent(maliciousTable)))
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// This should not cause SQL injection due to proper quoting
 		err = mgr.GrantUserAccessToTable(ctx, username, schema, maliciousTable, "SELECT")
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 
 	T.Run("schema name injection in GrantUserAccessToTable", func(t *testing.T) {
@@ -1399,21 +1399,21 @@ func TestManager_SQLInjectionProtection(T *testing.T) {
 
 		// Create user and database
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		err = mgr.CreateDatabase(ctx, databaseName, username)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Create schema and table with malicious names
 		_, err = adminDB.ExecContext(ctx, fmt.Sprintf("CREATE SCHEMA %s", quoteIdent(maliciousSchema)))
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		_, err = adminDB.ExecContext(ctx, fmt.Sprintf("CREATE TABLE %s.%s (id SERIAL PRIMARY KEY, name TEXT)", quoteIdent(maliciousSchema), quoteIdent(table)))
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// This should not cause SQL injection due to proper quoting
 		err = mgr.GrantUserAccessToTable(ctx, username, maliciousSchema, table, "SELECT")
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 }
 
@@ -1442,11 +1442,11 @@ func TestManager_ErrorCases(T *testing.T) {
 
 		// Operations with cancelled context should fail
 		err := mgr.CreateUser(cancelledCtx, username, password)
-		assert.Error(t, err)
+		test.Error(t, err)
 
 		exists, err := mgr.UserExists(cancelledCtx, username)
-		assert.Error(t, err)
-		assert.False(t, exists)
+		test.Error(t, err)
+		test.False(t, exists)
 	})
 
 	T.Run("context timeout", func(t *testing.T) {
@@ -1474,7 +1474,7 @@ func TestManager_ErrorCases(T *testing.T) {
 
 		// Operations with timed out context should fail
 		err := mgr.CreateUser(timeoutCtx, username, password)
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 
 	T.Run("empty username", func(t *testing.T) {
@@ -1495,7 +1495,7 @@ func TestManager_ErrorCases(T *testing.T) {
 
 		// Empty username should fail
 		err := mgr.CreateUser(ctx, username, password)
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 
 	T.Run("empty database name", func(t *testing.T) {
@@ -1517,11 +1517,11 @@ func TestManager_ErrorCases(T *testing.T) {
 
 		// Create user first
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Empty database name should fail
 		err = mgr.CreateDatabase(ctx, databaseName, username)
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 
 	T.Run("empty table name in GrantUserAccessToTable", func(t *testing.T) {
@@ -1545,14 +1545,14 @@ func TestManager_ErrorCases(T *testing.T) {
 
 		// Create user and database
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		err = mgr.CreateDatabase(ctx, databaseName, username)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Empty table name should fail
 		err = mgr.GrantUserAccessToTable(ctx, username, schema, table, "SELECT")
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 
 	T.Run("empty schema name in GrantUserAccessToTable", func(t *testing.T) {
@@ -1576,14 +1576,14 @@ func TestManager_ErrorCases(T *testing.T) {
 
 		// Create user and database
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		err = mgr.CreateDatabase(ctx, databaseName, username)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Empty schema name should fail
 		err = mgr.GrantUserAccessToTable(ctx, username, schema, table, "SELECT")
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 
 	T.Run("empty privilege in GrantUserAccessToTable", func(t *testing.T) {
@@ -1608,19 +1608,19 @@ func TestManager_ErrorCases(T *testing.T) {
 
 		// Create user and database
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		err = mgr.CreateDatabase(ctx, databaseName, username)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Create a test table
 		_, err = adminDB.ExecContext(ctx, fmt.Sprintf("CREATE TABLE %s.%s (id SERIAL PRIMARY KEY, name TEXT)", quoteIdent(schema), quoteIdent(table)))
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		// Empty privilege should fail
 		err = mgr.GrantUserAccessToTable(ctx, username, schema, table, privilege)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid privilege")
+		test.Error(t, err)
+		test.StrContains(t, err.Error(), "invalid privilege")
 	})
 }
 
@@ -1645,18 +1645,18 @@ func TestNewManager(T *testing.T) {
 		password := "hunter2"
 		databaseName := "records"
 
-		assert.NoError(t, mgr.CreateUser(ctx, username, password))
-		assert.NoError(t, mgr.CreateDatabase(ctx, databaseName, username))
+		test.NoError(t, mgr.CreateUser(ctx, username, password))
+		test.NoError(t, mgr.CreateDatabase(ctx, databaseName, username))
 
 		canAccess, err := mgr.UserCanAccessDatabase(ctx, username, databaseName)
-		assert.NoError(t, err)
-		assert.True(t, canAccess)
+		test.NoError(t, err)
+		test.True(t, canAccess)
 
 		db2, err := sql.Open("pgx", buildConnectionString(t, container, databaseName, username, password))
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		var dbName string
 		db2.QueryRowContext(ctx, `SELECT current_database()`).Scan(&dbName)
-		assert.Equal(t, databaseName, dbName)
+		test.EqOp(t, databaseName, dbName)
 	})
 }

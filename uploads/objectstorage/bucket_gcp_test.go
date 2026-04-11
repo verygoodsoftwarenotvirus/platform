@@ -3,7 +3,7 @@ package objectstorage
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestGCPConfig_ValidateWithContext(T *testing.T) {
@@ -17,7 +17,7 @@ func TestGCPConfig_ValidateWithContext(T *testing.T) {
 			BucketName: t.Name(),
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with missing bucket name", func(t *testing.T) {
@@ -26,6 +26,6 @@ func TestGCPConfig_ValidateWithContext(T *testing.T) {
 		ctx := t.Context()
 		cfg := &GCPConfig{}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 }

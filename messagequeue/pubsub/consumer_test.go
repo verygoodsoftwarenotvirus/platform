@@ -20,8 +20,8 @@ import (
 
 	"cloud.google.com/go/pubsub/v2"
 	"cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	tcpubsub "github.com/testcontainers/testcontainers-go/modules/gcloud/pubsub"
 	"go.opentelemetry.io/otel/metric"
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
@@ -48,7 +48,7 @@ func buildPubSubTestInfra(t *testing.T) *pubsubTestInfra {
 	ctx := t.Context()
 
 	randomID, err := random.GenerateHexEncodedString(ctx, 8)
-	require.NoError(t, err)
+	must.NoError(t, err)
 	projectID := "project-" + randomID
 
 	pubsubContainer, err := tcpubsub.Run(
@@ -56,16 +56,16 @@ func buildPubSubTestInfra(t *testing.T) *pubsubTestInfra {
 		"gcr.io/google.com/cloudsdktool/cloud-sdk:emulators",
 		tcpubsub.WithProjectID(projectID),
 	)
-	require.NoError(t, err)
-	require.NotNil(t, pubsubContainer)
+	must.NoError(t, err)
+	must.NotNil(t, pubsubContainer)
 
 	conn, err := grpc.NewClient(pubsubContainer.URI(), grpc.WithTransportCredentials(insecure.NewCredentials()))
-	require.NoError(t, err)
-	require.NotNil(t, conn)
+	must.NoError(t, err)
+	must.NotNil(t, conn)
 
 	client, err := pubsub.NewClient(ctx, projectID, option.WithGRPCConn(conn))
-	require.NoError(t, err)
-	require.NotNil(t, client)
+	must.NoError(t, err)
+	must.NotNil(t, client)
 
 	return &pubsubTestInfra{
 		client:    client,
@@ -86,15 +86,15 @@ func (i *pubsubTestInfra) newTopic(t *testing.T) string {
 	topicName := fmt.Sprintf("projects/%s/topics/topic-%s", i.projectID, identifiers.New())
 
 	pubSubTopic, err := i.client.TopicAdminClient.CreateTopic(ctx, &pubsubpb.Topic{Name: topicName})
-	require.NoError(t, err)
-	require.NotNil(t, pubSubTopic)
+	must.NoError(t, err)
+	must.NotNil(t, pubSubTopic)
 
 	subscription, err := i.client.SubscriptionAdminClient.CreateSubscription(ctx, &pubsubpb.Subscription{
 		Name:  subscriptionNameForTopic(pubSubTopic.GetName()),
 		Topic: pubSubTopic.GetName(),
 	})
-	require.NoError(t, err)
-	require.NotNil(t, subscription)
+	must.NoError(t, err)
+	must.NotNil(t, subscription)
 
 	return pubSubTopic.GetName()
 }
@@ -106,14 +106,14 @@ func TestSubscriptionNameForTopic(T *testing.T) {
 		t.Parallel()
 
 		result := subscriptionNameForTopic("projects/my-project/topics/my-topic")
-		assert.Equal(t, "projects/my-project/subscriptions/my-topic", result)
+		test.EqOp(t, "projects/my-project/subscriptions/my-topic", result)
 	})
 
 	T.Run("no match", func(t *testing.T) {
 		t.Parallel()
 
 		result := subscriptionNameForTopic("some-other-string")
-		assert.Equal(t, "some-other-string", result)
+		test.EqOp(t, "some-other-string", result)
 	})
 }
 
@@ -127,7 +127,7 @@ func TestBuildPubSubConsumer(T *testing.T) {
 		handler := func(_ context.Context, _ []byte) error { return nil }
 
 		consumer := buildPubSubConsumer(logger, tracing.NewNoopTracerProvider(), nil, nil, "test-topic", handler)
-		require.NotNil(t, consumer)
+		must.NotNil(t, consumer)
 	})
 
 	T.Run("panics when NewInt64Counter fails", func(t *testing.T) {
@@ -139,7 +139,7 @@ func TestBuildPubSubConsumer(T *testing.T) {
 			},
 		}
 
-		assert.Panics(t, func() {
+		test.Panic(t, func() {
 			buildPubSubConsumer(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, nil, "t", nil)
 		})
 	})
@@ -153,7 +153,7 @@ func TestProvidePubSubConsumerProvider(T *testing.T) {
 
 		logger := logging.NewNoopLogger()
 		provider := ProvidePubSubConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil, nil)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 	})
 }
 
@@ -167,8 +167,8 @@ func TestPubSubConsumerProvider_ProvideConsumer(T *testing.T) {
 		provider := ProvidePubSubConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil, nil)
 
 		consumer, err := provider.ProvideConsumer(t.Context(), "", func(_ context.Context, _ []byte) error { return nil })
-		assert.Nil(t, consumer)
-		assert.ErrorIs(t, err, messagequeue.ErrEmptyTopicName)
+		test.Nil(t, consumer)
+		test.ErrorIs(t, err, messagequeue.ErrEmptyTopicName)
 	})
 }
 
@@ -194,11 +194,11 @@ func TestPubSub_Container(T *testing.T) {
 
 		logger := logging.NewNoopLogger()
 		provider := ProvidePubSubPublisherProvider(logger, tracing.NewNoopTracerProvider(), nil, infra.client, infra.projectID)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		publisher, err := provider.ProvidePublisher(ctx, topicName)
-		require.NoError(t, err)
-		require.NotNil(t, publisher)
+		must.NoError(t, err)
+		must.NotNil(t, publisher)
 
 		inputData := &struct {
 			Name string `json:"name"`
@@ -206,7 +206,7 @@ func TestPubSub_Container(T *testing.T) {
 			Name: t.Name(),
 		}
 
-		assert.NoError(t, publisher.Publish(ctx, inputData))
+		test.NoError(t, publisher.Publish(ctx, inputData))
 	})
 
 	T.Run("consumer provider caches consumers for same topic", func(t *testing.T) {
@@ -221,12 +221,12 @@ func TestPubSub_Container(T *testing.T) {
 		handler := func(_ context.Context, _ []byte) error { return nil }
 
 		c1, err := provider.ProvideConsumer(ctx, topicName, handler)
-		require.NoError(t, err)
-		require.NotNil(t, c1)
+		must.NoError(t, err)
+		must.NotNil(t, c1)
 
 		c2, err := provider.ProvideConsumer(ctx, topicName, handler)
-		require.NoError(t, err)
-		assert.Equal(t, c1, c2)
+		must.NoError(t, err)
+		test.True(t, c1 == c2)
 	})
 
 	T.Run("consumer receives published message", func(t *testing.T) {
@@ -244,7 +244,7 @@ func TestPubSub_Container(T *testing.T) {
 		logger := logging.NewNoopLogger()
 		provider := ProvidePubSubConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil, infra.client)
 		consumer, err := provider.ProvideConsumer(ctx, topicName, handler)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		stopChan := make(chan bool, 1)
 		errChan := make(chan error, 1)
@@ -255,10 +255,14 @@ func TestPubSub_Container(T *testing.T) {
 		result := publisher.Publish(ctx, &pubsub.Message{Data: []byte(`{"name":"test"}`)})
 		<-result.Ready()
 		_, err = result.Get(ctx)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		// Wait for handler to be called.
-		assert.Eventually(t, called.Load, 10*time.Second, 100*time.Millisecond)
+		deadline := time.Now().Add(10 * time.Second)
+		for !called.Load() && time.Now().Before(deadline) {
+			time.Sleep(100 * time.Millisecond)
+		}
+		test.True(t, called.Load())
 
 		stopChan <- true
 
@@ -283,7 +287,7 @@ func TestPubSub_Container(T *testing.T) {
 		logger := logging.NewNoopLogger()
 		provider := ProvidePubSubConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil, infra.client)
 		consumer, err := provider.ProvideConsumer(ctx, topicName, handler)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		stopChan := make(chan bool, 1)
 		errChan := make(chan error, 1)
@@ -294,12 +298,12 @@ func TestPubSub_Container(T *testing.T) {
 		result := publisher.Publish(ctx, &pubsub.Message{Data: []byte(`{"name":"test"}`)})
 		<-result.Ready()
 		_, err = result.Get(ctx)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		// Wait for the error to appear.
 		select {
 		case receivedErr := <-errChan:
-			assert.Equal(t, expectedErr, receivedErr)
+			test.ErrorIs(t, receivedErr, expectedErr)
 		case <-time.After(10 * time.Second):
 			t.Fatal("timed out waiting for handler error")
 		}
@@ -318,7 +322,7 @@ func TestPubSub_Container(T *testing.T) {
 		logger := logging.NewNoopLogger()
 		provider := ProvidePubSubConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil, infra.client)
 		consumer, err := provider.ProvideConsumer(ctx, topicName, handler)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		stopChan := make(chan bool, 1)
 		errChan := make(chan error, 1)
@@ -354,7 +358,7 @@ func TestPubSub_Container(T *testing.T) {
 		logger := logging.NewNoopLogger()
 		provider := ProvidePubSubConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil, infra.client)
 		consumer, err := provider.ProvideConsumer(ctx, topicName, handler)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		errChan := make(chan error, 1)
 
@@ -370,8 +374,12 @@ func TestPubSub_Container(T *testing.T) {
 		result := publisher.Publish(ctx, &pubsub.Message{Data: []byte(`{"name":"test"}`)})
 		<-result.Ready()
 		_, err = result.Get(ctx)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
-		assert.Eventually(t, called.Load, 10*time.Second, 100*time.Millisecond)
+		deadline := time.Now().Add(10 * time.Second)
+		for !called.Load() && time.Now().Before(deadline) {
+			time.Sleep(100 * time.Millisecond)
+		}
+		test.True(t, called.Load())
 	})
 }

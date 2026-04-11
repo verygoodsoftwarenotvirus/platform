@@ -8,8 +8,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 
 	"github.com/samber/do/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 //nolint:paralleltest // race condition in the core circuit breaker library, I think?
@@ -27,7 +27,7 @@ func TestRegisterCircuitBreaker(T *testing.T) {
 		RegisterCircuitBreaker(i)
 
 		cb, err := do.Invoke[circuitbreaking.CircuitBreaker](i)
-		require.NoError(t, err)
-		assert.NotNil(t, cb)
+		must.NoError(t, err)
+		test.NotNil(t, cb)
 	})
 }

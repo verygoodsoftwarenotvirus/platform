@@ -8,8 +8,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 
 	"github.com/samber/do/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestRegisterMetricsProvider(T *testing.T) {
@@ -26,7 +26,7 @@ func TestRegisterMetricsProvider(T *testing.T) {
 		RegisterMetricsProvider(i)
 
 		mp, err := do.Invoke[metrics.Provider](i)
-		require.NoError(t, err)
-		assert.NotNil(t, mp)
+		must.NoError(t, err)
+		test.NotNil(t, mp)
 	})
 }

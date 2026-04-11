@@ -3,7 +3,7 @@ package encoding
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestConfig_ValidateWithContext(T *testing.T) {
@@ -17,7 +17,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			ContentType: contentTypeJSON,
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with invalid config", func(t *testing.T) {
@@ -26,6 +26,6 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		ctx := t.Context()
 		cfg := &Config{}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 }

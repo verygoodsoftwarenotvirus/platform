@@ -24,8 +24,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/panicking"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/routing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 )
@@ -74,7 +74,7 @@ func generateTestTLSCerts(t *testing.T) (certFile, keyFile string) {
 	t.Helper()
 
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	template := x509.Certificate{
 		SerialNumber: big.NewInt(1),
@@ -86,23 +86,23 @@ func generateTestTLSCerts(t *testing.T) (certFile, keyFile string) {
 	}
 
 	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	dir := t.TempDir()
 
 	certPath := filepath.Join(dir, "cert.pem")
 	certOut, err := os.Create(certPath)
-	require.NoError(t, err)
-	require.NoError(t, pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: certDER}))
-	require.NoError(t, certOut.Close())
+	must.NoError(t, err)
+	must.NoError(t, pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: certDER}))
+	must.NoError(t, certOut.Close())
 
 	keyDER, err := x509.MarshalECPrivateKey(key)
-	require.NoError(t, err)
+	must.NoError(t, err)
 	keyPath := filepath.Join(dir, "key.pem")
 	keyOut, err := os.Create(keyPath)
-	require.NoError(t, err)
-	require.NoError(t, pem.Encode(keyOut, &pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER}))
-	require.NoError(t, keyOut.Close())
+	must.NoError(t, err)
+	must.NoError(t, pem.Encode(keyOut, &pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER}))
+	must.NoError(t, keyOut.Close())
 
 	return certPath, keyPath
 }
@@ -127,8 +127,8 @@ func TestProvideHTTPServer(T *testing.T) {
 			"",
 		)
 
-		assert.NotNil(t, x)
-		assert.NoError(t, err)
+		test.NotNil(t, x)
+		test.NoError(t, err)
 	})
 
 	T.Run("with custom service name", func(t *testing.T) {
@@ -142,8 +142,8 @@ func TestProvideHTTPServer(T *testing.T) {
 			"custom_service",
 		)
 
-		assert.NotNil(t, x)
-		assert.NoError(t, err)
+		test.NotNil(t, x)
+		test.NoError(t, err)
 	})
 
 	T.Run("with empty service name uses default", func(t *testing.T) {
@@ -157,8 +157,8 @@ func TestProvideHTTPServer(T *testing.T) {
 			"",
 		)
 
-		assert.NotNil(t, x)
-		assert.NoError(t, err)
+		test.NotNil(t, x)
+		test.NoError(t, err)
 	})
 
 	T.Run("with SSL config", func(t *testing.T) {
@@ -176,8 +176,8 @@ func TestProvideHTTPServer(T *testing.T) {
 			"",
 		)
 
-		assert.NotNil(t, x)
-		assert.NoError(t, err)
+		test.NotNil(t, x)
+		test.NoError(t, err)
 	})
 }
 
@@ -188,10 +188,10 @@ func TestServer_Router(T *testing.T) {
 		t.Parallel()
 
 		s, err := ProvideHTTPServer(Config{Port: 0}, nil, nil, nil, "")
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		// Router returns nil when nil was passed in
-		assert.Nil(t, s.Router())
+		test.Nil(t, s.Router())
 	})
 }
 
@@ -202,12 +202,12 @@ func TestServer_Shutdown(T *testing.T) {
 		t.Parallel()
 
 		s, err := ProvideHTTPServer(Config{Port: 0}, logging.NewNoopLogger(), nil, nil, "")
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 		defer cancel()
 
-		assert.NoError(t, s.Shutdown(ctx))
+		test.NoError(t, s.Shutdown(ctx))
 	})
 
 	T.Run("logs error when ForceFlush fails", func(t *testing.T) {
@@ -218,14 +218,14 @@ func TestServer_Shutdown(T *testing.T) {
 		}
 
 		s, err := ProvideHTTPServer(Config{Port: 0}, logging.NewNoopLogger(), nil, mtp, "")
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 		defer cancel()
 
-		assert.NoError(t, s.Shutdown(ctx))
+		test.NoError(t, s.Shutdown(ctx))
 
-		assert.Equal(t, 1, mtp.forceFlushCalls)
+		test.EqOp(t, 1, mtp.forceFlushCalls)
 	})
 }
 
@@ -252,7 +252,7 @@ func TestServer_Serve(T *testing.T) {
 
 		// Give the server time to start listening.
 		time.Sleep(50 * time.Millisecond)
-		require.NoError(t, srv.httpServer.Close())
+		must.NoError(t, srv.httpServer.Close())
 		<-done
 	})
 
@@ -280,7 +280,7 @@ func TestServer_Serve(T *testing.T) {
 		}()
 
 		time.Sleep(50 * time.Millisecond)
-		require.NoError(t, srv.httpServer.Close())
+		must.NoError(t, srv.httpServer.Close())
 		<-done
 	})
 
@@ -308,7 +308,7 @@ func TestServer_Serve(T *testing.T) {
 
 		// Occupy a port so ListenAndServe fails with "address already in use".
 		lis, err := new(net.ListenConfig).Listen(t.Context(), "tcp", ":0")
-		require.NoError(t, err)
+		must.NoError(t, err)
 		defer lis.Close()
 
 		port := lis.Addr().(*net.TCPAddr).Port
@@ -335,28 +335,28 @@ func Test_skipNoisePaths(T *testing.T) {
 		t.Parallel()
 
 		req := httptest.NewRequest(http.MethodGet, "/_ops_/health", http.NoBody)
-		assert.False(t, skipNoisePaths(req))
+		test.False(t, skipNoisePaths(req))
 	})
 
 	T.Run("apple app site association path is filtered out", func(t *testing.T) {
 		t.Parallel()
 
 		req := httptest.NewRequest(http.MethodGet, appleAppSiteAssociationPath, http.NoBody)
-		assert.False(t, skipNoisePaths(req))
+		test.False(t, skipNoisePaths(req))
 	})
 
 	T.Run("normal paths are not filtered", func(t *testing.T) {
 		t.Parallel()
 
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/things", http.NoBody)
-		assert.True(t, skipNoisePaths(req))
+		test.True(t, skipNoisePaths(req))
 	})
 
 	T.Run("root path is not filtered", func(t *testing.T) {
 		t.Parallel()
 
 		req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
-		assert.True(t, skipNoisePaths(req))
+		test.True(t, skipNoisePaths(req))
 	})
 }
 
@@ -368,13 +368,13 @@ func Test_provideStdLibHTTPServer(T *testing.T) {
 
 		srv := provideStdLibHTTPServer(8080)
 
-		assert.NotNil(t, srv)
-		assert.Equal(t, ":8080", srv.Addr)
-		assert.Equal(t, readTimeout, srv.ReadTimeout)
-		assert.Equal(t, writeTimeout, srv.WriteTimeout)
-		assert.Equal(t, idleTimeout, srv.IdleTimeout)
-		assert.NotNil(t, srv.TLSConfig)
-		assert.Equal(t, uint16(tls.VersionTLS12), srv.TLSConfig.MinVersion)
+		test.NotNil(t, srv)
+		test.EqOp(t, ":8080", srv.Addr)
+		test.EqOp(t, readTimeout, srv.ReadTimeout)
+		test.EqOp(t, writeTimeout, srv.WriteTimeout)
+		test.EqOp(t, idleTimeout, srv.IdleTimeout)
+		test.NotNil(t, srv.TLSConfig)
+		test.EqOp(t, uint16(tls.VersionTLS12), srv.TLSConfig.MinVersion)
 	})
 
 	T.Run("with zero port", func(t *testing.T) {
@@ -382,7 +382,7 @@ func Test_provideStdLibHTTPServer(T *testing.T) {
 
 		srv := provideStdLibHTTPServer(0)
 
-		assert.NotNil(t, srv)
-		assert.Equal(t, ":0", srv.Addr)
+		test.NotNil(t, srv)
+		test.EqOp(t, ":0", srv.Addr)
 	})
 }

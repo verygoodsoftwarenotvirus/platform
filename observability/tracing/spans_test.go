@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 )
 
 func TestStartCustomSpan(T *testing.T) {
@@ -53,7 +53,7 @@ func TestFormatSpan(T *testing.T) {
 		t.Parallel()
 
 		u, err := url.ParseRequestURI("https://whatever.whocares.gov")
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		FormatSpan(t.Name(), &http.Request{URL: u})
 	})

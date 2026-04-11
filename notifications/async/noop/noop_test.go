@@ -7,8 +7,8 @@ import (
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/notifications/async"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestAsyncNotifier_Publish(T *testing.T) {
@@ -18,14 +18,14 @@ func TestAsyncNotifier_Publish(T *testing.T) {
 		t.Parallel()
 
 		n, err := NewAsyncNotifier()
-		require.NoError(t, err)
-		require.NotNil(t, n)
+		must.NoError(t, err)
+		must.NotNil(t, n)
 
 		err = n.Publish(context.Background(), "test-channel", &async.Event{
 			Type: "test",
 			Data: json.RawMessage(`{"key":"value"}`),
 		})
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 }
 
@@ -36,9 +36,9 @@ func TestAsyncNotifier_Close(T *testing.T) {
 		t.Parallel()
 
 		n, err := NewAsyncNotifier()
-		require.NoError(t, err)
-		require.NotNil(t, n)
+		must.NoError(t, err)
+		must.NotNil(t, n)
 
-		assert.NoError(t, n.Close())
+		test.NoError(t, n.Close())
 	})
 }

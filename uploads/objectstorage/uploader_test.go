@@ -8,7 +8,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestConfig_ValidateWithContext(T *testing.T) {
@@ -24,7 +24,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			FilesystemConfig: &FilesystemConfig{RootDirectory: t.Name()},
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with missing bucket name", func(t *testing.T) {
@@ -35,7 +35,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider: MemoryProvider,
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with invalid provider", func(t *testing.T) {
@@ -47,7 +47,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider:   "invalid_provider",
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with s3 provider", func(t *testing.T) {
@@ -60,7 +60,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			S3Config:   &S3Config{BucketName: t.Name()},
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with s3 provider missing config", func(t *testing.T) {
@@ -72,7 +72,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider:   S3Provider,
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with gcp provider", func(t *testing.T) {
@@ -85,7 +85,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			GCP:        &GCPConfig{BucketName: t.Name()},
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with gcp provider missing config", func(t *testing.T) {
@@ -97,7 +97,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider:   GCPCloudStorageProvider,
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with r2 provider", func(t *testing.T) {
@@ -115,7 +115,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			},
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with r2 provider missing config", func(t *testing.T) {
@@ -127,7 +127,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider:   R2Provider,
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with backblaze b2 provider", func(t *testing.T) {
@@ -145,7 +145,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			},
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with backblaze b2 provider missing config", func(t *testing.T) {
@@ -157,7 +157,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider:   BackblazeB2Provider,
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with memory provider", func(t *testing.T) {
@@ -169,7 +169,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider:   MemoryProvider,
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with filesystem provider missing config", func(t *testing.T) {
@@ -181,7 +181,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider:   FilesystemProvider,
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with non-s3 provider having s3 config is invalid", func(t *testing.T) {
@@ -194,7 +194,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			S3Config:   &S3Config{BucketName: t.Name()},
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 }
 
@@ -212,8 +212,8 @@ func TestNewUploadManager(T *testing.T) {
 		}
 
 		x, err := NewUploadManager(ctx, l, tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider(), cfg)
-		assert.NotNil(t, x)
-		assert.NoError(t, err)
+		test.NotNil(t, x)
+		test.NoError(t, err)
 	})
 
 	T.Run("with nil config", func(t *testing.T) {
@@ -223,8 +223,8 @@ func TestNewUploadManager(T *testing.T) {
 		l := logging.NewNoopLogger()
 
 		x, err := NewUploadManager(ctx, l, tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider(), nil)
-		assert.Nil(t, x)
-		assert.Error(t, err)
+		test.Nil(t, x)
+		test.Error(t, err)
 	})
 
 	T.Run("with invalid config", func(t *testing.T) {
@@ -235,8 +235,8 @@ func TestNewUploadManager(T *testing.T) {
 		cfg := &Config{}
 
 		x, err := NewUploadManager(ctx, l, tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider(), cfg)
-		assert.Nil(t, x)
-		assert.Error(t, err)
+		test.Nil(t, x)
+		test.Error(t, err)
 	})
 
 	T.Run("with filesystem provider", func(t *testing.T) {
@@ -253,8 +253,8 @@ func TestNewUploadManager(T *testing.T) {
 		}
 
 		x, err := NewUploadManager(ctx, l, tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider(), cfg)
-		assert.NotNil(t, x)
-		assert.NoError(t, err)
+		test.NotNil(t, x)
+		test.NoError(t, err)
 	})
 
 	T.Run("with bucket prefix", func(t *testing.T) {
@@ -269,8 +269,8 @@ func TestNewUploadManager(T *testing.T) {
 		}
 
 		x, err := NewUploadManager(ctx, l, tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider(), cfg)
-		assert.NotNil(t, x)
-		assert.NoError(t, err)
+		test.NotNil(t, x)
+		test.NoError(t, err)
 	})
 
 	T.Run("with selectBucket error", func(t *testing.T) {
@@ -285,8 +285,8 @@ func TestNewUploadManager(T *testing.T) {
 		}
 
 		x, err := NewUploadManager(ctx, l, tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider(), cfg)
-		assert.Nil(t, x)
-		assert.Error(t, err)
+		test.Nil(t, x)
+		test.Error(t, err)
 	})
 }
 
@@ -305,7 +305,7 @@ func TestUploader_selectBucket(T *testing.T) {
 			},
 		}
 
-		assert.NoError(t, u.selectBucket(ctx, cfg))
+		test.NoError(t, u.selectBucket(ctx, cfg))
 	})
 
 	T.Run("s3 with nil config", func(t *testing.T) {
@@ -318,7 +318,7 @@ func TestUploader_selectBucket(T *testing.T) {
 			S3Config: nil,
 		}
 
-		assert.Error(t, u.selectBucket(ctx, cfg))
+		test.Error(t, u.selectBucket(ctx, cfg))
 	})
 
 	T.Run("memory provider", func(t *testing.T) {
@@ -330,7 +330,7 @@ func TestUploader_selectBucket(T *testing.T) {
 			Provider: MemoryProvider,
 		}
 
-		assert.NoError(t, u.selectBucket(ctx, cfg))
+		test.NoError(t, u.selectBucket(ctx, cfg))
 	})
 
 	T.Run("r2 happy path", func(t *testing.T) {
@@ -348,7 +348,7 @@ func TestUploader_selectBucket(T *testing.T) {
 			},
 		}
 
-		assert.NoError(t, u.selectBucket(ctx, cfg))
+		test.NoError(t, u.selectBucket(ctx, cfg))
 	})
 
 	T.Run("r2 with nil config", func(t *testing.T) {
@@ -361,7 +361,7 @@ func TestUploader_selectBucket(T *testing.T) {
 			R2Config: nil,
 		}
 
-		assert.Error(t, u.selectBucket(ctx, cfg))
+		test.Error(t, u.selectBucket(ctx, cfg))
 	})
 
 	T.Run("backblaze b2 happy path", func(t *testing.T) {
@@ -379,7 +379,7 @@ func TestUploader_selectBucket(T *testing.T) {
 			},
 		}
 
-		assert.NoError(t, u.selectBucket(ctx, cfg))
+		test.NoError(t, u.selectBucket(ctx, cfg))
 	})
 
 	T.Run("backblaze b2 with nil config", func(t *testing.T) {
@@ -392,7 +392,7 @@ func TestUploader_selectBucket(T *testing.T) {
 			BackblazeB2Config: nil,
 		}
 
-		assert.Error(t, u.selectBucket(ctx, cfg))
+		test.Error(t, u.selectBucket(ctx, cfg))
 	})
 
 	T.Run("filesystem happy path", func(t *testing.T) {
@@ -409,7 +409,7 @@ func TestUploader_selectBucket(T *testing.T) {
 			},
 		}
 
-		assert.NoError(t, u.selectBucket(ctx, cfg))
+		test.NoError(t, u.selectBucket(ctx, cfg))
 	})
 
 	T.Run("filesystem with nil config", func(t *testing.T) {
@@ -422,7 +422,7 @@ func TestUploader_selectBucket(T *testing.T) {
 			FilesystemConfig: nil,
 		}
 
-		assert.Error(t, u.selectBucket(ctx, cfg))
+		test.Error(t, u.selectBucket(ctx, cfg))
 	})
 
 	T.Run("memory provider with bucket prefix", func(t *testing.T) {
@@ -435,8 +435,8 @@ func TestUploader_selectBucket(T *testing.T) {
 			BucketPrefix: "my-prefix/",
 		}
 
-		assert.NoError(t, u.selectBucket(ctx, cfg))
-		assert.NotNil(t, u.bucket)
+		test.NoError(t, u.selectBucket(ctx, cfg))
+		test.NotNil(t, u.bucket)
 	})
 
 	T.Run("unknown provider falls through to filesystem default", func(t *testing.T) {
@@ -450,7 +450,7 @@ func TestUploader_selectBucket(T *testing.T) {
 			FilesystemConfig: &FilesystemConfig{RootDirectory: tempDir},
 		}
 
-		assert.NoError(t, u.selectBucket(ctx, cfg))
+		test.NoError(t, u.selectBucket(ctx, cfg))
 	})
 
 	T.Run("gcp provider fails without credentials", func(t *testing.T) {
@@ -465,7 +465,7 @@ func TestUploader_selectBucket(T *testing.T) {
 			},
 		}
 
-		assert.Error(t, u.selectBucket(ctx, cfg))
+		test.Error(t, u.selectBucket(ctx, cfg))
 	})
 
 	T.Run("filesystem with invalid root directory", func(t *testing.T) {
@@ -478,6 +478,6 @@ func TestUploader_selectBucket(T *testing.T) {
 			FilesystemConfig: &FilesystemConfig{RootDirectory: string([]byte{0x00})},
 		}
 
-		assert.Error(t, u.selectBucket(ctx, cfg))
+		test.Error(t, u.selectBucket(ctx, cfg))
 	})
 }

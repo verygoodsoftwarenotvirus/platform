@@ -3,7 +3,7 @@ package kafka
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestConfig_ValidateWithContext(T *testing.T) {
@@ -19,7 +19,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			GroupID: "test-group",
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with empty brokers", func(t *testing.T) {
@@ -32,7 +32,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			GroupID: "test-group",
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with nil brokers", func(t *testing.T) {
@@ -44,6 +44,6 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			GroupID: "test-group",
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 }

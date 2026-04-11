@@ -14,8 +14,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/metric"
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
 )
@@ -58,7 +58,7 @@ func buildRedisBackedPublisher(t *testing.T, cfg *Config, topic string) messageq
 	)
 
 	publisher, err := provider.ProvidePublisher(ctx, topic)
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	return publisher
 }
@@ -76,14 +76,14 @@ func Test_redisPublisher_Publish(T *testing.T) {
 			QueueAddresses: []string{t.Name()},
 		}
 		provider := ProvideRedisPublisherProvider(logger, tracing.NewNoopTracerProvider(), nil, cfg)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		a, err := provider.ProvidePublisher(ctx, t.Name())
-		assert.NotNil(t, a)
-		assert.NoError(t, err)
+		test.NotNil(t, a)
+		test.NoError(t, err)
 
 		actual, ok := a.(*redisPublisher)
-		require.True(t, ok)
+		must.True(t, ok)
 
 		inputData := &struct {
 			Name string `json:"name"`
@@ -98,11 +98,11 @@ func Test_redisPublisher_Publish(T *testing.T) {
 		actual.publisher = mmp
 
 		err = actual.Publish(ctx, inputData)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
-		require.Len(t, mmp.publishArgs, 1)
-		assert.Equal(t, actual.topic, mmp.publishArgs[0].channel)
-		assert.Equal(t, fmt.Appendf(nil, `{"name":%q}%s`, t.Name(), string(byte(10))), mmp.publishArgs[0].message)
+		must.SliceLen(t, 1, mmp.publishArgs)
+		test.EqOp(t, actual.topic, mmp.publishArgs[0].channel)
+		test.Eq(t, any(fmt.Appendf(nil, `{"name":%q}%s`, t.Name(), string(byte(10)))), mmp.publishArgs[0].message)
 	})
 
 	T.Run("with error encoding value", func(t *testing.T) {
@@ -115,14 +115,14 @@ func Test_redisPublisher_Publish(T *testing.T) {
 			QueueAddresses: []string{t.Name()},
 		}
 		provider := ProvideRedisPublisherProvider(logger, tracing.NewNoopTracerProvider(), nil, cfg)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		a, err := provider.ProvidePublisher(ctx, t.Name())
-		assert.NotNil(t, a)
-		assert.NoError(t, err)
+		test.NotNil(t, a)
+		test.NoError(t, err)
 
 		actual, ok := a.(*redisPublisher)
-		require.True(t, ok)
+		must.True(t, ok)
 
 		inputData := &struct {
 			Name json.Number `json:"name"`
@@ -131,7 +131,7 @@ func Test_redisPublisher_Publish(T *testing.T) {
 		}
 
 		err = actual.Publish(ctx, inputData)
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 }
 
@@ -148,14 +148,14 @@ func Test_redisPublisher_PublishAsync(T *testing.T) {
 			QueueAddresses: []string{t.Name()},
 		}
 		provider := ProvideRedisPublisherProvider(logger, tracing.NewNoopTracerProvider(), nil, cfg)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		a, err := provider.ProvidePublisher(ctx, t.Name())
-		assert.NotNil(t, a)
-		assert.NoError(t, err)
+		test.NotNil(t, a)
+		test.NoError(t, err)
 
 		actual, ok := a.(*redisPublisher)
-		require.True(t, ok)
+		must.True(t, ok)
 
 		inputData := &struct {
 			Name string `json:"name"`
@@ -171,9 +171,9 @@ func Test_redisPublisher_PublishAsync(T *testing.T) {
 
 		actual.PublishAsync(ctx, inputData)
 
-		require.Len(t, mmp.publishArgs, 1)
-		assert.Equal(t, actual.topic, mmp.publishArgs[0].channel)
-		assert.Equal(t, fmt.Appendf(nil, `{"name":%q}%s`, t.Name(), string(byte(10))), mmp.publishArgs[0].message)
+		must.SliceLen(t, 1, mmp.publishArgs)
+		test.EqOp(t, actual.topic, mmp.publishArgs[0].channel)
+		test.Eq(t, any(fmt.Appendf(nil, `{"name":%q}%s`, t.Name(), string(byte(10)))), mmp.publishArgs[0].message)
 	})
 
 	T.Run("with error encoding value", func(t *testing.T) {
@@ -186,14 +186,14 @@ func Test_redisPublisher_PublishAsync(T *testing.T) {
 			QueueAddresses: []string{t.Name()},
 		}
 		provider := ProvideRedisPublisherProvider(logger, tracing.NewNoopTracerProvider(), nil, cfg)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		a, err := provider.ProvidePublisher(ctx, t.Name())
-		assert.NotNil(t, a)
-		assert.NoError(t, err)
+		test.NotNil(t, a)
+		test.NoError(t, err)
 
 		actual, ok := a.(*redisPublisher)
-		require.True(t, ok)
+		must.True(t, ok)
 
 		inputData := &struct {
 			Name json.Number `json:"name"`
@@ -217,7 +217,7 @@ func TestProvideRedisPublisherProvider(T *testing.T) {
 			QueueAddresses: []string{t.Name()},
 		}
 		actual := ProvideRedisPublisherProvider(logger, tracing.NewNoopTracerProvider(), nil, cfg)
-		assert.NotNil(t, actual)
+		test.NotNil(t, actual)
 	})
 }
 
@@ -234,11 +234,11 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 			QueueAddresses: []string{t.Name()},
 		}
 		provider := ProvideRedisPublisherProvider(logger, tracing.NewNoopTracerProvider(), nil, cfg)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		actual, err := provider.ProvidePublisher(ctx, t.Name())
-		assert.NotNil(t, actual)
-		assert.NoError(t, err)
+		test.NotNil(t, actual)
+		test.NoError(t, err)
 	})
 
 	T.Run("with cache hit", func(t *testing.T) {
@@ -251,15 +251,15 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 			QueueAddresses: []string{t.Name()},
 		}
 		provider := ProvideRedisPublisherProvider(logger, tracing.NewNoopTracerProvider(), nil, cfg)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		actual, err := provider.ProvidePublisher(ctx, t.Name())
-		assert.NotNil(t, actual)
-		assert.NoError(t, err)
+		test.NotNil(t, actual)
+		test.NoError(t, err)
 
 		actual, err = provider.ProvidePublisher(ctx, t.Name())
-		assert.NotNil(t, actual)
-		assert.NoError(t, err)
+		test.NotNil(t, actual)
+		test.NoError(t, err)
 	})
 
 	T.Run("with empty topic", func(t *testing.T) {
@@ -272,11 +272,11 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 			QueueAddresses: []string{t.Name()},
 		}
 		provider := ProvideRedisPublisherProvider(logger, tracing.NewNoopTracerProvider(), nil, cfg)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		actual, err := provider.ProvidePublisher(ctx, "")
-		assert.Nil(t, actual)
-		assert.ErrorIs(t, err, messagequeue.ErrEmptyTopicName)
+		test.Nil(t, actual)
+		test.ErrorIs(t, err, messagequeue.ErrEmptyTopicName)
 	})
 }
 
@@ -287,7 +287,7 @@ func Test_provideRedisPublisher(T *testing.T) {
 		t.Parallel()
 
 		publisher := provideRedisPublisher(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, nil, "test-topic")
-		require.NotNil(t, publisher)
+		must.NotNil(t, publisher)
 	})
 
 	T.Run("panics when first NewInt64Counter fails", func(t *testing.T) {
@@ -303,7 +303,7 @@ func Test_provideRedisPublisher(T *testing.T) {
 			},
 		}
 
-		assert.Panics(t, func() {
+		test.Panic(t, func() {
 			provideRedisPublisher(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, nil, "t")
 		})
 	})
@@ -324,7 +324,7 @@ func Test_provideRedisPublisher(T *testing.T) {
 			},
 		}
 
-		assert.Panics(t, func() {
+		test.Panic(t, func() {
 			provideRedisPublisher(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, nil, "t")
 		})
 	})
@@ -341,7 +341,7 @@ func Test_provideRedisPublisher(T *testing.T) {
 			},
 		}
 
-		assert.Panics(t, func() {
+		test.Panic(t, func() {
 			provideRedisPublisher(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, nil, "t")
 		})
 	})

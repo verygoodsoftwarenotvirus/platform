@@ -3,7 +3,7 @@ package rudderstack
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 )
 
 func TestConfig_ValidateWithContext(T *testing.T) {
@@ -17,7 +17,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			DataPlaneURL: t.Name(),
 		}
 
-		require.NoError(t, cfg.ValidateWithContext(t.Context()))
+		must.NoError(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("with empty API key", func(t *testing.T) {
@@ -27,7 +27,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			DataPlaneURL: t.Name(),
 		}
 
-		require.Error(t, cfg.ValidateWithContext(t.Context()))
+		must.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("with empty data plane URL", func(t *testing.T) {
@@ -37,6 +37,6 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			APIKey: t.Name(),
 		}
 
-		require.Error(t, cfg.ValidateWithContext(t.Context()))
+		must.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 }

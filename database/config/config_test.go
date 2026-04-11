@@ -3,6 +3,7 @@ package databasecfg
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"testing"
 	"time"
 
@@ -10,9 +11,11 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
+
+var errStubMigrator = errors.New("stub migrator error")
 
 type stubMigrator struct {
 	err    error
@@ -41,7 +44,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			},
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 }
 
@@ -55,13 +58,13 @@ func TestConnectionDetails_LoadFromURL(T *testing.T) {
 
 		d := &ConnectionDetails{}
 
-		assert.NoError(t, d.LoadFromURL(exampleURI))
+		test.NoError(t, d.LoadFromURL(exampleURI))
 
-		assert.Equal(t, d.Username, "dbuser")
-		assert.Equal(t, d.Password, "hunter2")
-		assert.Equal(t, d.Host, "pgdatabase")
-		assert.Equal(t, d.Database, "database")
-		assert.Equal(t, d.DisableSSL, true)
+		test.EqOp(t, d.Username, "dbuser")
+		test.EqOp(t, d.Password, "hunter2")
+		test.EqOp(t, d.Host, "pgdatabase")
+		test.EqOp(t, d.Database, "database")
+		test.EqOp(t, d.DisableSSL, true)
 	})
 
 	T.Run("with invalid port", func(t *testing.T) {
@@ -71,7 +74,7 @@ func TestConnectionDetails_LoadFromURL(T *testing.T) {
 
 		d := &ConnectionDetails{}
 
-		assert.Error(t, d.LoadFromURL(exampleURI))
+		test.Error(t, d.LoadFromURL(exampleURI))
 	})
 
 	T.Run("with invalid URL", func(t *testing.T) {
@@ -79,7 +82,7 @@ func TestConnectionDetails_LoadFromURL(T *testing.T) {
 
 		d := &ConnectionDetails{}
 
-		assert.Error(t, d.LoadFromURL("://not-a-url"))
+		test.Error(t, d.LoadFromURL("://not-a-url"))
 	})
 
 	T.Run("with missing port", func(t *testing.T) {
@@ -87,7 +90,7 @@ func TestConnectionDetails_LoadFromURL(T *testing.T) {
 
 		d := &ConnectionDetails{}
 
-		assert.Error(t, d.LoadFromURL("postgres://dbuser:hunter2@pgdatabase/database"))
+		test.Error(t, d.LoadFromURL("postgres://dbuser:hunter2@pgdatabase/database"))
 	})
 
 	T.Run("without sslmode disable", func(t *testing.T) {
@@ -96,9 +99,9 @@ func TestConnectionDetails_LoadFromURL(T *testing.T) {
 		exampleURI := "postgres://dbuser:hunter2@pgdatabase:5432/database"
 
 		d := &ConnectionDetails{}
-		require.NoError(t, d.LoadFromURL(exampleURI))
+		must.NoError(t, d.LoadFromURL(exampleURI))
 
-		assert.False(t, d.DisableSSL)
+		test.False(t, d.DisableSSL)
 	})
 }
 
@@ -111,11 +114,11 @@ func TestConfig_EnsureDefaults(T *testing.T) {
 		cfg := &Config{}
 		cfg.EnsureDefaults()
 
-		assert.Equal(t, ProviderPostgres, cfg.Provider)
-		assert.Equal(t, defaultPingWaitPeriod, cfg.PingWaitPeriod)
-		assert.Equal(t, defaultConnMaxLifetime, cfg.ConnMaxLifetime)
-		assert.Equal(t, uint16(defaultMaxIdleConns), cfg.MaxIdleConns)
-		assert.Equal(t, uint16(defaultMaxOpenConns), cfg.MaxOpenConns)
+		test.EqOp(t, ProviderPostgres, cfg.Provider)
+		test.EqOp(t, defaultPingWaitPeriod, cfg.PingWaitPeriod)
+		test.EqOp(t, defaultConnMaxLifetime, cfg.ConnMaxLifetime)
+		test.EqOp(t, uint16(defaultMaxIdleConns), cfg.MaxIdleConns)
+		test.EqOp(t, uint16(defaultMaxOpenConns), cfg.MaxOpenConns)
 	})
 
 	T.Run("does not override set values", func(t *testing.T) {
@@ -130,11 +133,11 @@ func TestConfig_EnsureDefaults(T *testing.T) {
 		}
 		cfg.EnsureDefaults()
 
-		assert.Equal(t, "custom", cfg.Provider)
-		assert.Equal(t, 5*time.Second, cfg.PingWaitPeriod)
-		assert.Equal(t, 1*time.Hour, cfg.ConnMaxLifetime)
-		assert.Equal(t, uint16(10), cfg.MaxIdleConns)
-		assert.Equal(t, uint16(20), cfg.MaxOpenConns)
+		test.EqOp(t, "custom", cfg.Provider)
+		test.EqOp(t, 5*time.Second, cfg.PingWaitPeriod)
+		test.EqOp(t, 1*time.Hour, cfg.ConnMaxLifetime)
+		test.EqOp(t, uint16(10), cfg.MaxIdleConns)
+		test.EqOp(t, uint16(20), cfg.MaxOpenConns)
 	})
 }
 
@@ -155,7 +158,7 @@ func TestConfig_GetReadConnectionString(T *testing.T) {
 		}
 
 		expected := "user=user password=pass database=db host=localhost port=5432"
-		assert.Equal(t, expected, cfg.GetReadConnectionString())
+		test.EqOp(t, expected, cfg.GetReadConnectionString())
 	})
 }
 
@@ -176,7 +179,7 @@ func TestConfig_GetWriteConnectionString(T *testing.T) {
 		}
 
 		expected := "user=writer password=secret database=mydb host=writehost port=5433"
-		assert.Equal(t, expected, cfg.GetWriteConnectionString())
+		test.EqOp(t, expected, cfg.GetWriteConnectionString())
 	})
 }
 
@@ -187,14 +190,14 @@ func TestConfig_GetMaxPingAttempts(T *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{MaxPingAttempts: 42}
-		assert.Equal(t, uint64(42), cfg.GetMaxPingAttempts())
+		test.EqOp(t, uint64(42), cfg.GetMaxPingAttempts())
 	})
 
 	T.Run("zero value", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{}
-		assert.Equal(t, uint64(0), cfg.GetMaxPingAttempts())
+		test.EqOp(t, uint64(0), cfg.GetMaxPingAttempts())
 	})
 }
 
@@ -205,7 +208,7 @@ func TestConfig_GetPingWaitPeriod(T *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{PingWaitPeriod: 3 * time.Second}
-		assert.Equal(t, 3*time.Second, cfg.GetPingWaitPeriod())
+		test.EqOp(t, 3*time.Second, cfg.GetPingWaitPeriod())
 	})
 }
 
@@ -216,14 +219,14 @@ func TestConfig_GetMaxIdleConns(T *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{}
-		assert.Equal(t, 5, cfg.GetMaxIdleConns())
+		test.EqOp(t, 5, cfg.GetMaxIdleConns())
 	})
 
 	T.Run("returns set value", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{MaxIdleConns: 12}
-		assert.Equal(t, 12, cfg.GetMaxIdleConns())
+		test.EqOp(t, 12, cfg.GetMaxIdleConns())
 	})
 }
 
@@ -234,14 +237,14 @@ func TestConfig_GetMaxOpenConns(T *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{}
-		assert.Equal(t, 7, cfg.GetMaxOpenConns())
+		test.EqOp(t, 7, cfg.GetMaxOpenConns())
 	})
 
 	T.Run("returns set value", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{MaxOpenConns: 15}
-		assert.Equal(t, 15, cfg.GetMaxOpenConns())
+		test.EqOp(t, 15, cfg.GetMaxOpenConns())
 	})
 }
 
@@ -252,21 +255,21 @@ func TestConfig_GetConnMaxLifetime(T *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{}
-		assert.Equal(t, 30*time.Minute, cfg.GetConnMaxLifetime())
+		test.EqOp(t, 30*time.Minute, cfg.GetConnMaxLifetime())
 	})
 
 	T.Run("returns default when negative", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{ConnMaxLifetime: -1 * time.Second}
-		assert.Equal(t, 30*time.Minute, cfg.GetConnMaxLifetime())
+		test.EqOp(t, 30*time.Minute, cfg.GetConnMaxLifetime())
 	})
 
 	T.Run("returns set value", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{ConnMaxLifetime: 1 * time.Hour}
-		assert.Equal(t, 1*time.Hour, cfg.GetConnMaxLifetime())
+		test.EqOp(t, 1*time.Hour, cfg.GetConnMaxLifetime())
 	})
 }
 
@@ -293,7 +296,7 @@ func TestConfig_ValidateWithContext_additional(T *testing.T) {
 			},
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(t.Context()))
+		test.NoError(t, cfg.ValidateWithContext(t.Context()))
 	})
 }
 
@@ -304,20 +307,20 @@ func TestConfig_LoadConnectionDetailsFromURL(T *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{}
-		require.NoError(t, cfg.LoadConnectionDetailsFromURL("postgres://u:p@h:1234/d"))
+		must.NoError(t, cfg.LoadConnectionDetailsFromURL("postgres://u:p@h:1234/d"))
 
-		assert.Equal(t, "u", cfg.ReadConnection.Username)
-		assert.Equal(t, "p", cfg.ReadConnection.Password)
-		assert.Equal(t, "h", cfg.ReadConnection.Host)
-		assert.Equal(t, uint16(1234), cfg.ReadConnection.Port)
-		assert.Equal(t, "d", cfg.ReadConnection.Database)
+		test.EqOp(t, "u", cfg.ReadConnection.Username)
+		test.EqOp(t, "p", cfg.ReadConnection.Password)
+		test.EqOp(t, "h", cfg.ReadConnection.Host)
+		test.EqOp(t, uint16(1234), cfg.ReadConnection.Port)
+		test.EqOp(t, "d", cfg.ReadConnection.Database)
 	})
 
 	T.Run("with invalid URL", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{}
-		assert.Error(t, cfg.LoadConnectionDetailsFromURL("://bad"))
+		test.Error(t, cfg.LoadConnectionDetailsFromURL("://bad"))
 	})
 }
 
@@ -336,7 +339,7 @@ func TestConnectionDetails_String(T *testing.T) {
 		}
 
 		expected := "user=admin password=secret database=mydb host=dbhost port=5432"
-		assert.Equal(t, expected, d.String())
+		test.EqOp(t, expected, d.String())
 	})
 }
 
@@ -355,7 +358,7 @@ func TestConnectionDetails_URI(T *testing.T) {
 		}
 
 		expected := "postgres://admin:secret@dbhost:5432/mydb?sslmode=disable"
-		assert.Equal(t, expected, d.URI())
+		test.EqOp(t, expected, d.URI())
 	})
 }
 
@@ -373,14 +376,14 @@ func TestConnectionDetails_ValidateWithContext(T *testing.T) {
 			Port:     5432,
 		}
 
-		assert.NoError(t, d.ValidateWithContext(t.Context()))
+		test.NoError(t, d.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("missing fields", func(t *testing.T) {
 		t.Parallel()
 
 		d := &ConnectionDetails{}
-		assert.Error(t, d.ValidateWithContext(t.Context()))
+		test.Error(t, d.ValidateWithContext(t.Context()))
 	})
 }
 
@@ -399,7 +402,7 @@ func TestConnectionDetails_MySQLDSN(T *testing.T) {
 		}
 
 		expected := "admin:secret@tcp(dbhost:3306)/mydb"
-		assert.Equal(t, expected, d.MySQLDSN())
+		test.EqOp(t, expected, d.MySQLDSN())
 	})
 }
 
@@ -413,7 +416,7 @@ func TestConnectionDetails_SQLiteDSN(T *testing.T) {
 			Database: "/tmp/test.db",
 		}
 
-		assert.Equal(t, "/tmp/test.db", d.SQLiteDSN())
+		test.EqOp(t, "/tmp/test.db", d.SQLiteDSN())
 	})
 
 	T.Run("memory", func(t *testing.T) {
@@ -423,7 +426,7 @@ func TestConnectionDetails_SQLiteDSN(T *testing.T) {
 			Database: ":memory:",
 		}
 
-		assert.Equal(t, ":memory:", d.SQLiteDSN())
+		test.EqOp(t, ":memory:", d.SQLiteDSN())
 	})
 }
 
@@ -445,7 +448,7 @@ func TestConfig_GetReadConnectionString_ProviderAware(T *testing.T) {
 		}
 
 		expected := "user=user password=pass database=db host=localhost port=5432"
-		assert.Equal(t, expected, cfg.GetReadConnectionString())
+		test.EqOp(t, expected, cfg.GetReadConnectionString())
 	})
 
 	T.Run("mysql provider", func(t *testing.T) {
@@ -463,7 +466,7 @@ func TestConfig_GetReadConnectionString_ProviderAware(T *testing.T) {
 		}
 
 		expected := "user:pass@tcp(localhost:3306)/db"
-		assert.Equal(t, expected, cfg.GetReadConnectionString())
+		test.EqOp(t, expected, cfg.GetReadConnectionString())
 	})
 
 	T.Run("sqlite provider", func(t *testing.T) {
@@ -476,7 +479,7 @@ func TestConfig_GetReadConnectionString_ProviderAware(T *testing.T) {
 			},
 		}
 
-		assert.Equal(t, "/tmp/test.db", cfg.GetReadConnectionString())
+		test.EqOp(t, "/tmp/test.db", cfg.GetReadConnectionString())
 	})
 }
 
@@ -498,7 +501,7 @@ func TestConfig_GetWriteConnectionString_ProviderAware(T *testing.T) {
 		}
 
 		expected := "writer:secret@tcp(writehost:3306)/mydb"
-		assert.Equal(t, expected, cfg.GetWriteConnectionString())
+		test.EqOp(t, expected, cfg.GetWriteConnectionString())
 	})
 
 	T.Run("sqlite provider", func(t *testing.T) {
@@ -511,7 +514,7 @@ func TestConfig_GetWriteConnectionString_ProviderAware(T *testing.T) {
 			},
 		}
 
-		assert.Equal(t, ":memory:", cfg.GetWriteConnectionString())
+		test.EqOp(t, ":memory:", cfg.GetWriteConnectionString())
 	})
 }
 
@@ -521,25 +524,25 @@ func TestConfig_driverName(T *testing.T) {
 	T.Run("postgres default", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Provider: ProviderPostgres}
-		assert.Equal(t, "pgx", cfg.driverName())
+		test.EqOp(t, "pgx", cfg.driverName())
 	})
 
 	T.Run("mysql", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Provider: ProviderMySQL}
-		assert.Equal(t, "mysql", cfg.driverName())
+		test.EqOp(t, "mysql", cfg.driverName())
 	})
 
 	T.Run("sqlite", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Provider: ProviderSQLite}
-		assert.Equal(t, "sqlite", cfg.driverName())
+		test.EqOp(t, "sqlite", cfg.driverName())
 	})
 
 	T.Run("unknown falls back to pgx", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Provider: "unknown"}
-		assert.Equal(t, "pgx", cfg.driverName())
+		test.EqOp(t, "pgx", cfg.driverName())
 	})
 }
 
@@ -556,9 +559,9 @@ func TestConfig_ConnectToReadDatabase(T *testing.T) {
 		}
 
 		db, err := cfg.ConnectToReadDatabase()
-		require.NoError(t, err)
-		require.NotNil(t, db)
-		require.NoError(t, db.Close())
+		must.NoError(t, err)
+		must.NotNil(t, db)
+		must.NoError(t, db.Close())
 	})
 
 	T.Run("postgres lazy open", func(t *testing.T) {
@@ -575,9 +578,9 @@ func TestConfig_ConnectToReadDatabase(T *testing.T) {
 		}
 
 		db, err := cfg.ConnectToReadDatabase()
-		require.NoError(t, err)
-		require.NotNil(t, db)
-		require.NoError(t, db.Close())
+		must.NoError(t, err)
+		must.NotNil(t, db)
+		must.NoError(t, db.Close())
 	})
 
 	T.Run("mysql with bogus DSN returns error", func(t *testing.T) {
@@ -586,8 +589,8 @@ func TestConfig_ConnectToReadDatabase(T *testing.T) {
 			Provider: ProviderMySQL,
 		}
 		db, err := cfg.connectToDatabase("not a valid mysql dsn")
-		assert.Nil(t, db)
-		assert.Error(t, err)
+		test.Nil(t, db)
+		test.Error(t, err)
 	})
 }
 
@@ -604,9 +607,9 @@ func TestConfig_ConnectToWriteDatabase(T *testing.T) {
 		}
 
 		db, err := cfg.ConnectToWriteDatabase()
-		require.NoError(t, err)
-		require.NotNil(t, db)
-		require.NoError(t, db.Close())
+		must.NoError(t, err)
+		must.NotNil(t, db)
+		must.NoError(t, db.Close())
 	})
 }
 
@@ -621,9 +624,9 @@ func TestProvideDatabase(T *testing.T) {
 		}
 
 		client, err := ProvideDatabase(t.Context(), nil, nil, cfg, nil, nil)
-		assert.Nil(t, client)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid database provider")
+		test.Nil(t, client)
+		test.Error(t, err)
+		test.StrContains(t, err.Error(), "invalid database provider")
 	})
 
 	T.Run("postgres lazy open", func(t *testing.T) {
@@ -648,8 +651,8 @@ func TestProvideDatabase(T *testing.T) {
 		}
 
 		client, err := ProvideDatabase(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), cfg, nil, nil)
-		require.NoError(t, err)
-		require.NotNil(t, client)
+		must.NoError(t, err)
+		must.NotNil(t, client)
 	})
 
 	T.Run("mysql lazy open", func(t *testing.T) {
@@ -674,8 +677,8 @@ func TestProvideDatabase(T *testing.T) {
 		}
 
 		client, err := ProvideDatabase(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), cfg, nil, nil)
-		require.NoError(t, err)
-		require.NotNil(t, client)
+		must.NoError(t, err)
+		must.NotNil(t, client)
 	})
 
 	T.Run("sqlite in-memory", func(t *testing.T) {
@@ -692,8 +695,8 @@ func TestProvideDatabase(T *testing.T) {
 		}
 
 		client, err := ProvideDatabase(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), cfg, nil, nil)
-		require.NoError(t, err)
-		require.NotNil(t, client)
+		must.NoError(t, err)
+		must.NotNil(t, client)
 	})
 
 	T.Run("sqlite with enable database metrics and nil metrics provider", func(t *testing.T) {
@@ -711,8 +714,8 @@ func TestProvideDatabase(T *testing.T) {
 		}
 
 		client, err := ProvideDatabase(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), cfg, nil, nil)
-		require.NoError(t, err)
-		require.NotNil(t, client)
+		must.NoError(t, err)
+		must.NotNil(t, client)
 	})
 
 	T.Run("sqlite with enable database metrics and noop metrics provider", func(t *testing.T) {
@@ -730,8 +733,8 @@ func TestProvideDatabase(T *testing.T) {
 		}
 
 		client, err := ProvideDatabase(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), cfg, nil, metrics.NewNoopMetricsProvider())
-		require.NoError(t, err)
-		require.NotNil(t, client)
+		must.NoError(t, err)
+		must.NotNil(t, client)
 	})
 
 	T.Run("sqlite with migrations", func(t *testing.T) {
@@ -750,9 +753,9 @@ func TestProvideDatabase(T *testing.T) {
 
 		migrator := &stubMigrator{}
 		client, err := ProvideDatabase(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), cfg, migrator, nil)
-		require.NoError(t, err)
-		require.NotNil(t, client)
-		assert.True(t, migrator.called)
+		must.NoError(t, err)
+		must.NotNil(t, client)
+		test.True(t, migrator.called)
 	})
 
 	T.Run("sqlite with bad path returns error", func(t *testing.T) {
@@ -769,8 +772,8 @@ func TestProvideDatabase(T *testing.T) {
 		}
 
 		client, err := ProvideDatabase(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), cfg, nil, nil)
-		assert.Nil(t, client)
-		assert.Error(t, err)
+		test.Nil(t, client)
+		test.Error(t, err)
 	})
 
 	T.Run("sqlite with migrations error", func(t *testing.T) {
@@ -787,10 +790,10 @@ func TestProvideDatabase(T *testing.T) {
 			},
 		}
 
-		migrator := &stubMigrator{err: assert.AnError}
+		migrator := &stubMigrator{err: errStubMigrator}
 		client, err := ProvideDatabase(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), cfg, migrator, nil)
-		assert.Nil(t, client)
-		assert.Error(t, err)
-		assert.True(t, migrator.called)
+		test.Nil(t, client)
+		test.Error(t, err)
+		test.True(t, migrator.called)
 	})
 }

@@ -4,8 +4,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func Test_newThumbnailer(T *testing.T) {
@@ -16,8 +16,8 @@ func Test_newThumbnailer(T *testing.T) {
 
 		for _, ct := range []string{imagePNG, imageJPEG, imageGIF} {
 			x, err := newThumbnailer(ct)
-			assert.NoError(t, err)
-			assert.NotNil(t, x)
+			test.NoError(t, err)
+			test.NotNil(t, x)
 		}
 	})
 
@@ -25,8 +25,8 @@ func Test_newThumbnailer(T *testing.T) {
 		t.Parallel()
 
 		x, err := newThumbnailer(t.Name())
-		assert.Error(t, err)
-		assert.Nil(t, x)
+		test.Error(t, err)
+		test.Nil(t, x)
 	})
 }
 
@@ -45,8 +45,8 @@ func Test_preprocess(T *testing.T) {
 		}
 
 		img, err := preprocess(i, 128, 128)
-		assert.NoError(t, err)
-		assert.NotNil(t, img)
+		test.NoError(t, err)
+		test.NotNil(t, img)
 	})
 
 	T.Run("with invalid content", func(t *testing.T) {
@@ -60,8 +60,8 @@ func Test_preprocess(T *testing.T) {
 		}
 
 		img, err := preprocess(i, 128, 128)
-		assert.Error(t, err)
-		assert.Nil(t, img)
+		test.Error(t, err)
+		test.Nil(t, img)
 	})
 }
 
@@ -80,13 +80,13 @@ func Test_jpegThumbnailer_Thumbnail(T *testing.T) {
 		}
 
 		tempFile, err := os.CreateTemp("", "")
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		actual, err := (&jpegThumbnailer{}).Thumbnail(i, 128, 128, tempFile.Name())
-		assert.NoError(t, err)
-		assert.NotNil(t, actual)
+		test.NoError(t, err)
+		test.NotNil(t, actual)
 
-		require.NoError(t, os.Remove(tempFile.Name()))
+		must.NoError(t, os.Remove(tempFile.Name()))
 	})
 
 	T.Run("with invalid content", func(t *testing.T) {
@@ -100,13 +100,13 @@ func Test_jpegThumbnailer_Thumbnail(T *testing.T) {
 		}
 
 		tempFile, err := os.CreateTemp("", "")
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		actual, err := (&jpegThumbnailer{}).Thumbnail(i, 128, 128, tempFile.Name())
-		assert.Error(t, err)
-		assert.Nil(t, actual)
+		test.Error(t, err)
+		test.Nil(t, actual)
 
-		require.NoError(t, os.Remove(tempFile.Name()))
+		must.NoError(t, os.Remove(tempFile.Name()))
 	})
 }
 
@@ -125,13 +125,13 @@ func Test_pngThumbnailer_Thumbnail(T *testing.T) {
 		}
 
 		tempFile, err := os.CreateTemp("", "")
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		actual, err := (&pngThumbnailer{}).Thumbnail(i, 128, 128, tempFile.Name())
-		assert.NoError(t, err)
-		assert.NotNil(t, actual)
+		test.NoError(t, err)
+		test.NotNil(t, actual)
 
-		require.NoError(t, os.Remove(tempFile.Name()))
+		must.NoError(t, os.Remove(tempFile.Name()))
 	})
 
 	T.Run("with invalid content", func(t *testing.T) {
@@ -145,13 +145,13 @@ func Test_pngThumbnailer_Thumbnail(T *testing.T) {
 		}
 
 		tempFile, err := os.CreateTemp("", "")
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		actual, err := (&pngThumbnailer{}).Thumbnail(i, 128, 128, tempFile.Name())
-		assert.Error(t, err)
-		assert.Nil(t, actual)
+		test.Error(t, err)
+		test.Nil(t, actual)
 
-		require.NoError(t, os.Remove(tempFile.Name()))
+		must.NoError(t, os.Remove(tempFile.Name()))
 	})
 }
 
@@ -170,13 +170,13 @@ func Test_gifThumbnailer_Thumbnail(T *testing.T) {
 		}
 
 		tempFile, err := os.CreateTemp("", "")
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		actual, err := (&gifThumbnailer{}).Thumbnail(i, 128, 128, tempFile.Name())
-		assert.NoError(t, err)
-		assert.NotNil(t, actual)
+		test.NoError(t, err)
+		test.NotNil(t, actual)
 
-		require.NoError(t, os.Remove(tempFile.Name()))
+		must.NoError(t, os.Remove(tempFile.Name()))
 	})
 
 	T.Run("with invalid content", func(t *testing.T) {
@@ -190,12 +190,12 @@ func Test_gifThumbnailer_Thumbnail(T *testing.T) {
 		}
 
 		tempFile, err := os.CreateTemp("", "")
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		actual, err := (&gifThumbnailer{}).Thumbnail(i, 128, 128, tempFile.Name())
-		assert.Error(t, err)
-		assert.Nil(t, actual)
+		test.Error(t, err)
+		test.Nil(t, actual)
 
-		require.NoError(t, os.Remove(tempFile.Name()))
+		must.NoError(t, os.Remove(tempFile.Name()))
 	})
 }

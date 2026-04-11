@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestConfig_EnsureDefaults(T *testing.T) {
@@ -18,10 +18,10 @@ func TestConfig_EnsureDefaults(T *testing.T) {
 		cfg := &Config{}
 		cfg.EnsureDefaults()
 
-		assert.Equal(t, uint(3), cfg.MaxAttempts)
-		assert.Equal(t, 100*time.Millisecond, cfg.InitialDelay)
-		assert.Equal(t, 5*time.Second, cfg.MaxDelay)
-		assert.Equal(t, 2.0, cfg.Multiplier)
+		test.EqOp(t, uint(3), cfg.MaxAttempts)
+		test.EqOp(t, 100*time.Millisecond, cfg.InitialDelay)
+		test.EqOp(t, 5*time.Second, cfg.MaxDelay)
+		test.EqOp(t, 2.0, cfg.Multiplier)
 	})
 
 	T.Run("preserves non-zero values", func(t *testing.T) {
@@ -35,10 +35,10 @@ func TestConfig_EnsureDefaults(T *testing.T) {
 		}
 		cfg.EnsureDefaults()
 
-		assert.Equal(t, uint(7), cfg.MaxAttempts)
-		assert.Equal(t, 1*time.Second, cfg.InitialDelay)
-		assert.Equal(t, 10*time.Second, cfg.MaxDelay)
-		assert.Equal(t, 3.0, cfg.Multiplier)
+		test.EqOp(t, uint(7), cfg.MaxAttempts)
+		test.EqOp(t, 1*time.Second, cfg.InitialDelay)
+		test.EqOp(t, 10*time.Second, cfg.MaxDelay)
+		test.EqOp(t, 3.0, cfg.Multiplier)
 	})
 }
 
@@ -57,7 +57,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		}
 
 		err := cfg.ValidateWithContext(ctx)
-		require.NoError(t, err)
+		must.NoError(t, err)
 	})
 
 	T.Run("invalid MaxAttempts", func(t *testing.T) {
@@ -72,7 +72,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		}
 
 		err := cfg.ValidateWithContext(ctx)
-		require.Error(t, err)
+		must.Error(t, err)
 	})
 
 	T.Run("invalid InitialDelay", func(t *testing.T) {
@@ -87,7 +87,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		}
 
 		err := cfg.ValidateWithContext(ctx)
-		require.Error(t, err)
+		must.Error(t, err)
 	})
 
 	T.Run("invalid Multiplier", func(t *testing.T) {
@@ -102,6 +102,6 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		}
 
 		err := cfg.ValidateWithContext(ctx)
-		require.Error(t, err)
+		must.Error(t, err)
 	})
 }

@@ -14,8 +14,7 @@ import (
 
 	"github.com/samber/do/v2"
 	"github.com/shoenig/test"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 	otelmetric "go.opentelemetry.io/otel/metric"
 )
 
@@ -56,8 +55,8 @@ func TestRegisterIndexScheduler(T *testing.T) {
 		RegisterIndexScheduler(i)
 
 		scheduler, err := do.Invoke[*IndexScheduler](i)
-		require.NoError(t, err)
-		assert.NotNil(t, scheduler)
+		must.NoError(t, err)
+		test.NotNil(t, scheduler)
 
 		test.SliceLen(t, 1, metricsProvider.NewInt64CounterCalls())
 		test.SliceLen(t, 1, messageQueueProvider.ProvidePublisherCalls())

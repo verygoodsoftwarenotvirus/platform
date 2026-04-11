@@ -7,8 +7,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/samber/do/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestRegisterGenerator(T *testing.T) {
@@ -24,7 +24,7 @@ func TestRegisterGenerator(T *testing.T) {
 		RegisterGenerator(i)
 
 		g, err := do.Invoke[Generator](i)
-		require.NoError(t, err)
-		assert.NotNil(t, g)
+		must.NoError(t, err)
+		test.NotNil(t, g)
 	})
 }

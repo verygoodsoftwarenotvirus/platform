@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestConfig_ValidateWithContext(T *testing.T) {
@@ -19,7 +19,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			ServerAddress: "http://localhost:4040",
 			UploadRate:    15 * time.Second,
 		}
-		assert.NoError(t, c.ValidateWithContext(ctx))
+		test.NoError(t, c.ValidateWithContext(ctx))
 	})
 
 	T.Run("missing server address", func(t *testing.T) {
@@ -27,7 +27,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		c := &Config{
 			UploadRate: 15 * time.Second,
 		}
-		assert.Error(t, c.ValidateWithContext(ctx))
+		test.Error(t, c.ValidateWithContext(ctx))
 	})
 
 	T.Run("missing upload rate", func(t *testing.T) {
@@ -35,6 +35,6 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		c := &Config{
 			ServerAddress: "http://localhost:4040",
 		}
-		assert.Error(t, c.ValidateWithContext(ctx))
+		test.Error(t, c.ValidateWithContext(ctx))
 	})
 }

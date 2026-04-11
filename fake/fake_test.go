@@ -3,7 +3,7 @@ package fake
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestBuildFkaeTime(T *testing.T) {
@@ -14,7 +14,7 @@ func TestBuildFkaeTime(T *testing.T) {
 
 		actual := BuildFakeTime()
 
-		assert.NotNil(t, actual)
+		test.False(t, actual.IsZero())
 	})
 }
 
@@ -30,7 +30,7 @@ func TestBuildFakeForTest(T *testing.T) {
 		t.Parallel()
 
 		actual := BuildFakeForTest[*example](t)
-		assert.NotNil(t, actual)
+		test.NotNil(t, actual)
 	})
 }
 
@@ -40,17 +40,17 @@ func TestMustBuildFake(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotPanics(t, func() {
+		test.NotPanic(t, func() {
 			actual := MustBuildFake[example]()
-			assert.NotEmpty(t, actual.Name)
-			assert.NotEmpty(t, actual.Age)
+			test.NotEq(t, "", actual.Name)
+			test.NotEq(t, 0, actual.Age)
 		})
 	})
 
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		assert.Panics(t, func() {
+		test.Panic(t, func() {
 			MustBuildFake[any]()
 		})
 	})
@@ -63,15 +63,15 @@ func TestBuildFake(T *testing.T) {
 		t.Parallel()
 
 		actual, err := BuildFake[string]()
-		assert.NoError(t, err)
-		assert.NotEmpty(t, actual)
+		test.NoError(t, err)
+		test.NotNil(t, actual)
 	})
 
 	T.Run("with error", func(t *testing.T) {
 		t.Parallel()
 
 		actual, err := BuildFake[any]()
-		assert.Error(t, err)
-		assert.Empty(t, actual)
+		test.Error(t, err)
+		test.Nil(t, actual)
 	})
 }

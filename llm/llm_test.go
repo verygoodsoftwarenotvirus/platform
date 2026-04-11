@@ -3,7 +3,7 @@ package llm
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestNoopProvider_Completion(T *testing.T) {
@@ -22,7 +22,7 @@ func TestNoopProvider_Completion(T *testing.T) {
 			},
 		})
 
-		assert.NoError(t, err)
-		assert.NotNil(t, result)
+		test.NoError(t, err)
+		test.NotNil(t, result)
 	})
 }

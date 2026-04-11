@@ -7,7 +7,7 @@ import (
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/database/filtering"
 
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 )
 
 // mockServicePermissionChecker implements ServicePermissionChecker for tests.
@@ -63,7 +63,7 @@ func TestAttachRequestToSpan(T *testing.T) {
 		ctx, span := StartSpan(t.Context())
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", http.NoBody)
 		req.Header.Set(t.Name(), "blah")
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		AttachRequestToSpan(span, req)
 	})

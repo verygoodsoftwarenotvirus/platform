@@ -14,8 +14,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)
@@ -40,24 +40,24 @@ func TestNewEmbedder(T *testing.T) {
 		t.Parallel()
 
 		emb, err := NewEmbedder(t.Context(), nil, logging.NewNoopLogger(), tracing.NewTracerForTest("test"))
-		require.Error(t, err)
-		require.Nil(t, emb)
+		must.Error(t, err)
+		must.Nil(t, emb)
 	})
 
 	T.Run("with missing API key", func(t *testing.T) {
 		t.Parallel()
 
 		emb, err := NewEmbedder(t.Context(), &Config{}, logging.NewNoopLogger(), tracing.NewTracerForTest("test"))
-		require.Error(t, err)
-		require.Nil(t, emb)
+		must.Error(t, err)
+		must.Nil(t, emb)
 	})
 
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
 		emb, err := NewEmbedder(t.Context(), &Config{APIKey: "test-key"}, logging.NewNoopLogger(), tracing.NewTracerForTest("test"))
-		require.NoError(t, err)
-		require.NotNil(t, emb)
+		must.NoError(t, err)
+		must.NotNil(t, emb)
 	})
 
 	T.Run("with timeout", func(t *testing.T) {
@@ -67,8 +67,8 @@ func TestNewEmbedder(T *testing.T) {
 			APIKey:  "test-key",
 			Timeout: 5 * time.Second,
 		}, logging.NewNoopLogger(), tracing.NewTracerForTest("test"))
-		require.NoError(t, err)
-		require.NotNil(t, emb)
+		must.NoError(t, err)
+		must.NotNil(t, emb)
 	})
 }
 
@@ -89,11 +89,11 @@ func TestEmbedder_GenerateEmbedding(T *testing.T) {
 		t.Parallel()
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			require.Equal(t, "/v2/embed", r.URL.Path)
-			require.Equal(t, http.MethodPost, r.Method)
-			require.Equal(t, "Bearer test-key", r.Header.Get("Authorization"))
+			must.EqOp(t, "/v2/embed", r.URL.Path)
+			must.EqOp(t, http.MethodPost, r.Method)
+			must.EqOp(t, "Bearer test-key", r.Header.Get("Authorization"))
 			w.Header().Set("Content-Type", "application/json")
-			require.NoError(t, json.NewEncoder(w).Encode(cohereEmbeddingResponse))
+			must.NoError(t, json.NewEncoder(w).Encode(cohereEmbeddingResponse))
 		}))
 		t.Cleanup(ts.Close)
 
@@ -101,21 +101,21 @@ func TestEmbedder_GenerateEmbedding(T *testing.T) {
 			APIKey:  "test-key",
 			BaseURL: ts.URL,
 		}, logging.NewNoopLogger(), tracing.NewTracerForTest("test"))
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		ctx := t.Context()
 		result, err := emb.GenerateEmbedding(ctx, &embeddings.Input{
 			Content: "hello world",
 		})
 
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		assert.Equal(t, "hello world", result.SourceText)
-		assert.Equal(t, "embed-english-v3.0", result.Model)
-		assert.Equal(t, "cohere", result.Provider)
-		assert.Equal(t, 5, result.Dimensions)
-		assert.Len(t, result.Vector, 5)
-		assert.False(t, result.GeneratedAt.IsZero())
+		must.NoError(t, err)
+		must.NotNil(t, result)
+		test.EqOp(t, "hello world", result.SourceText)
+		test.EqOp(t, "embed-english-v3.0", result.Model)
+		test.EqOp(t, "cohere", result.Provider)
+		test.EqOp(t, 5, result.Dimensions)
+		test.SliceLen(t, 5, result.Vector)
+		test.False(t, result.GeneratedAt.IsZero())
 	})
 
 	T.Run("uses input model override", func(t *testing.T) {
@@ -123,10 +123,10 @@ func TestEmbedder_GenerateEmbedding(T *testing.T) {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var reqBody embeddingRequest
-			require.NoError(t, json.NewDecoder(r.Body).Decode(&reqBody))
-			require.Equal(t, "embed-multilingual-v3.0", reqBody.Model)
+			must.NoError(t, json.NewDecoder(r.Body).Decode(&reqBody))
+			must.EqOp(t, "embed-multilingual-v3.0", reqBody.Model)
 			w.Header().Set("Content-Type", "application/json")
-			require.NoError(t, json.NewEncoder(w).Encode(cohereEmbeddingResponse))
+			must.NoError(t, json.NewEncoder(w).Encode(cohereEmbeddingResponse))
 		}))
 		t.Cleanup(ts.Close)
 
@@ -135,7 +135,7 @@ func TestEmbedder_GenerateEmbedding(T *testing.T) {
 			BaseURL:      ts.URL,
 			DefaultModel: "embed-english-v3.0",
 		}, logging.NewNoopLogger(), tracing.NewTracerForTest("test"))
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		ctx := t.Context()
 		result, err := emb.GenerateEmbedding(ctx, &embeddings.Input{
@@ -143,8 +143,8 @@ func TestEmbedder_GenerateEmbedding(T *testing.T) {
 			Model:   "embed-multilingual-v3.0",
 		})
 
-		require.NoError(t, err)
-		require.NotNil(t, result)
+		must.NoError(t, err)
+		must.NotNil(t, result)
 	})
 
 	T.Run("with non-200 response", func(t *testing.T) {
@@ -160,15 +160,15 @@ func TestEmbedder_GenerateEmbedding(T *testing.T) {
 			APIKey:  "bad-key",
 			BaseURL: ts.URL,
 		}, logging.NewNoopLogger(), tracing.NewTracerForTest("test"))
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		ctx := t.Context()
 		result, err := emb.GenerateEmbedding(ctx, &embeddings.Input{
 			Content: "hello",
 		})
 
-		require.Error(t, err)
-		require.Nil(t, result)
+		must.Error(t, err)
+		must.Nil(t, result)
 	})
 
 	T.Run("with malformed JSON response", func(t *testing.T) {
@@ -184,15 +184,15 @@ func TestEmbedder_GenerateEmbedding(T *testing.T) {
 			APIKey:  "test-key",
 			BaseURL: ts.URL,
 		}, logging.NewNoopLogger(), tracing.NewTracerForTest("test"))
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		ctx := t.Context()
 		result, err := emb.GenerateEmbedding(ctx, &embeddings.Input{
 			Content: "hello",
 		})
 
-		require.Error(t, err)
-		require.Nil(t, result)
+		must.Error(t, err)
+		must.Nil(t, result)
 	})
 
 	T.Run("with empty embeddings response", func(t *testing.T) {
@@ -200,7 +200,7 @@ func TestEmbedder_GenerateEmbedding(T *testing.T) {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+			must.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"embeddings": map[string]any{
 					"float": [][]float64{},
 				},
@@ -212,15 +212,15 @@ func TestEmbedder_GenerateEmbedding(T *testing.T) {
 			APIKey:  "test-key",
 			BaseURL: ts.URL,
 		}, logging.NewNoopLogger(), tracing.NewTracerForTest("test"))
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		ctx := t.Context()
 		result, err := emb.GenerateEmbedding(ctx, &embeddings.Input{
 			Content: "hello",
 		})
 
-		require.Error(t, err)
-		require.Nil(t, result)
+		must.Error(t, err)
+		must.Nil(t, result)
 	})
 
 	T.Run("with connection error", func(t *testing.T) {
@@ -233,15 +233,15 @@ func TestEmbedder_GenerateEmbedding(T *testing.T) {
 			APIKey:  "test-key",
 			BaseURL: ts.URL,
 		}, logging.NewNoopLogger(), tracing.NewTracerForTest("test"))
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		ctx := t.Context()
 		result, err := emb.GenerateEmbedding(ctx, &embeddings.Input{
 			Content: "hello",
 		})
 
-		require.Error(t, err)
-		require.Nil(t, result)
+		must.Error(t, err)
+		must.Nil(t, result)
 	})
 
 	T.Run("uses config default model", func(t *testing.T) {
@@ -249,10 +249,10 @@ func TestEmbedder_GenerateEmbedding(T *testing.T) {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var reqBody embeddingRequest
-			require.NoError(t, json.NewDecoder(r.Body).Decode(&reqBody))
-			require.Equal(t, "embed-multilingual-v3.0", reqBody.Model)
+			must.NoError(t, json.NewDecoder(r.Body).Decode(&reqBody))
+			must.EqOp(t, "embed-multilingual-v3.0", reqBody.Model)
 			w.Header().Set("Content-Type", "application/json")
-			require.NoError(t, json.NewEncoder(w).Encode(cohereEmbeddingResponse))
+			must.NoError(t, json.NewEncoder(w).Encode(cohereEmbeddingResponse))
 		}))
 		t.Cleanup(ts.Close)
 
@@ -261,16 +261,16 @@ func TestEmbedder_GenerateEmbedding(T *testing.T) {
 			BaseURL:      ts.URL,
 			DefaultModel: "embed-multilingual-v3.0",
 		}, logging.NewNoopLogger(), tracing.NewTracerForTest("test"))
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		ctx := t.Context()
 		result, err := emb.GenerateEmbedding(ctx, &embeddings.Input{
 			Content: "hello",
 		})
 
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		assert.Equal(t, "embed-multilingual-v3.0", result.Model)
+		must.NoError(t, err)
+		must.NotNil(t, result)
+		test.EqOp(t, "embed-multilingual-v3.0", result.Model)
 	})
 
 	T.Run("with default base URL", func(t *testing.T) {
@@ -282,7 +282,7 @@ func TestEmbedder_GenerateEmbedding(T *testing.T) {
 			tracer: tracing.NewTracerForTest("test"),
 			client: &http.Client{
 				Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
-					assert.Contains(t, r.URL.String(), defaultBaseURL)
+					test.StrContains(t, r.URL.String(), defaultBaseURL)
 					body := `{"embeddings":{"float":[[0.1,0.2]]}}`
 					return &http.Response{
 						StatusCode: http.StatusOK,
@@ -294,8 +294,8 @@ func TestEmbedder_GenerateEmbedding(T *testing.T) {
 
 		result, err := e.GenerateEmbedding(t.Context(), &embeddings.Input{Content: "hello"})
 
-		require.NoError(t, err)
-		require.NotNil(t, result)
+		must.NoError(t, err)
+		must.NotNil(t, result)
 	})
 
 	T.Run("with request building error", func(t *testing.T) {
@@ -310,8 +310,8 @@ func TestEmbedder_GenerateEmbedding(T *testing.T) {
 
 		result, err := e.GenerateEmbedding(t.Context(), &embeddings.Input{Content: "hello"})
 
-		require.Error(t, err)
-		require.Nil(t, result)
+		must.Error(t, err)
+		must.Nil(t, result)
 	})
 
 	T.Run("with response body close error", func(t *testing.T) {
@@ -334,8 +334,8 @@ func TestEmbedder_GenerateEmbedding(T *testing.T) {
 
 		result, err := e.GenerateEmbedding(t.Context(), &embeddings.Input{Content: "hello"})
 
-		require.NoError(t, err)
-		require.NotNil(t, result)
+		must.NoError(t, err)
+		must.NotNil(t, result)
 	})
 
 	T.Run("with error reading error response body", func(t *testing.T) {
@@ -357,7 +357,7 @@ func TestEmbedder_GenerateEmbedding(T *testing.T) {
 
 		result, err := e.GenerateEmbedding(t.Context(), &embeddings.Input{Content: "hello"})
 
-		require.Error(t, err)
-		require.Nil(t, result)
+		must.Error(t, err)
+		must.Nil(t, result)
 	})
 }

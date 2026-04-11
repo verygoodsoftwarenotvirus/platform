@@ -16,8 +16,7 @@ import (
 	textsearch "github.com/verygoodsoftwarenotvirus/platform/v5/search/text"
 
 	"github.com/shoenig/test"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -59,10 +58,10 @@ func TestNewIndexScheduler(T *testing.T) {
 		}
 
 		scheduler, err := NewIndexScheduler(ctx, logger, tracerProvider, metricsProvider, messageQueueProvider, testQueuesConfig, indexFunctions)
-		assert.NoError(t, err)
-		assert.NotNil(t, scheduler)
-		assert.Equal(t, []string{"test_type"}, scheduler.allIndexTypes)
-		assert.Len(t, scheduler.indexFunctions, 1)
+		test.NoError(t, err)
+		test.NotNil(t, scheduler)
+		test.Eq(t, []string{"test_type"}, scheduler.allIndexTypes)
+		test.MapLen(t, 1, scheduler.indexFunctions)
 
 		test.SliceLen(t, 1, metricsProvider.NewInt64CounterCalls())
 		test.SliceLen(t, 1, messageQueueProvider.ProvidePublisherCalls())
@@ -96,11 +95,11 @@ func TestNewIndexScheduler(T *testing.T) {
 		}
 
 		scheduler, err := NewIndexScheduler(ctx, logger, tracerProvider, metricsProvider, messageQueueProvider, testQueuesConfig, nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, scheduler)
-		assert.Empty(t, scheduler.allIndexTypes)
-		assert.NotNil(t, scheduler.indexFunctions)
-		assert.Len(t, scheduler.indexFunctions, 0)
+		test.NoError(t, err)
+		test.NotNil(t, scheduler)
+		test.SliceEmpty(t, scheduler.allIndexTypes)
+		test.NotNil(t, scheduler.indexFunctions)
+		test.MapLen(t, 0, scheduler.indexFunctions)
 
 		test.SliceLen(t, 1, metricsProvider.NewInt64CounterCalls())
 		test.SliceLen(t, 1, messageQueueProvider.ProvidePublisherCalls())
@@ -123,9 +122,9 @@ func TestNewIndexScheduler(T *testing.T) {
 		}
 
 		scheduler, err := NewIndexScheduler(ctx, logger, tracerProvider, metricsProvider, messageQueueProvider, testQueuesConfig, nil)
-		assert.Error(t, err)
-		assert.Nil(t, scheduler)
-		assert.Contains(t, err.Error(), "metrics error")
+		test.Error(t, err)
+		test.Nil(t, scheduler)
+		test.StrContains(t, err.Error(), "metrics error")
 
 		test.SliceLen(t, 1, metricsProvider.NewInt64CounterCalls())
 		test.SliceLen(t, 0, messageQueueProvider.ProvidePublisherCalls())
@@ -157,9 +156,9 @@ func TestNewIndexScheduler(T *testing.T) {
 		}
 
 		scheduler, err := NewIndexScheduler(ctx, logger, tracerProvider, metricsProvider, messageQueueProvider, testQueuesConfig, nil)
-		assert.Error(t, err)
-		assert.Nil(t, scheduler)
-		assert.Contains(t, err.Error(), "message queue error")
+		test.Error(t, err)
+		test.Nil(t, scheduler)
+		test.StrContains(t, err.Error(), "message queue error")
 
 		test.SliceLen(t, 1, metricsProvider.NewInt64CounterCalls())
 		test.SliceLen(t, 1, messageQueueProvider.ProvidePublisherCalls())
@@ -191,7 +190,7 @@ func TestIndexScheduler_IndexTypes(T *testing.T) {
 		publisher := &mockpublishers.PublisherMock{
 			PublishFunc: func(_ context.Context, data any) error {
 				req, ok := data.(*textsearch.IndexRequest)
-				require.True(t, ok)
+				must.True(t, ok)
 				test.EqOp(t, "test_type", req.IndexType)
 				return nil
 			},
@@ -210,11 +209,11 @@ func TestIndexScheduler_IndexTypes(T *testing.T) {
 		}
 
 		scheduler, err := NewIndexScheduler(ctx, logger, tracerProvider, metricsProvider, messageQueueProvider, testQueuesConfig, indexFunctions)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		// Since we only have one index type, it will always be chosen
 		err = scheduler.IndexTypes(ctx)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		publishedIDs := collectPublishedRowIDs(t, publisher.PublishCalls())
 		test.SliceContainsAll(t, publishedIDs, []string{"id1", "id2", "id3"})
@@ -258,12 +257,12 @@ func TestIndexScheduler_IndexTypes(T *testing.T) {
 		}
 
 		scheduler, err := NewIndexScheduler(ctx, logger, tracerProvider, metricsProvider, messageQueueProvider, testQueuesConfig, indexFunctions)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		// No publisher calls expected for empty results
 		// But metrics counter is still called with 0
 		err = scheduler.IndexTypes(ctx)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		test.SliceLen(t, 0, publisher.PublishCalls())
 
@@ -306,11 +305,11 @@ func TestIndexScheduler_IndexTypes(T *testing.T) {
 		}
 
 		scheduler, err := NewIndexScheduler(ctx, logger, tracerProvider, metricsProvider, messageQueueProvider, testQueuesConfig, indexFunctions)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		// sql.ErrNoRows should be handled gracefully and return nil
 		err = scheduler.IndexTypes(ctx)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		test.SliceLen(t, 0, publisher.PublishCalls())
 	})
@@ -349,11 +348,11 @@ func TestIndexScheduler_IndexTypes(T *testing.T) {
 		}
 
 		scheduler, err := NewIndexScheduler(ctx, logger, tracerProvider, metricsProvider, messageQueueProvider, testQueuesConfig, indexFunctions)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		err = scheduler.IndexTypes(ctx)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "database connection failed")
+		test.Error(t, err)
+		test.StrContains(t, err.Error(), "database connection failed")
 
 		test.SliceLen(t, 0, publisher.PublishCalls())
 	})
@@ -386,15 +385,15 @@ func TestIndexScheduler_IndexTypes(T *testing.T) {
 
 		// Create scheduler with empty index functions
 		scheduler, err := NewIndexScheduler(ctx, logger, tracerProvider, metricsProvider, messageQueueProvider, testQueuesConfig, map[string]Function{})
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		// This should not happen in normal operation since random.Element would return empty string
 		// But we can test the error handling by directly calling with a non-existent type
 		scheduler.allIndexTypes = []string{"unknown_type"}
 
 		err = scheduler.IndexTypes(ctx)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "unknown index type unknown_type")
+		test.Error(t, err)
+		test.StrContains(t, err.Error(), "unknown index type unknown_type")
 
 		test.SliceLen(t, 0, publisher.PublishCalls())
 	})
@@ -426,7 +425,7 @@ func TestIndexScheduler_IndexTypes(T *testing.T) {
 		publisher := &mockpublishers.PublisherMock{
 			PublishFunc: func(_ context.Context, data any) error {
 				req, ok := data.(*textsearch.IndexRequest)
-				require.True(t, ok)
+				must.True(t, ok)
 				return publishResults[req.RowID]
 			},
 		}
@@ -444,10 +443,10 @@ func TestIndexScheduler_IndexTypes(T *testing.T) {
 		}
 
 		scheduler, err := NewIndexScheduler(ctx, logger, tracerProvider, metricsProvider, messageQueueProvider, testQueuesConfig, indexFunctions)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		err = scheduler.IndexTypes(ctx)
-		assert.NoError(t, err) // Partial failures don't cause the method to return an error
+		test.NoError(t, err) // Partial failures don't cause the method to return an error
 
 		publishedIDs := collectPublishedRowIDs(t, publisher.PublishCalls())
 		test.SliceContainsAll(t, publishedIDs, []string{"id1", "id2", "id3"})
@@ -496,10 +495,10 @@ func TestIndexScheduler_IndexTypes(T *testing.T) {
 		}
 
 		scheduler, err := NewIndexScheduler(ctx, logger, tracerProvider, metricsProvider, messageQueueProvider, testQueuesConfig, indexFunctions)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		err = scheduler.IndexTypes(ctx)
-		assert.NoError(t, err) // Even all failures don't cause the method to return an error
+		test.NoError(t, err) // Even all failures don't cause the method to return an error
 
 		test.SliceLen(t, 2, publisher.PublishCalls())
 
@@ -519,7 +518,7 @@ func collectPublishedRowIDs(t *testing.T, calls []struct {
 	ids := make([]string, 0, len(calls))
 	for i := range calls {
 		req, ok := calls[i].Data.(*textsearch.IndexRequest)
-		require.True(t, ok)
+		must.True(t, ok)
 		ids = append(ids, req.RowID)
 	}
 	return ids

@@ -3,7 +3,7 @@ package oteltrace
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestConfig_ValidateWithContext(T *testing.T) {
@@ -17,6 +17,6 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			CollectorEndpoint: t.Name(),
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 }

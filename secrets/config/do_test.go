@@ -9,8 +9,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/secrets"
 
 	"github.com/samber/do/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestRegisterSecretSource(T *testing.T) {
@@ -29,7 +29,7 @@ func TestRegisterSecretSource(T *testing.T) {
 		RegisterSecretSource(i)
 
 		source, err := do.Invoke[secrets.SecretSource](i)
-		require.NoError(t, err)
-		assert.NotNil(t, source)
+		must.NoError(t, err)
+		test.NotNil(t, source)
 	})
 }

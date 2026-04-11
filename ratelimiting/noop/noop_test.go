@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestRateLimiter_Allow(T *testing.T) {
@@ -19,8 +19,8 @@ func TestRateLimiter_Allow(T *testing.T) {
 
 		for range 100 {
 			allowed, err := limiter.Allow(ctx, "any")
-			require.NoError(t, err)
-			assert.True(t, allowed)
+			must.NoError(t, err)
+			test.True(t, allowed)
 		}
 	})
 }
@@ -33,6 +33,6 @@ func TestRateLimiter_Close(T *testing.T) {
 
 		limiter := NewRateLimiter()
 		err := limiter.Close()
-		require.NoError(t, err)
+		must.NoError(t, err)
 	})
 }

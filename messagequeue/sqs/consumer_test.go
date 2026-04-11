@@ -14,8 +14,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/metric"
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
 )
@@ -49,9 +49,9 @@ func Test_sqsConsumer_Consume(T *testing.T) {
 			receiveMessageFunc: func(_ context.Context, in *sqs.ReceiveMessageInput, _ ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
 				receiveCalls++
 				if receiveCalls == 1 {
-					assert.Equal(t, queueURL, aws.ToString(in.QueueUrl))
-					assert.Equal(t, int32(maxNumberOfMessages), in.MaxNumberOfMessages)
-					assert.Equal(t, int32(longPollWaitSeconds), in.WaitTimeSeconds)
+					test.EqOp(t, queueURL, aws.ToString(in.QueueUrl))
+					test.EqOp(t, int32(maxNumberOfMessages), in.MaxNumberOfMessages)
+					test.EqOp(t, int32(longPollWaitSeconds), in.WaitTimeSeconds)
 					return &sqs.ReceiveMessageOutput{
 						Messages: []types.Message{
 							{
@@ -64,8 +64,8 @@ func Test_sqsConsumer_Consume(T *testing.T) {
 				return &sqs.ReceiveMessageOutput{Messages: []types.Message{}}, nil
 			},
 			deleteMessageFunc: func(_ context.Context, in *sqs.DeleteMessageInput, _ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
-				assert.Equal(t, queueURL, aws.ToString(in.QueueUrl))
-				assert.Equal(t, "receipt-handle-123", aws.ToString(in.ReceiptHandle))
+				test.EqOp(t, queueURL, aws.ToString(in.QueueUrl))
+				test.EqOp(t, "receipt-handle-123", aws.ToString(in.ReceiptHandle))
 				deleteCalled <- struct{}{}
 				return &sqs.DeleteMessageOutput{}, nil
 			},
@@ -87,7 +87,7 @@ func Test_sqsConsumer_Consume(T *testing.T) {
 		<-deleteCalled // wait for DeleteMessage before stopping
 		stopChan <- true
 
-		assert.Equal(t, []byte("test-payload"), receivedBody)
+		test.Eq(t, []byte("test-payload"), receivedBody)
 	})
 
 	T.Run("handler error does not delete message", func(t *testing.T) {
@@ -127,12 +127,12 @@ func Test_sqsConsumer_Consume(T *testing.T) {
 		go consumer.Consume(t.Context(), stopChan, errs)
 
 		receivedErr := <-errs
-		assert.Error(t, receivedErr)
-		assert.Equal(t, anticipatedErr, receivedErr)
+		test.Error(t, receivedErr)
+		test.ErrorIs(t, receivedErr, anticipatedErr)
 
 		stopChan <- true
 
-		assert.Zero(t, mmr.deleteMessageCalls)
+		test.EqOp(t, 0, mmr.deleteMessageCalls)
 	})
 }
 
@@ -147,8 +147,8 @@ func TestProvideSQSConsumerProvider(T *testing.T) {
 		cfg := Config{}
 
 		actual, err := ProvideSQSConsumerProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil, cfg)
-		assert.NoError(t, err)
-		assert.NotNil(t, actual)
+		test.NoError(t, err)
+		test.NotNil(t, actual)
 	})
 }
 
@@ -163,12 +163,12 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 		cfg := Config{}
 
 		provider, err := ProvideSQSConsumerProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil, cfg)
-		require.NoError(t, err)
-		require.NotNil(t, provider)
+		must.NoError(t, err)
+		must.NotNil(t, provider)
 
 		actual, err := provider.ProvideConsumer(ctx, "https://sqs.us-east-1.amazonaws.com/123/test", nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, actual)
+		test.NoError(t, err)
+		test.NotNil(t, actual)
 	})
 
 	T.Run("with cache hit", func(t *testing.T) {
@@ -180,17 +180,17 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 		topic := "https://sqs.us-east-1.amazonaws.com/123/cached-queue"
 
 		provider, err := ProvideSQSConsumerProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil, cfg)
-		require.NoError(t, err)
-		require.NotNil(t, provider)
+		must.NoError(t, err)
+		must.NotNil(t, provider)
 
 		actual, err := provider.ProvideConsumer(ctx, topic, nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, actual)
+		test.NoError(t, err)
+		test.NotNil(t, actual)
 
 		actual2, err := provider.ProvideConsumer(ctx, topic, nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, actual2)
-		assert.Same(t, actual, actual2)
+		test.NoError(t, err)
+		test.NotNil(t, actual2)
+		test.EqOp(t, actual, actual2)
 	})
 
 	T.Run("with empty topic returns error", func(t *testing.T) {
@@ -201,13 +201,13 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 		cfg := Config{}
 
 		provider, err := ProvideSQSConsumerProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil, cfg)
-		require.NoError(t, err)
-		require.NotNil(t, provider)
+		must.NoError(t, err)
+		must.NotNil(t, provider)
 
 		actual, err := provider.ProvideConsumer(ctx, "", nil)
-		assert.Error(t, err)
-		assert.Nil(t, actual)
-		assert.ErrorIs(t, err, messagequeue.ErrEmptyTopicName)
+		test.Error(t, err)
+		test.Nil(t, actual)
+		test.ErrorIs(t, err, messagequeue.ErrEmptyTopicName)
 	})
 }
 
@@ -218,7 +218,7 @@ func Test_provideSQSConsumer(T *testing.T) {
 		t.Parallel()
 
 		consumer := provideSQSConsumer(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, nil, "https://sqs.us-east-1.amazonaws.com/123/test", nil)
-		require.NotNil(t, consumer)
+		must.NotNil(t, consumer)
 	})
 
 	T.Run("panics when NewInt64Counter fails", func(t *testing.T) {
@@ -230,7 +230,7 @@ func Test_provideSQSConsumer(T *testing.T) {
 			},
 		}
 
-		assert.Panics(t, func() {
+		test.Panic(t, func() {
 			provideSQSConsumer(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, nil, "t", nil)
 		})
 	})

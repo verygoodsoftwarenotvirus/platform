@@ -5,7 +5,7 @@ import (
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/uploads/objectstorage"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestConfig_ValidateWithContext(T *testing.T) {
@@ -26,7 +26,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Debug: false,
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with empty storage", func(t *testing.T) {
@@ -35,6 +35,6 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		ctx := t.Context()
 		cfg := &Config{}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 }

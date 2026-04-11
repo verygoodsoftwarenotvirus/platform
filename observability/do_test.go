@@ -9,8 +9,8 @@ import (
 	tracingcfg "github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing/config"
 
 	"github.com/samber/do/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestRegisterO11yConfigs(T *testing.T) {
@@ -27,19 +27,19 @@ func TestRegisterO11yConfigs(T *testing.T) {
 		RegisterO11yConfigs(i)
 
 		loggingConfig, err := do.Invoke[*loggingcfg.Config](i)
-		require.NoError(t, err)
-		assert.NotNil(t, loggingConfig)
+		must.NoError(t, err)
+		test.NotNil(t, loggingConfig)
 
 		metricsConfig, err := do.Invoke[*metricscfg.Config](i)
-		require.NoError(t, err)
-		assert.NotNil(t, metricsConfig)
+		must.NoError(t, err)
+		test.NotNil(t, metricsConfig)
 
 		tracingConfig, err := do.Invoke[*tracingcfg.Config](i)
-		require.NoError(t, err)
-		assert.NotNil(t, tracingConfig)
+		must.NoError(t, err)
+		test.NotNil(t, tracingConfig)
 
 		profilingConfig, err := do.Invoke[*profilingcfg.Config](i)
-		require.NoError(t, err)
-		assert.NotNil(t, profilingConfig)
+		must.NoError(t, err)
+		test.NotNil(t, profilingConfig)
 	})
 }

@@ -13,8 +13,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/elastic/go-elasticsearch/v8"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 type example struct {
@@ -77,8 +77,8 @@ func TestIndexManager_Index_CircuitBroken(T *testing.T) {
 		im := buildTestIndexManagerForUnit(t, cb)
 
 		err := im.Index(context.Background(), "id", map[string]string{"id": "test"})
-		assert.Error(t, err)
-		assert.Equal(t, circuitbreaking.ErrCircuitBroken, err)
+		test.Error(t, err)
+		test.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
 	})
 
 	T.Run("with unmarshalable value", func(t *testing.T) {
@@ -91,7 +91,7 @@ func TestIndexManager_Index_CircuitBroken(T *testing.T) {
 		im := buildTestIndexManagerForUnit(t, cb)
 
 		err := im.Index(context.Background(), "id", make(chan int))
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 
 	T.Run("with unreachable server", func(t *testing.T) {
@@ -105,7 +105,7 @@ func TestIndexManager_Index_CircuitBroken(T *testing.T) {
 		im := buildTestIndexManagerForUnit(t, cb)
 
 		err := im.Index(context.Background(), "id", map[string]string{"id": "test"})
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 }
 
@@ -131,7 +131,7 @@ func TestIndexManager_Index_Unit(T *testing.T) {
 		im := buildTestIndexManagerWithServer(t, server, cb)
 
 		err := im.Index(context.Background(), "123", &example{ID: "123", Name: "test"})
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 
 	T.Run("with non-success status code", func(t *testing.T) {
@@ -153,7 +153,7 @@ func TestIndexManager_Index_Unit(T *testing.T) {
 		im := buildTestIndexManagerWithServer(t, server, cb)
 
 		err := im.Index(context.Background(), "123", &example{ID: "123", Name: "test"})
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 }
 
@@ -170,9 +170,9 @@ func TestIndexManager_Search_CircuitBroken(T *testing.T) {
 		im := buildTestIndexManagerForUnit(t, cb)
 
 		results, err := im.Search(context.Background(), "query")
-		assert.Error(t, err)
-		assert.Nil(t, results)
-		assert.Equal(t, circuitbreaking.ErrCircuitBroken, err)
+		test.Error(t, err)
+		test.Nil(t, results)
+		test.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
 	})
 
 	T.Run("with empty query", func(t *testing.T) {
@@ -185,9 +185,9 @@ func TestIndexManager_Search_CircuitBroken(T *testing.T) {
 		im := buildTestIndexManagerForUnit(t, cb)
 
 		results, err := im.Search(context.Background(), "")
-		assert.Error(t, err)
-		assert.Nil(t, results)
-		assert.Equal(t, ErrEmptyQueryProvided, err)
+		test.Error(t, err)
+		test.Nil(t, results)
+		test.ErrorIs(t, err, ErrEmptyQueryProvided)
 	})
 
 	T.Run("with unreachable server", func(t *testing.T) {
@@ -201,8 +201,8 @@ func TestIndexManager_Search_CircuitBroken(T *testing.T) {
 		im := buildTestIndexManagerForUnit(t, cb)
 
 		results, err := im.Search(context.Background(), "test query")
-		assert.Error(t, err)
-		assert.Nil(t, results)
+		test.Error(t, err)
+		test.Nil(t, results)
 	})
 }
 
@@ -228,10 +228,10 @@ func TestIndexManager_Search_Unit(T *testing.T) {
 		im := buildTestIndexManagerWithServer(t, server, cb)
 
 		results, err := im.Search(context.Background(), "test")
-		assert.NoError(t, err)
-		require.Len(t, results, 1)
-		assert.Equal(t, "123", results[0].ID)
-		assert.Equal(t, "test", results[0].Name)
+		test.NoError(t, err)
+		must.SliceLen(t, 1, results)
+		test.EqOp(t, "123", results[0].ID)
+		test.EqOp(t, "test", results[0].Name)
 	})
 
 	T.Run("with error response", func(t *testing.T) {
@@ -257,8 +257,8 @@ func TestIndexManager_Search_Unit(T *testing.T) {
 		// does exercise the IsError() branch and calls circuitBreaker.Failed(),
 		// but ultimately returns nil error due to the defer clobbering it.
 		results, err := im.Search(context.Background(), "test")
-		assert.NoError(t, err)
-		assert.Nil(t, results)
+		test.NoError(t, err)
+		test.Nil(t, results)
 	})
 
 	T.Run("with invalid JSON in success response", func(t *testing.T) {
@@ -282,8 +282,8 @@ func TestIndexManager_Search_Unit(T *testing.T) {
 		// NOTE: same issue as error response test - the deferred res.Body.Close()
 		// overwrites the named return 'err' with nil.
 		results, err := im.Search(context.Background(), "test")
-		assert.NoError(t, err)
-		assert.Nil(t, results)
+		test.NoError(t, err)
+		test.Nil(t, results)
 	})
 }
 
@@ -311,8 +311,8 @@ func TestIndexManager_Search_ErrorResponseDecodeFailure_Unit(T *testing.T) {
 		// NOTE: the named return 'err' from the deferred res.Body.Close() clobbers
 		// the error, so this returns nil error despite the decode failure.
 		results, err := im.Search(context.Background(), "test")
-		assert.NoError(t, err)
-		assert.Nil(t, results)
+		test.NoError(t, err)
+		test.Nil(t, results)
 	})
 }
 
@@ -340,8 +340,8 @@ func TestIndexManager_Search_SourceUnmarshalError_Unit(T *testing.T) {
 		// NOTE: the named return 'err' from the deferred res.Body.Close() clobbers
 		// the error, so this returns nil error despite the unmarshal failure.
 		results, err := im.Search(context.Background(), "test")
-		assert.NoError(t, err)
-		assert.Nil(t, results)
+		test.NoError(t, err)
+		test.Nil(t, results)
 	})
 }
 
@@ -358,8 +358,8 @@ func TestIndexManager_Delete_CircuitBroken(T *testing.T) {
 		im := buildTestIndexManagerForUnit(t, cb)
 
 		err := im.Delete(context.Background(), "id")
-		assert.Error(t, err)
-		assert.Equal(t, circuitbreaking.ErrCircuitBroken, err)
+		test.Error(t, err)
+		test.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
 	})
 
 	T.Run("with unreachable server", func(t *testing.T) {
@@ -373,7 +373,7 @@ func TestIndexManager_Delete_CircuitBroken(T *testing.T) {
 		im := buildTestIndexManagerForUnit(t, cb)
 
 		err := im.Delete(context.Background(), "some-id")
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 }
 
@@ -399,7 +399,7 @@ func TestIndexManager_Delete_Unit(T *testing.T) {
 		im := buildTestIndexManagerWithServer(t, server, cb)
 
 		err := im.Delete(context.Background(), "123")
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 }
 
@@ -412,7 +412,7 @@ func TestIndexManager_Wipe_Unit(T *testing.T) {
 		im := &indexManager[example]{}
 
 		err := im.Wipe(context.Background())
-		assert.Error(t, err)
-		assert.Equal(t, "unimplemented", err.Error())
+		test.Error(t, err)
+		test.EqOp(t, "unimplemented", err.Error())
 	})
 }

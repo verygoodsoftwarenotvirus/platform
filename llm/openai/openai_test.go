@@ -13,7 +13,7 @@ import (
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 
 	"github.com/shoenig/test"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -24,16 +24,16 @@ func TestNewProvider(T *testing.T) {
 		t.Parallel()
 
 		provider, err := NewProvider(nil, nil, nil, nil)
-		require.Error(t, err)
-		require.Nil(t, provider)
+		must.Error(t, err)
+		must.Nil(t, provider)
 	})
 
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
 		provider, err := NewProvider(&Config{APIKey: "test-key"}, nil, nil, nil)
-		require.NoError(t, err)
-		require.NotNil(t, provider)
+		must.NoError(t, err)
+		must.NotNil(t, provider)
 	})
 
 	T.Run("with base URL and timeout", func(t *testing.T) {
@@ -44,8 +44,8 @@ func TestNewProvider(T *testing.T) {
 			BaseURL:      "https://custom.example.com/v1",
 			DefaultModel: "gpt-4o",
 		}, nil, nil, nil)
-		require.NoError(t, err)
-		require.NotNil(t, provider)
+		must.NoError(t, err)
+		must.NotNil(t, provider)
 	})
 
 	T.Run("with timeout", func(t *testing.T) {
@@ -55,8 +55,8 @@ func TestNewProvider(T *testing.T) {
 			APIKey:  "test-key",
 			Timeout: 5 * time.Second,
 		}, nil, nil, nil)
-		require.NoError(t, err)
-		require.NotNil(t, provider)
+		must.NoError(t, err)
+		must.NotNil(t, provider)
 	})
 
 	T.Run("with error creating request counter", func(t *testing.T) {
@@ -70,8 +70,8 @@ func TestNewProvider(T *testing.T) {
 		}
 
 		provider, err := NewProvider(&Config{APIKey: "test-key"}, nil, nil, mp)
-		require.Error(t, err)
-		require.Nil(t, provider)
+		must.Error(t, err)
+		must.Nil(t, provider)
 
 		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
@@ -93,8 +93,8 @@ func TestNewProvider(T *testing.T) {
 		}
 
 		provider, err := NewProvider(&Config{APIKey: "test-key"}, nil, nil, mp)
-		require.Error(t, err)
-		require.Nil(t, provider)
+		must.Error(t, err)
+		must.Nil(t, provider)
 
 		test.SliceLen(t, 2, mp.NewInt64CounterCalls())
 	})
@@ -104,7 +104,7 @@ func TestNewProvider(T *testing.T) {
 
 		noopMP := metrics.NewNoopMetricsProvider()
 		h, histErr := noopMP.NewFloat64Histogram("test")
-		require.NoError(t, histErr)
+		must.NoError(t, histErr)
 
 		mp := &mockmetrics.ProviderMock{
 			NewInt64CounterFunc: func(_ string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
@@ -117,8 +117,8 @@ func TestNewProvider(T *testing.T) {
 		}
 
 		provider, err := NewProvider(&Config{APIKey: "test-key"}, nil, nil, mp)
-		require.Error(t, err)
-		require.Nil(t, provider)
+		must.Error(t, err)
+		must.Nil(t, provider)
 
 		test.SliceLen(t, 2, mp.NewInt64CounterCalls())
 		test.SliceLen(t, 1, mp.NewFloat64HistogramCalls())
@@ -154,10 +154,10 @@ func TestOpenAIProvider_Completion(T *testing.T) {
 		t.Parallel()
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			require.Equal(t, "/v1/chat/completions", r.URL.Path)
-			require.Equal(t, http.MethodPost, r.Method)
+			must.EqOp(t, "/v1/chat/completions", r.URL.Path)
+			must.EqOp(t, http.MethodPost, r.Method)
 			w.Header().Set("Content-Type", "application/json")
-			require.NoError(t, json.NewEncoder(w).Encode(openAIChatCompletion))
+			must.NoError(t, json.NewEncoder(w).Encode(openAIChatCompletion))
 		}))
 		t.Cleanup(ts.Close)
 
@@ -165,8 +165,8 @@ func TestOpenAIProvider_Completion(T *testing.T) {
 			APIKey:  "test-key",
 			BaseURL: ts.URL + "/v1",
 		}, nil, nil, nil)
-		require.NoError(t, err)
-		require.NotNil(t, provider)
+		must.NoError(t, err)
+		must.NotNil(t, provider)
 
 		ctx := t.Context()
 		result, err := provider.Completion(ctx, llm.CompletionParams{
@@ -175,9 +175,9 @@ func TestOpenAIProvider_Completion(T *testing.T) {
 				{Role: "user", Content: "Hello"},
 			},
 		})
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		require.Equal(t, "Hello from mock!", result.Content)
+		must.NoError(t, err)
+		must.NotNil(t, result)
+		must.EqOp(t, "Hello from mock!", result.Content)
 	})
 
 	T.Run("uses default model when not specified", func(t *testing.T) {
@@ -185,7 +185,7 @@ func TestOpenAIProvider_Completion(T *testing.T) {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			require.NoError(t, json.NewEncoder(w).Encode(openAIChatCompletion))
+			must.NoError(t, json.NewEncoder(w).Encode(openAIChatCompletion))
 		}))
 		t.Cleanup(ts.Close)
 
@@ -194,14 +194,14 @@ func TestOpenAIProvider_Completion(T *testing.T) {
 			BaseURL:      ts.URL + "/v1",
 			DefaultModel: "gpt-4o",
 		}, nil, nil, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		ctx := t.Context()
 		result, err := provider.Completion(ctx, llm.CompletionParams{
 			Messages: []llm.Message{{Role: "user", Content: "Hi"}},
 		})
-		require.NoError(t, err)
-		require.Equal(t, "Hello from mock!", result.Content)
+		must.NoError(t, err)
+		must.EqOp(t, "Hello from mock!", result.Content)
 	})
 
 	T.Run("with API error", func(t *testing.T) {
@@ -217,14 +217,14 @@ func TestOpenAIProvider_Completion(T *testing.T) {
 			APIKey:  "test-key",
 			BaseURL: ts.URL + "/v1",
 		}, nil, nil, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		ctx := t.Context()
 		result, err := provider.Completion(ctx, llm.CompletionParams{
 			Model:    "gpt-4o-mini",
 			Messages: []llm.Message{{Role: "user", Content: "Hi"}},
 		})
-		require.Error(t, err)
-		require.Nil(t, result)
+		must.Error(t, err)
+		must.Nil(t, result)
 	})
 }

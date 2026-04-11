@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestConfig_ValidateWithContext(T *testing.T) {
@@ -15,12 +15,12 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 	T.Run("valid config", func(t *testing.T) {
 		t.Parallel()
 		c := &Config{Port: 6060}
-		assert.NoError(t, c.ValidateWithContext(ctx))
+		test.NoError(t, c.ValidateWithContext(ctx))
 	})
 
 	T.Run("default port is valid", func(t *testing.T) {
 		t.Parallel()
 		c := &Config{Port: DefaultPort}
-		assert.NoError(t, c.ValidateWithContext(ctx))
+		test.NoError(t, c.ValidateWithContext(ctx))
 	})
 }

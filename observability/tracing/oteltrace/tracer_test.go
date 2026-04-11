@@ -6,7 +6,7 @@ import (
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func Test_tracingErrorHandler_Handle(T *testing.T) {
@@ -31,7 +31,7 @@ func TestConfig_SetupOtelHTTP(T *testing.T) {
 		}
 
 		actual, err := SetupOtelGRPC(ctx, t.Name(), 0, cfg)
-		assert.NoError(t, err)
-		assert.NotNil(t, actual)
+		test.NoError(t, err)
+		test.NotNil(t, actual)
 	})
 }

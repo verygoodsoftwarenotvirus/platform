@@ -9,8 +9,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing/cloudtrace"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing/oteltrace"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestConfig_ProvideTracerProvider(T *testing.T) {
@@ -26,8 +26,8 @@ func TestConfig_ProvideTracerProvider(T *testing.T) {
 			logging.NewNoopLogger(),
 		)
 
-		assert.NoError(t, err)
-		assert.NotNil(t, tracerProvider)
+		test.NoError(t, err)
+		test.NotNil(t, tracerProvider)
 	})
 
 	T.Run("with otel provider", func(t *testing.T) {
@@ -48,8 +48,8 @@ func TestConfig_ProvideTracerProvider(T *testing.T) {
 			logging.NewNoopLogger(),
 		)
 
-		assert.NoError(t, err)
-		assert.NotNil(t, tracerProvider)
+		test.NoError(t, err)
+		test.NotNil(t, tracerProvider)
 	})
 }
 
@@ -58,7 +58,7 @@ func TestConfig_ProvideTracerProvider(T *testing.T) {
 func TestConfig_ProvideTracerProvider_CloudTrace(t *testing.T) {
 	dir := t.TempDir()
 	credPath := filepath.Join(dir, "creds.json")
-	require.NoError(t, os.WriteFile(credPath, []byte(`{"type":"authorized_user","client_id":"x","client_secret":"y","refresh_token":"z"}`), 0o600))
+	must.NoError(t, os.WriteFile(credPath, []byte(`{"type":"authorized_user","client_id":"x","client_secret":"y","refresh_token":"z"}`), 0o600))
 	t.Setenv("GOOGLE_APPLICATION_CREDENTIALS", credPath)
 
 	cfg := &Config{
@@ -75,8 +75,8 @@ func TestConfig_ProvideTracerProvider_CloudTrace(t *testing.T) {
 		logging.NewNoopLogger(),
 	)
 
-	require.NoError(t, err)
-	assert.NotNil(t, tracerProvider)
+	must.NoError(t, err)
+	test.NotNil(t, tracerProvider)
 }
 
 // TestConfig_ProvideTracerProvider_CloudTraceError covers the cloudtrace error branch.
@@ -100,8 +100,8 @@ func TestConfig_ProvideTracerProvider_CloudTraceError(t *testing.T) {
 		logging.NewNoopLogger(),
 	)
 
-	assert.Error(t, err)
-	assert.Nil(t, tracerProvider)
+	test.Error(t, err)
+	test.Nil(t, tracerProvider)
 }
 
 // TestConfig_ProvideTracerProvider_OtelError covers the otelgrpc error branch.
@@ -122,8 +122,8 @@ func TestConfig_ProvideTracerProvider_OtelError(T *testing.T) {
 		}
 
 		tracerProvider, err := cfg.ProvideTracerProvider(t.Context(), logging.NewNoopLogger())
-		assert.Error(t, err)
-		assert.Nil(t, tracerProvider)
+		test.Error(t, err)
+		test.Nil(t, tracerProvider)
 	})
 }
 
@@ -144,8 +144,8 @@ func TestConfig_ProvideTracer_Error(T *testing.T) {
 		}
 
 		tracer, err := cfg.ProvideTracer(t.Context(), logging.NewNoopLogger(), t.Name())
-		assert.Error(t, err)
-		assert.Nil(t, tracer)
+		test.Error(t, err)
+		test.Nil(t, tracer)
 	})
 }
 
@@ -158,8 +158,8 @@ func TestConfig_ProvideTracer(T *testing.T) {
 		cfg := &Config{}
 
 		tracer, err := cfg.ProvideTracer(t.Context(), logging.NewNoopLogger(), t.Name())
-		assert.NoError(t, err)
-		assert.NotNil(t, tracer)
+		test.NoError(t, err)
+		test.NotNil(t, tracer)
 	})
 
 	T.Run("with otel provider", func(t *testing.T) {
@@ -176,8 +176,8 @@ func TestConfig_ProvideTracer(T *testing.T) {
 		}
 
 		tracer, err := cfg.ProvideTracer(t.Context(), logging.NewNoopLogger(), t.Name())
-		assert.NoError(t, err)
-		assert.NotNil(t, tracer)
+		test.NoError(t, err)
+		test.NotNil(t, tracer)
 	})
 }
 
@@ -196,7 +196,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			},
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(t.Context()))
+		test.NoError(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("with cloudtrace provider", func(t *testing.T) {
@@ -211,7 +211,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			},
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(t.Context()))
+		test.NoError(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("missing required service name", func(t *testing.T) {
@@ -225,7 +225,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			},
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(t.Context()))
+		test.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("invalid provider", func(t *testing.T) {
@@ -237,7 +237,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			SpanCollectionProbability: 1,
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(t.Context()))
+		test.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 }
 
@@ -250,7 +250,7 @@ func TestProvideTracerProvider(T *testing.T) {
 		cfg := &Config{}
 
 		tracerProvider, err := ProvideTracerProvider(t.Context(), cfg, logging.NewNoopLogger())
-		assert.NoError(t, err)
-		assert.NotNil(t, tracerProvider)
+		test.NoError(t, err)
+		test.NotNil(t, tracerProvider)
 	})
 }

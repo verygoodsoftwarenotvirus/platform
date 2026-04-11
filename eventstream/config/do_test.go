@@ -8,8 +8,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/samber/do/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestRegisterEventStreamUpgrader(T *testing.T) {
@@ -26,8 +26,8 @@ func TestRegisterEventStreamUpgrader(T *testing.T) {
 		RegisterEventStreamUpgrader(i)
 
 		upgrader, err := do.Invoke[eventstream.EventStreamUpgrader](i)
-		require.NoError(t, err)
-		assert.NotNil(t, upgrader)
+		must.NoError(t, err)
+		test.NotNil(t, upgrader)
 	})
 }
 
@@ -45,7 +45,7 @@ func TestRegisterBidirectionalEventStreamUpgrader(T *testing.T) {
 		RegisterBidirectionalEventStreamUpgrader(i)
 
 		upgrader, err := do.Invoke[eventstream.BidirectionalEventStreamUpgrader](i)
-		require.NoError(t, err)
-		assert.NotNil(t, upgrader)
+		must.NoError(t, err)
+		test.NotNil(t, upgrader)
 	})
 }

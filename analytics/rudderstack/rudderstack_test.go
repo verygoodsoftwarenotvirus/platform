@@ -12,7 +12,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/shoenig/test"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -29,8 +29,8 @@ func TestNewRudderstackEventReporter(T *testing.T) {
 		}
 
 		collector, err := NewRudderstackEventReporter(logger, tracing.NewNoopTracerProvider(), nil, cfg, cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
-		require.NotNil(t, collector)
+		must.NoError(t, err)
+		must.NotNil(t, collector)
 	})
 
 	T.Run("with nil config", func(t *testing.T) {
@@ -39,8 +39,8 @@ func TestNewRudderstackEventReporter(T *testing.T) {
 		logger := logging.NewNoopLogger()
 
 		collector, err := NewRudderstackEventReporter(logger, tracing.NewNoopTracerProvider(), nil, nil, cbnoop.NewCircuitBreaker())
-		require.Error(t, err)
-		require.Nil(t, collector)
+		must.Error(t, err)
+		must.Nil(t, collector)
 	})
 
 	T.Run("with empty API key", func(t *testing.T) {
@@ -53,8 +53,8 @@ func TestNewRudderstackEventReporter(T *testing.T) {
 		}
 
 		collector, err := NewRudderstackEventReporter(logger, tracing.NewNoopTracerProvider(), nil, cfg, cbnoop.NewCircuitBreaker())
-		require.Error(t, err)
-		require.Nil(t, collector)
+		must.Error(t, err)
+		must.Nil(t, collector)
 	})
 
 	T.Run("with empty DataPlane URL", func(t *testing.T) {
@@ -67,8 +67,8 @@ func TestNewRudderstackEventReporter(T *testing.T) {
 		}
 
 		collector, err := NewRudderstackEventReporter(logger, tracing.NewNoopTracerProvider(), nil, cfg, cbnoop.NewCircuitBreaker())
-		require.Error(t, err)
-		require.Nil(t, collector)
+		must.Error(t, err)
+		must.Nil(t, collector)
 	})
 
 	T.Run("with error creating event counter", func(t *testing.T) {
@@ -87,8 +87,8 @@ func TestNewRudderstackEventReporter(T *testing.T) {
 		}
 
 		collector, err := NewRudderstackEventReporter(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, cfg, cbnoop.NewCircuitBreaker())
-		require.Error(t, err)
-		require.Nil(t, collector)
+		must.Error(t, err)
+		must.Nil(t, collector)
 
 		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
@@ -115,8 +115,8 @@ func TestNewRudderstackEventReporter(T *testing.T) {
 		}
 
 		collector, err := NewRudderstackEventReporter(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, cfg, cbnoop.NewCircuitBreaker())
-		require.Error(t, err)
-		require.Nil(t, collector)
+		must.Error(t, err)
+		must.Nil(t, collector)
 
 		test.SliceLen(t, 2, mp.NewInt64CounterCalls())
 	})
@@ -135,8 +135,8 @@ func TestRudderstackEventReporter_Close(T *testing.T) {
 		}
 
 		collector, err := NewRudderstackEventReporter(logger, tracing.NewNoopTracerProvider(), nil, cfg, cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
-		require.NotNil(t, collector)
+		must.NoError(t, err)
+		must.NotNil(t, collector)
 
 		collector.Close()
 	})
@@ -161,10 +161,10 @@ func TestRudderstackEventReporter_AddUser(T *testing.T) {
 		}
 
 		collector, err := NewRudderstackEventReporter(logger, tracing.NewNoopTracerProvider(), nil, cfg, cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
-		require.NotNil(t, collector)
+		must.NoError(t, err)
+		must.NotNil(t, collector)
 
-		require.NoError(t, collector.AddUser(ctx, exampleUserID, properties))
+		must.NoError(t, collector.AddUser(ctx, exampleUserID, properties))
 	})
 }
 
@@ -187,10 +187,10 @@ func TestRudderstackEventReporter_EventOccurred(T *testing.T) {
 		}
 
 		collector, err := NewRudderstackEventReporter(logger, tracing.NewNoopTracerProvider(), nil, cfg, cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
-		require.NotNil(t, collector)
+		must.NoError(t, err)
+		must.NotNil(t, collector)
 
-		require.NoError(t, collector.EventOccurred(ctx, t.Name(), exampleUserID, properties))
+		must.NoError(t, collector.EventOccurred(ctx, t.Name(), exampleUserID, properties))
 	})
 }
 
@@ -213,9 +213,9 @@ func TestRudderstackEventReporter_EventOccurredAnonymous(T *testing.T) {
 		}
 
 		collector, err := NewRudderstackEventReporter(logger, tracing.NewNoopTracerProvider(), nil, cfg, cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
-		require.NotNil(t, collector)
+		must.NoError(t, err)
+		must.NotNil(t, collector)
 
-		require.NoError(t, collector.EventOccurredAnonymous(ctx, t.Name(), exampleAnonymousID, properties))
+		must.NoError(t, collector.EventOccurredAnonymous(ctx, t.Name(), exampleAnonymousID, properties))
 	})
 }

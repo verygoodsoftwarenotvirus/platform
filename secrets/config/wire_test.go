@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 )
 
 func TestProvideSecretSourceFromConfig(T *testing.T) {
@@ -16,17 +16,17 @@ func TestProvideSecretSourceFromConfig(T *testing.T) {
 
 		var cfg *Config
 		source, err := ProvideSecretSourceFromConfig(context.Background(), cfg, nil, nil, nil)
-		require.NoError(t, err)
-		require.NotNil(t, source)
+		must.NoError(t, err)
+		must.NotNil(t, source)
 
 		key := "TEST_WIRE_NIL_" + t.Name()
 		value := "from-env"
-		require.NoError(t, os.Setenv(key, value))
+		must.NoError(t, os.Setenv(key, value))
 		t.Cleanup(func() { _ = os.Unsetenv(key) })
 
 		got, err := source.GetSecret(context.Background(), key)
-		require.NoError(t, err)
-		require.Equal(t, value, got)
+		must.NoError(t, err)
+		must.EqOp(t, value, got)
 	})
 
 	T.Run("empty provider returns env source", func(t *testing.T) {
@@ -34,17 +34,17 @@ func TestProvideSecretSourceFromConfig(T *testing.T) {
 
 		cfg := &Config{Provider: ""}
 		source, err := ProvideSecretSourceFromConfig(context.Background(), cfg, nil, nil, nil)
-		require.NoError(t, err)
-		require.NotNil(t, source)
+		must.NoError(t, err)
+		must.NotNil(t, source)
 
 		key := "TEST_WIRE_EMPTY_" + t.Name()
 		value := "from-env"
-		require.NoError(t, os.Setenv(key, value))
+		must.NoError(t, os.Setenv(key, value))
 		t.Cleanup(func() { _ = os.Unsetenv(key) })
 
 		got, err := source.GetSecret(context.Background(), key)
-		require.NoError(t, err)
-		require.Equal(t, value, got)
+		must.NoError(t, err)
+		must.EqOp(t, value, got)
 	})
 
 	T.Run("noop provider returns noop source", func(t *testing.T) {
@@ -52,12 +52,12 @@ func TestProvideSecretSourceFromConfig(T *testing.T) {
 
 		cfg := &Config{Provider: ProviderNoop}
 		source, err := ProvideSecretSourceFromConfig(context.Background(), cfg, nil, nil, nil)
-		require.NoError(t, err)
-		require.NotNil(t, source)
+		must.NoError(t, err)
+		must.NotNil(t, source)
 
 		got, err := source.GetSecret(context.Background(), "any")
-		require.NoError(t, err)
-		require.Empty(t, got)
+		must.NoError(t, err)
+		must.EqOp(t, "", got)
 	})
 
 	T.Run("env provider returns env source", func(t *testing.T) {
@@ -65,17 +65,17 @@ func TestProvideSecretSourceFromConfig(T *testing.T) {
 
 		cfg := &Config{Provider: ProviderEnv}
 		source, err := ProvideSecretSourceFromConfig(context.Background(), cfg, nil, nil, nil)
-		require.NoError(t, err)
-		require.NotNil(t, source)
+		must.NoError(t, err)
+		must.NotNil(t, source)
 
 		key := "TEST_WIRE_ENV_" + t.Name()
 		value := "from-env"
-		require.NoError(t, os.Setenv(key, value))
+		must.NoError(t, os.Setenv(key, value))
 		t.Cleanup(func() { _ = os.Unsetenv(key) })
 
 		got, err := source.GetSecret(context.Background(), key)
-		require.NoError(t, err)
-		require.Equal(t, value, got)
+		must.NoError(t, err)
+		must.EqOp(t, value, got)
 	})
 
 	T.Run("provider error is wrapped", func(t *testing.T) {
@@ -83,8 +83,8 @@ func TestProvideSecretSourceFromConfig(T *testing.T) {
 
 		cfg := &Config{Provider: "vault"}
 		source, err := ProvideSecretSourceFromConfig(context.Background(), cfg, nil, nil, nil)
-		require.Error(t, err)
-		require.Nil(t, source)
-		require.Contains(t, err.Error(), "provide secret source")
+		must.Error(t, err)
+		must.Nil(t, source)
+		must.StrContains(t, err.Error(), "provide secret source")
 	})
 }

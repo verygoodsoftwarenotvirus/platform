@@ -3,7 +3,7 @@ package noop
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestNewCircuitBreaker(T *testing.T) {
@@ -13,7 +13,7 @@ func TestNewCircuitBreaker(T *testing.T) {
 		t.Parallel()
 
 		x := NewCircuitBreaker()
-		assert.NotNil(t, x)
+		test.NotNil(t, x)
 	})
 }
 
@@ -46,7 +46,7 @@ func TestCircuitBreaker_CanProceed(T *testing.T) {
 		t.Parallel()
 
 		x := NewCircuitBreaker()
-		assert.True(t, x.CanProceed())
+		test.True(t, x.CanProceed())
 	})
 }
 
@@ -57,6 +57,6 @@ func TestCircuitBreaker_CannotProceed(T *testing.T) {
 		t.Parallel()
 
 		x := NewCircuitBreaker()
-		assert.False(t, x.CannotProceed())
+		test.False(t, x.CannotProceed())
 	})
 }

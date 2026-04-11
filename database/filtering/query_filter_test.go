@@ -10,8 +10,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	textsearch "github.com/verygoodsoftwarenotvirus/platform/v5/search/text"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestDefaultQueryFilter(T *testing.T) {
@@ -22,11 +22,11 @@ func TestDefaultQueryFilter(T *testing.T) {
 
 		qf := DefaultQueryFilter()
 
-		require.NotNil(t, qf)
-		require.NotNil(t, qf.MaxResponseSize)
-		assert.Equal(t, uint8(DefaultQueryFilterLimit), *qf.MaxResponseSize)
-		require.NotNil(t, qf.SortBy)
-		assert.Equal(t, SortAscending, qf.SortBy)
+		must.NotNil(t, qf)
+		must.NotNil(t, qf.MaxResponseSize)
+		test.EqOp(t, uint8(DefaultQueryFilterLimit), *qf.MaxResponseSize)
+		must.NotNil(t, qf.SortBy)
+		test.EqOp(t, SortAscending, qf.SortBy)
 	})
 }
 
@@ -49,7 +49,7 @@ func TestQueryFilter_AttachToLogger(T *testing.T) {
 			IncludeArchived: new(true),
 		}
 
-		assert.NotNil(t, qf.AttachToLogger(logger))
+		test.NotNil(t, qf.AttachToLogger(logger))
 	})
 
 	T.Run("with nil", func(t *testing.T) {
@@ -57,7 +57,7 @@ func TestQueryFilter_AttachToLogger(T *testing.T) {
 
 		logger := logging.NewNoopLogger()
 
-		assert.NotNil(t, (*QueryFilter)(nil).AttachToLogger(logger))
+		test.NotNil(t, (*QueryFilter)(nil).AttachToLogger(logger))
 	})
 }
 
@@ -68,7 +68,7 @@ func TestQueryFilter_FromParams(T *testing.T) {
 		t.Parallel()
 
 		tt, err := time.Parse(time.RFC3339Nano, time.Now().UTC().Truncate(time.Second).Format(time.RFC3339Nano))
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		actual := &QueryFilter{}
 		expected := &QueryFilter{
@@ -96,12 +96,12 @@ func TestQueryFilter_FromParams(T *testing.T) {
 
 		actual.FromParams(exampleInput)
 
-		assert.Equal(t, expected, actual)
+		test.Eq(t, expected, actual)
 
 		exampleInput[QueryKeySortBy] = []string{*SortAscending}
 
 		actual.FromParams(exampleInput)
-		assert.Equal(t, SortAscending, actual.SortBy)
+		test.EqOp(t, SortAscending, actual.SortBy)
 	})
 }
 
@@ -115,7 +115,7 @@ func TestQueryFilter_SetCursor(T *testing.T) {
 		qf := &QueryFilter{}
 		qf.SetCursor(&expected)
 
-		assert.Equal(t, expected, *qf.Cursor)
+		test.EqOp(t, expected, *qf.Cursor)
 	})
 
 	T.Run("with nil", func(t *testing.T) {
@@ -125,7 +125,7 @@ func TestQueryFilter_SetCursor(T *testing.T) {
 		qf := &QueryFilter{Cursor: &original}
 		qf.SetCursor(nil)
 
-		assert.Equal(t, original, *qf.Cursor)
+		test.EqOp(t, original, *qf.Cursor)
 	})
 }
 
@@ -136,7 +136,7 @@ func TestQueryFilter_ToValues(T *testing.T) {
 		t.Parallel()
 
 		tt, err := time.Parse(time.RFC3339Nano, time.Now().UTC().Truncate(time.Second).Format(time.RFC3339Nano))
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		qf := &QueryFilter{
 			Cursor:          new(t.Name()),
@@ -161,7 +161,7 @@ func TestQueryFilter_ToValues(T *testing.T) {
 		}
 
 		actual := qf.ToValues()
-		assert.Equal(t, expected, actual)
+		test.Eq(t, expected, actual)
 	})
 
 	T.Run("with nil", func(t *testing.T) {
@@ -169,7 +169,7 @@ func TestQueryFilter_ToValues(T *testing.T) {
 		qf := (*QueryFilter)(nil)
 		expected := DefaultQueryFilter().ToValues()
 		actual := qf.ToValues()
-		assert.Equal(t, expected, actual)
+		test.Eq(t, expected, actual)
 	})
 }
 
@@ -182,7 +182,7 @@ func TestExtractQueryFilter(T *testing.T) {
 		ctx := t.Context()
 
 		tt, err := time.Parse(time.RFC3339Nano, time.Now().UTC().Truncate(time.Second).Format(time.RFC3339Nano))
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		expected := &QueryFilter{
 			Cursor:          new(t.Name()),
@@ -205,12 +205,12 @@ func TestExtractQueryFilter(T *testing.T) {
 		}
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://verygoodsoftwarenotvirus.ru", http.NoBody)
-		assert.NoError(t, err)
-		require.NotNil(t, req)
+		test.NoError(t, err)
+		must.NotNil(t, req)
 
 		req.URL.RawQuery = exampleInput.Encode()
 		actual := ExtractQueryFilterFromRequest(req)
-		assert.Equal(t, expected, actual)
+		test.Eq(t, expected, actual)
 	})
 
 	T.Run("with missing values", func(t *testing.T) {
@@ -229,12 +229,12 @@ func TestExtractQueryFilter(T *testing.T) {
 		}
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://verygoodsoftwarenotvirus.ru", http.NoBody)
-		assert.NoError(t, err)
-		require.NotNil(t, req)
+		test.NoError(t, err)
+		must.NotNil(t, req)
 
 		req.URL.RawQuery = exampleInput.Encode()
 		actual := ExtractQueryFilterFromRequest(req)
-		assert.Equal(t, expected, actual)
+		test.Eq(t, expected, actual)
 	})
 }
 
@@ -255,7 +255,7 @@ func TestQueryFilter_ToPagination(T *testing.T) {
 		}
 
 		actual := qf.ToPagination()
-		assert.Equal(t, expected, actual)
+		test.Eq(t, expected, actual)
 	})
 
 	T.Run("with nil value", func(t *testing.T) {
@@ -264,7 +264,7 @@ func TestQueryFilter_ToPagination(T *testing.T) {
 		qf := (*QueryFilter)(nil)
 
 		actual := qf.ToPagination()
-		assert.NotNil(t, actual)
+		test.NotNil(t, actual)
 	})
 }
 
@@ -297,7 +297,7 @@ func TestNewQueryFilteredResult(T *testing.T) {
 		}
 
 		actual := NewQueryFilteredResult(data, filteredCount, totalCount, idExtractor, qf)
-		assert.Equal(t, expected, actual)
+		test.Eq(t, expected, actual)
 	})
 
 	T.Run("with empty data", func(t *testing.T) {
@@ -326,7 +326,7 @@ func TestNewQueryFilteredResult(T *testing.T) {
 		}
 
 		actual := NewQueryFilteredResult(data, filteredCount, totalCount, idExtractor, qf)
-		assert.Equal(t, expected, actual)
+		test.Eq(t, expected, actual)
 	})
 
 	T.Run("with no cursor", func(t *testing.T) {
@@ -354,6 +354,6 @@ func TestNewQueryFilteredResult(T *testing.T) {
 		}
 
 		actual := NewQueryFilteredResult(data, filteredCount, totalCount, idExtractor, qf)
-		assert.Equal(t, expected, actual)
+		test.Eq(t, expected, actual)
 	})
 }

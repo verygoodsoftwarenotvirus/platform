@@ -9,8 +9,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/samber/do/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestRegisterLLMProvider(T *testing.T) {
@@ -28,7 +28,7 @@ func TestRegisterLLMProvider(T *testing.T) {
 		RegisterLLMProvider(i)
 
 		provider, err := do.Invoke[llm.Provider](i)
-		require.NoError(t, err)
-		assert.NotNil(t, provider)
+		must.NoError(t, err)
+		test.NotNil(t, provider)
 	})
 }

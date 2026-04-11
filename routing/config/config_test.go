@@ -8,8 +8,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/routing/chi"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestConfig_ValidateWithContext(T *testing.T) {
@@ -23,7 +23,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider: ProviderChi,
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with invalid provider", func(t *testing.T) {
@@ -34,7 +34,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider: "bogus",
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 }
 
@@ -50,8 +50,8 @@ func TestProvideRouter(T *testing.T) {
 		}
 
 		router, err := ProvideRouter(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider())
-		require.NoError(t, err)
-		assert.NotNil(t, router)
+		must.NoError(t, err)
+		test.NotNil(t, router)
 	})
 
 	T.Run("with unknown provider", func(t *testing.T) {
@@ -62,8 +62,8 @@ func TestProvideRouter(T *testing.T) {
 		}
 
 		router, err := ProvideRouter(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider())
-		assert.Nil(t, router)
-		assert.Error(t, err)
+		test.Nil(t, router)
+		test.Error(t, err)
 	})
 }
 
@@ -79,8 +79,8 @@ func TestConfig_ProvideRouter(T *testing.T) {
 		}
 
 		router, err := cfg.ProvideRouter(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider())
-		require.NoError(t, err)
-		assert.NotNil(t, router)
+		must.NoError(t, err)
+		test.NotNil(t, router)
 	})
 
 	T.Run("with unknown provider", func(t *testing.T) {
@@ -91,8 +91,8 @@ func TestConfig_ProvideRouter(T *testing.T) {
 		}
 
 		router, err := cfg.ProvideRouter(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider())
-		assert.Nil(t, router)
-		assert.Error(t, err)
+		test.Nil(t, router)
+		test.Error(t, err)
 	})
 }
 
@@ -107,8 +107,8 @@ func TestProvideRouteParamManager(T *testing.T) {
 		}
 
 		manager, err := ProvideRouteParamManager(cfg)
-		require.NoError(t, err)
-		assert.NotNil(t, manager)
+		must.NoError(t, err)
+		test.NotNil(t, manager)
 	})
 
 	T.Run("with unknown provider", func(t *testing.T) {
@@ -119,8 +119,8 @@ func TestProvideRouteParamManager(T *testing.T) {
 		}
 
 		manager, err := ProvideRouteParamManager(cfg)
-		assert.Nil(t, manager)
-		assert.Error(t, err)
+		test.Nil(t, manager)
+		test.Error(t, err)
 	})
 }
 
@@ -136,8 +136,8 @@ func TestProvideRouterViaConfig(T *testing.T) {
 		}
 
 		router, err := ProvideRouterViaConfig(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider())
-		require.NoError(t, err)
-		assert.NotNil(t, router)
+		must.NoError(t, err)
+		test.NotNil(t, router)
 	})
 
 	T.Run("with unknown provider", func(t *testing.T) {
@@ -148,7 +148,7 @@ func TestProvideRouterViaConfig(T *testing.T) {
 		}
 
 		router, err := ProvideRouterViaConfig(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider())
-		assert.Nil(t, router)
-		assert.Error(t, err)
+		test.Nil(t, router)
+		test.Error(t, err)
 	})
 }

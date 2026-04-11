@@ -9,8 +9,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/routing"
 
 	"github.com/samber/do/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestRegisterHTTPServer(T *testing.T) {
@@ -28,7 +28,7 @@ func TestRegisterHTTPServer(T *testing.T) {
 		RegisterHTTPServer(i, "test_service")
 
 		srv, err := do.Invoke[Server](i)
-		require.NoError(t, err)
-		assert.NotNil(t, srv)
+		must.NoError(t, err)
+		test.NotNil(t, srv)
 	})
 }

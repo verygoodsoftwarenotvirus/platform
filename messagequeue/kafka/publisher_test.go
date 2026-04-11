@@ -17,8 +17,7 @@ import (
 
 	"github.com/segmentio/kafka-go"
 	"github.com/shoenig/test"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -53,13 +52,13 @@ func buildTestPublisher(t *testing.T) (*kafkaPublisher, *mockKafkaWriter) {
 	mp := metrics.NewNoopMetricsProvider()
 
 	publishedCounter, err := mp.NewInt64Counter("test_published")
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	publishErrCounter, err := mp.NewInt64Counter("test_publish_errors")
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	latencyHist, err := mp.NewFloat64Histogram("test_publish_latency_ms")
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	pub := &kafkaPublisher{
 		writer:            writer,
@@ -85,7 +84,7 @@ func Test_kafkaPublisher_Stop(T *testing.T) {
 
 		pub.Stop()
 
-		assert.Equal(t, 1, writer.closeCalls)
+		test.EqOp(t, 1, writer.closeCalls)
 	})
 
 	T.Run("with close error", func(t *testing.T) {
@@ -96,7 +95,7 @@ func Test_kafkaPublisher_Stop(T *testing.T) {
 
 		pub.Stop()
 
-		assert.Equal(t, 1, writer.closeCalls)
+		test.EqOp(t, 1, writer.closeCalls)
 	})
 }
 
@@ -118,9 +117,9 @@ func Test_kafkaPublisher_Publish(T *testing.T) {
 		writer.writeMessagesFunc = func(_ context.Context, _ ...kafka.Message) error { return nil }
 
 		err := pub.Publish(ctx, inputData)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
-		assert.Equal(t, 1, writer.writeCalls)
+		test.EqOp(t, 1, writer.writeCalls)
 	})
 
 	T.Run("with encoding error", func(t *testing.T) {
@@ -136,7 +135,7 @@ func Test_kafkaPublisher_Publish(T *testing.T) {
 		}
 
 		err := pub.Publish(ctx, inputData)
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 
 	T.Run("with write error", func(t *testing.T) {
@@ -154,9 +153,9 @@ func Test_kafkaPublisher_Publish(T *testing.T) {
 		writer.writeMessagesFunc = func(_ context.Context, _ ...kafka.Message) error { return errors.New("write failed") }
 
 		err := pub.Publish(ctx, inputData)
-		assert.Error(t, err)
+		test.Error(t, err)
 
-		assert.Equal(t, 1, writer.writeCalls)
+		test.EqOp(t, 1, writer.writeCalls)
 	})
 
 	T.Run("with mock encoder error", func(t *testing.T) {
@@ -173,7 +172,7 @@ func Test_kafkaPublisher_Publish(T *testing.T) {
 		pub.encoder = enc
 
 		err := pub.Publish(ctx, "something")
-		assert.Error(t, err)
+		test.Error(t, err)
 
 		test.SliceLen(t, 1, enc.EncodeCalls())
 	})
@@ -198,7 +197,7 @@ func Test_kafkaPublisher_PublishAsync(T *testing.T) {
 
 		pub.PublishAsync(ctx, inputData)
 
-		assert.Equal(t, 1, writer.writeCalls)
+		test.EqOp(t, 1, writer.writeCalls)
 	})
 
 	T.Run("with encoding error", func(t *testing.T) {
@@ -232,7 +231,7 @@ func Test_kafkaPublisher_PublishAsync(T *testing.T) {
 
 		pub.PublishAsync(ctx, inputData)
 
-		assert.Equal(t, 1, writer.writeCalls)
+		test.EqOp(t, 1, writer.writeCalls)
 	})
 }
 
@@ -253,7 +252,7 @@ func TestProvideKafkaPublisherProvider(T *testing.T) {
 			nil,
 			cfg,
 		)
-		assert.NotNil(t, actual)
+		test.NotNil(t, actual)
 	})
 }
 
@@ -276,11 +275,11 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 			nil,
 			cfg,
 		)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		actual, err := provider.ProvidePublisher(ctx, t.Name())
-		assert.NoError(t, err)
-		assert.NotNil(t, actual)
+		test.NoError(t, err)
+		test.NotNil(t, actual)
 	})
 
 	T.Run("with empty topic", func(t *testing.T) {
@@ -299,12 +298,12 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 			nil,
 			cfg,
 		)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		actual, err := provider.ProvidePublisher(ctx, "")
-		assert.Error(t, err)
-		assert.ErrorIs(t, err, messagequeue.ErrEmptyTopicName)
-		assert.Nil(t, actual)
+		test.Error(t, err)
+		test.ErrorIs(t, err, messagequeue.ErrEmptyTopicName)
+		test.Nil(t, actual)
 	})
 
 	T.Run("with cache hit", func(t *testing.T) {
@@ -323,17 +322,17 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 			nil,
 			cfg,
 		)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		first, err := provider.ProvidePublisher(ctx, t.Name())
-		assert.NoError(t, err)
-		assert.NotNil(t, first)
+		test.NoError(t, err)
+		test.NotNil(t, first)
 
 		second, err := provider.ProvidePublisher(ctx, t.Name())
-		assert.NoError(t, err)
-		assert.NotNil(t, second)
+		test.NoError(t, err)
+		test.NotNil(t, second)
 
-		assert.Equal(t, first, second)
+		test.True(t, first == second)
 	})
 
 	T.Run("with error creating published counter", func(t *testing.T) {
@@ -358,11 +357,11 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 			mp,
 			cfg,
 		)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		actual, err := provider.ProvidePublisher(ctx, t.Name())
-		assert.Error(t, err)
-		assert.Nil(t, actual)
+		test.Error(t, err)
+		test.Nil(t, actual)
 
 		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
@@ -391,11 +390,11 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 			mp,
 			cfg,
 		)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		actual, err := provider.ProvidePublisher(ctx, t.Name())
-		assert.Error(t, err)
-		assert.Nil(t, actual)
+		test.Error(t, err)
+		test.Nil(t, actual)
 
 		test.SliceLen(t, 2, mp.NewInt64CounterCalls())
 	})
@@ -425,11 +424,11 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 			mp,
 			cfg,
 		)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		actual, err := provider.ProvidePublisher(ctx, t.Name())
-		assert.Error(t, err)
-		assert.Nil(t, actual)
+		test.Error(t, err)
+		test.Nil(t, actual)
 
 		test.SliceLen(t, 1, mp.NewFloat64HistogramCalls())
 	})
@@ -454,10 +453,10 @@ func Test_publisherProvider_Ping(T *testing.T) {
 			nil,
 			cfg,
 		)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		err := provider.Ping(ctx)
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 }
 
@@ -480,13 +479,13 @@ func Test_publisherProvider_Close(T *testing.T) {
 			nil,
 			cfg,
 		)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		_, err := provider.ProvidePublisher(ctx, t.Name())
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		pp, ok := provider.(*publisherProvider)
-		require.True(t, ok)
+		must.True(t, ok)
 
 		// Replace cached publisher with one using a mock writer so Close doesn't hit real Kafka
 		mw := &mockKafkaWriter{
@@ -509,7 +508,7 @@ func Test_publisherProvider_Close(T *testing.T) {
 
 		provider.Close()
 
-		assert.Equal(t, 1, mw.closeCalls)
+		test.EqOp(t, 1, mw.closeCalls)
 	})
 
 	T.Run("with empty cache", func(t *testing.T) {
@@ -526,7 +525,7 @@ func Test_publisherProvider_Close(T *testing.T) {
 			nil,
 			cfg,
 		)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		provider.Close()
 	})

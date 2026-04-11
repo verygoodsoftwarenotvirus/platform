@@ -7,8 +7,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/profiling"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestProvideProfilingProvider(T *testing.T) {
@@ -21,8 +21,8 @@ func TestProvideProfilingProvider(T *testing.T) {
 		logger := logging.NewNoopLogger()
 
 		p, err := ProvideProfilingProvider(ctx, logger, "test-service", nil)
-		require.NoError(t, err)
-		assert.NotNil(t, p)
+		must.NoError(t, err)
+		test.NotNil(t, p)
 	})
 
 	T.Run("standard", func(t *testing.T) {
@@ -36,10 +36,10 @@ func TestProvideProfilingProvider(T *testing.T) {
 		}
 
 		p, err := ProvideProfilingProvider(ctx, logger, "test-service", cfg)
-		require.NoError(t, err)
-		require.NotNil(t, p)
+		must.NoError(t, err)
+		must.NotNil(t, p)
 
-		require.NoError(t, p.Shutdown(ctx))
+		must.NoError(t, p.Shutdown(ctx))
 	})
 
 	T.Run("with mutex and block profiles", func(t *testing.T) {
@@ -55,10 +55,10 @@ func TestProvideProfilingProvider(T *testing.T) {
 		}
 
 		p, err := ProvideProfilingProvider(ctx, logger, "test-service", cfg)
-		require.NoError(t, err)
-		require.NotNil(t, p)
+		must.NoError(t, err)
+		must.NotNil(t, p)
 
-		require.NoError(t, p.Shutdown(ctx))
+		must.NoError(t, p.Shutdown(ctx))
 	})
 
 	T.Run("with tags", func(t *testing.T) {
@@ -73,10 +73,10 @@ func TestProvideProfilingProvider(T *testing.T) {
 		}
 
 		p, err := ProvideProfilingProvider(ctx, logger, "test-service", cfg)
-		require.NoError(t, err)
-		require.NotNil(t, p)
+		must.NoError(t, err)
+		must.NotNil(t, p)
 
-		require.NoError(t, p.Shutdown(ctx))
+		must.NoError(t, p.Shutdown(ctx))
 	})
 }
 
@@ -94,10 +94,10 @@ func TestProvider_Start(T *testing.T) {
 		}
 
 		p, err := ProvideProfilingProvider(ctx, logger, "test-service", cfg)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
-		assert.NoError(t, p.Start(ctx))
-		require.NoError(t, p.Shutdown(ctx))
+		test.NoError(t, p.Start(ctx))
+		must.NoError(t, p.Shutdown(ctx))
 	})
 }
 
@@ -115,9 +115,9 @@ func TestProvider_Shutdown(T *testing.T) {
 		}
 
 		p, err := ProvideProfilingProvider(ctx, logger, "test-service", cfg)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
-		assert.NoError(t, p.Shutdown(ctx))
+		test.NoError(t, p.Shutdown(ctx))
 	})
 }
 

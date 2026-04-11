@@ -16,8 +16,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/shoenig/test"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -36,7 +35,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider: ProviderLaunchDarkly,
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with empty provider for noop", func(t *testing.T) {
@@ -47,7 +46,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider: "",
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with invalid provider", func(t *testing.T) {
@@ -58,7 +57,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider: "invalid_provider",
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with posthog provider", func(t *testing.T) {
@@ -73,7 +72,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider: ProviderPostHog,
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with launchdarkly provider missing config", func(t *testing.T) {
@@ -84,7 +83,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider: ProviderLaunchDarkly,
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with posthog provider missing config", func(t *testing.T) {
@@ -95,7 +94,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider: ProviderPostHog,
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 }
 
@@ -121,8 +120,8 @@ func TestConfig_ProvideFeatureFlagManager(T *testing.T) {
 		}
 
 		ffm, err := cfg.ProvideFeatureFlagManager(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, http.DefaultClient, cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
-		require.NotNil(t, ffm)
+		must.NoError(t, err)
+		must.NotNil(t, ffm)
 	})
 
 	T.Run("with unknown provider returns noop", func(t *testing.T) {
@@ -133,8 +132,8 @@ func TestConfig_ProvideFeatureFlagManager(T *testing.T) {
 		}
 
 		ffm, err := cfg.ProvideFeatureFlagManager(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, http.DefaultClient, cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
-		require.NotNil(t, ffm)
+		must.NoError(t, err)
+		must.NotNil(t, ffm)
 	})
 
 	T.Run("with launchdarkly provider but nil config", func(t *testing.T) {
@@ -145,8 +144,8 @@ func TestConfig_ProvideFeatureFlagManager(T *testing.T) {
 		}
 
 		ffm, err := cfg.ProvideFeatureFlagManager(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, http.DefaultClient, cbnoop.NewCircuitBreaker())
-		require.Error(t, err)
-		require.Nil(t, ffm)
+		must.Error(t, err)
+		must.Nil(t, ffm)
 	})
 
 	T.Run("with posthog provider but nil config", func(t *testing.T) {
@@ -157,8 +156,8 @@ func TestConfig_ProvideFeatureFlagManager(T *testing.T) {
 		}
 
 		ffm, err := cfg.ProvideFeatureFlagManager(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, http.DefaultClient, cbnoop.NewCircuitBreaker())
-		require.Error(t, err)
-		require.Nil(t, ffm)
+		must.Error(t, err)
+		must.Nil(t, ffm)
 	})
 
 	T.Run("with provider string that has whitespace and mixed case", func(t *testing.T) {
@@ -170,8 +169,8 @@ func TestConfig_ProvideFeatureFlagManager(T *testing.T) {
 
 		// Will fail because LaunchDarkly config is nil, but proves the normalization works
 		ffm, err := cfg.ProvideFeatureFlagManager(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, http.DefaultClient, cbnoop.NewCircuitBreaker())
-		require.Error(t, err)
-		require.Nil(t, ffm)
+		must.Error(t, err)
+		must.Nil(t, ffm)
 	})
 }
 
@@ -187,8 +186,8 @@ func TestProvideFeatureFlagManager(T *testing.T) {
 		}
 
 		ffm, err := ProvideFeatureFlagManager(ctx, cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider(), http.DefaultClient)
-		require.NoError(t, err)
-		require.NotNil(t, ffm)
+		must.NoError(t, err)
+		must.NotNil(t, ffm)
 	})
 
 	T.Run("with circuit breaker error", func(t *testing.T) {
@@ -209,8 +208,8 @@ func TestProvideFeatureFlagManager(T *testing.T) {
 		}
 
 		ffm, err := ProvideFeatureFlagManager(ctx, cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, http.DefaultClient)
-		require.Error(t, err)
-		require.Nil(t, ffm)
+		must.Error(t, err)
+		must.Nil(t, ffm)
 
 		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})

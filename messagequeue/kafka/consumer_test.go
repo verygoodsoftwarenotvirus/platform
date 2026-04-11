@@ -12,8 +12,7 @@ import (
 
 	"github.com/segmentio/kafka-go"
 	"github.com/shoenig/test"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -163,7 +162,7 @@ func Test_kafkaConsumer_Consume(T *testing.T) {
 
 		select {
 		case receivedErr := <-errs:
-			assert.Equal(t, fetchErr, receivedErr)
+			test.ErrorIs(t, receivedErr, fetchErr)
 		default:
 			t.Error("expected an error on the errors channel")
 		}
@@ -215,8 +214,8 @@ func Test_kafkaConsumer_Consume(T *testing.T) {
 				return kafka.Message{}, context.Canceled
 			},
 			commitMessagesFunc: func(_ context.Context, msgs ...kafka.Message) error {
-				require.Len(t, msgs, 1)
-				assert.Equal(t, msg, msgs[0])
+				must.SliceLen(t, 1, msgs)
+				test.Eq(t, msg, msgs[0])
 				return nil
 			},
 		}
@@ -229,7 +228,7 @@ func Test_kafkaConsumer_Consume(T *testing.T) {
 			consumedCounter: metrics.Int64CounterForTest(t, t.Name()),
 			handlerFunc: func(_ context.Context, data []byte) error {
 				handlerCalled = true
-				assert.Equal(t, []byte("test-message"), data)
+				test.Eq(t, []byte("test-message"), data)
 				cancel()
 				return nil
 			},
@@ -239,8 +238,8 @@ func Test_kafkaConsumer_Consume(T *testing.T) {
 		errs := make(chan error, 10)
 
 		c.Consume(ctx, stopChan, errs)
-		assert.True(t, handlerCalled)
-		assert.Equal(t, 1, reader.commitCalls)
+		test.True(t, handlerCalled)
+		test.EqOp(t, 1, reader.commitCalls)
 	})
 
 	T.Run("with handler error", func(t *testing.T) {
@@ -279,8 +278,8 @@ func Test_kafkaConsumer_Consume(T *testing.T) {
 		c.Consume(ctx, stopChan, errs)
 
 		receivedErr := <-errs
-		assert.Error(t, receivedErr)
-		assert.Equal(t, handlerErr, receivedErr)
+		test.Error(t, receivedErr)
+		test.ErrorIs(t, receivedErr, handlerErr)
 	})
 
 	T.Run("with handler error and nil errors channel", func(t *testing.T) {
@@ -353,7 +352,7 @@ func Test_kafkaConsumer_Consume(T *testing.T) {
 		errs := make(chan error, 10)
 
 		c.Consume(ctx, stopChan, errs)
-		assert.Equal(t, 1, reader.commitCalls)
+		test.EqOp(t, 1, reader.commitCalls)
 	})
 }
 
@@ -374,7 +373,7 @@ func TestProvideKafkaConsumerProvider(T *testing.T) {
 			nil,
 			cfg,
 		)
-		assert.NotNil(t, actual)
+		test.NotNil(t, actual)
 	})
 }
 
@@ -397,13 +396,13 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 			nil,
 			cfg,
 		)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		hf := func(context.Context, []byte) error { return nil }
 
 		actual, err := provider.ProvideConsumer(ctx, t.Name(), hf)
-		assert.NoError(t, err)
-		assert.NotNil(t, actual)
+		test.NoError(t, err)
+		test.NotNil(t, actual)
 	})
 
 	T.Run("with empty topic", func(t *testing.T) {
@@ -422,12 +421,12 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 			nil,
 			cfg,
 		)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		actual, err := provider.ProvideConsumer(ctx, "", nil)
-		assert.Error(t, err)
-		assert.ErrorIs(t, err, ErrEmptyInputProvided)
-		assert.Nil(t, actual)
+		test.Error(t, err)
+		test.ErrorIs(t, err, ErrEmptyInputProvided)
+		test.Nil(t, actual)
 	})
 
 	T.Run("with error creating consumed counter", func(t *testing.T) {
@@ -452,13 +451,13 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 			mp,
 			cfg,
 		)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		hf := func(context.Context, []byte) error { return nil }
 
 		actual, err := provider.ProvideConsumer(ctx, t.Name(), hf)
-		assert.Error(t, err)
-		assert.Nil(t, actual)
+		test.Error(t, err)
+		test.Nil(t, actual)
 
 		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
@@ -479,18 +478,18 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 			nil,
 			cfg,
 		)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		hf := func(context.Context, []byte) error { return nil }
 
 		first, err := provider.ProvideConsumer(ctx, t.Name(), hf)
-		assert.NoError(t, err)
-		assert.NotNil(t, first)
+		test.NoError(t, err)
+		test.NotNil(t, first)
 
 		second, err := provider.ProvideConsumer(ctx, t.Name(), hf)
-		assert.NoError(t, err)
-		assert.NotNil(t, second)
+		test.NoError(t, err)
+		test.NotNil(t, second)
 
-		assert.Equal(t, first, second)
+		test.True(t, first == second)
 	})
 }

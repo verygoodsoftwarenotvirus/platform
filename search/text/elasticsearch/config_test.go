@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestConfig(T *testing.T) {
@@ -14,11 +14,11 @@ func TestConfig(T *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{}
-		assert.Empty(t, cfg.Address)
-		assert.Empty(t, cfg.Username)
-		assert.Empty(t, cfg.Password)
-		assert.Nil(t, cfg.CACert)
-		assert.Equal(t, time.Duration(0), cfg.IndexOperationTimeout)
+		test.EqOp(t, "", cfg.Address)
+		test.EqOp(t, "", cfg.Username)
+		test.EqOp(t, "", cfg.Password)
+		test.Nil(t, cfg.CACert)
+		test.EqOp(t, time.Duration(0), cfg.IndexOperationTimeout)
 	})
 
 	T.Run("with values", func(t *testing.T) {
@@ -32,10 +32,10 @@ func TestConfig(T *testing.T) {
 			IndexOperationTimeout: 5 * time.Second,
 		}
 
-		assert.Equal(t, "http://localhost:9200", cfg.Address)
-		assert.Equal(t, "elastic", cfg.Username)
-		assert.Equal(t, "password", cfg.Password)
-		assert.Equal(t, []byte("cert"), cfg.CACert)
-		assert.Equal(t, 5*time.Second, cfg.IndexOperationTimeout)
+		test.EqOp(t, "http://localhost:9200", cfg.Address)
+		test.EqOp(t, "elastic", cfg.Username)
+		test.EqOp(t, "password", cfg.Password)
+		test.Eq(t, []byte("cert"), cfg.CACert)
+		test.EqOp(t, 5*time.Second, cfg.IndexOperationTimeout)
 	})
 }

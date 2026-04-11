@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestPolicy_Execute(T *testing.T) {
@@ -24,8 +24,8 @@ func TestPolicy_Execute(T *testing.T) {
 			return nil
 		})
 
-		require.NoError(t, err)
-		assert.Equal(t, 1, attempts)
+		must.NoError(t, err)
+		test.EqOp(t, 1, attempts)
 	})
 
 	T.Run("executes exactly once on failure", func(t *testing.T) {
@@ -41,8 +41,8 @@ func TestPolicy_Execute(T *testing.T) {
 			return expectedErr
 		})
 
-		require.Error(t, err)
-		assert.Equal(t, expectedErr, err)
-		assert.Equal(t, 1, attempts)
+		must.Error(t, err)
+		test.ErrorIs(t, err, expectedErr)
+		test.EqOp(t, 1, attempts)
 	})
 }

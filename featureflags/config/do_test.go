@@ -10,8 +10,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/samber/do/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestRegisterFeatureFlagManager(T *testing.T) {
@@ -31,7 +31,7 @@ func TestRegisterFeatureFlagManager(T *testing.T) {
 		RegisterFeatureFlagManager(i)
 
 		ffm, err := do.Invoke[featureflags.FeatureFlagManager](i)
-		require.NoError(t, err)
-		assert.NotNil(t, ffm)
+		must.NoError(t, err)
+		test.NotNil(t, ffm)
 	})
 }

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestConfig(T *testing.T) {
@@ -14,9 +14,9 @@ func TestConfig(T *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{}
-		assert.Empty(t, cfg.AppID)
-		assert.Empty(t, cfg.APIKey)
-		assert.Equal(t, time.Duration(0), cfg.Timeout)
+		test.EqOp(t, "", cfg.AppID)
+		test.EqOp(t, "", cfg.APIKey)
+		test.EqOp(t, time.Duration(0), cfg.Timeout)
 	})
 
 	T.Run("with values", func(t *testing.T) {
@@ -28,8 +28,8 @@ func TestConfig(T *testing.T) {
 			Timeout: 5 * time.Second,
 		}
 
-		assert.Equal(t, "test-app-id", cfg.AppID)
-		assert.Equal(t, "test-api-key", cfg.APIKey)
-		assert.Equal(t, 5*time.Second, cfg.Timeout)
+		test.EqOp(t, "test-app-id", cfg.AppID)
+		test.EqOp(t, "test-api-key", cfg.APIKey)
+		test.EqOp(t, 5*time.Second, cfg.Timeout)
 	})
 }

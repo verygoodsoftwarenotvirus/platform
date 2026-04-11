@@ -8,8 +8,8 @@ import (
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -21,8 +21,8 @@ func TestNewLogger(T *testing.T) {
 
 		ctx := t.Context()
 		l, err := NewOtelSlogLogger(ctx, logging.DebugLevel, t.Name(), &Config{})
-		assert.NotNil(t, l)
-		assert.NoError(t, err)
+		test.NotNil(t, l)
+		test.NoError(t, err)
 	})
 
 	T.Run("with nil config", func(t *testing.T) {
@@ -30,8 +30,8 @@ func TestNewLogger(T *testing.T) {
 
 		ctx := t.Context()
 		l, err := NewOtelSlogLogger(ctx, logging.DebugLevel, t.Name(), nil)
-		assert.Nil(t, l)
-		assert.Error(t, err)
+		test.Nil(t, l)
+		test.Error(t, err)
 	})
 
 	T.Run("with info level", func(t *testing.T) {
@@ -39,8 +39,8 @@ func TestNewLogger(T *testing.T) {
 
 		ctx := t.Context()
 		l, err := NewOtelSlogLogger(ctx, logging.InfoLevel, t.Name(), &Config{})
-		assert.NotNil(t, l)
-		assert.NoError(t, err)
+		test.NotNil(t, l)
+		test.NoError(t, err)
 	})
 
 	T.Run("with warn level", func(t *testing.T) {
@@ -48,8 +48,8 @@ func TestNewLogger(T *testing.T) {
 
 		ctx := t.Context()
 		l, err := NewOtelSlogLogger(ctx, logging.WarnLevel, t.Name(), &Config{})
-		assert.NotNil(t, l)
-		assert.NoError(t, err)
+		test.NotNil(t, l)
+		test.NoError(t, err)
 	})
 
 	T.Run("with error level", func(t *testing.T) {
@@ -57,8 +57,8 @@ func TestNewLogger(T *testing.T) {
 
 		ctx := t.Context()
 		l, err := NewOtelSlogLogger(ctx, logging.ErrorLevel, t.Name(), &Config{})
-		assert.NotNil(t, l)
-		assert.NoError(t, err)
+		test.NotNil(t, l)
+		test.NoError(t, err)
 	})
 
 	T.Run("with collector endpoint", func(t *testing.T) {
@@ -71,8 +71,8 @@ func TestNewLogger(T *testing.T) {
 		}
 
 		l, err := NewOtelSlogLogger(ctx, logging.DebugLevel, t.Name(), cfg)
-		assert.NotNil(t, l)
-		assert.NoError(t, err)
+		test.NotNil(t, l)
+		test.NoError(t, err)
 	})
 }
 
@@ -84,9 +84,9 @@ func Test_zerologLogger_WithName(T *testing.T) {
 
 		ctx := t.Context()
 		l, err := NewOtelSlogLogger(ctx, logging.DebugLevel, t.Name(), &Config{})
-		require.NoError(t, err)
+		must.NoError(t, err)
 
-		assert.NotNil(t, l.WithName(t.Name()))
+		test.NotNil(t, l.WithName(t.Name()))
 	})
 }
 
@@ -98,7 +98,7 @@ func Test_zerologLogger_SetRequestIDFunc(T *testing.T) {
 
 		ctx := t.Context()
 		l, err := NewOtelSlogLogger(ctx, logging.DebugLevel, t.Name(), &Config{})
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		l.SetRequestIDFunc(func(*http.Request) string {
 			return ""
@@ -110,7 +110,7 @@ func Test_zerologLogger_SetRequestIDFunc(T *testing.T) {
 
 		ctx := t.Context()
 		l, err := NewOtelSlogLogger(ctx, logging.DebugLevel, t.Name(), &Config{})
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		l.SetRequestIDFunc(nil)
 	})
@@ -124,7 +124,7 @@ func Test_zerologLogger_Info(T *testing.T) {
 
 		ctx := t.Context()
 		l, err := NewOtelSlogLogger(ctx, logging.DebugLevel, t.Name(), &Config{})
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		l.Info(t.Name())
 	})
@@ -138,7 +138,7 @@ func Test_zerologLogger_Debug(T *testing.T) {
 
 		ctx := t.Context()
 		l, err := NewOtelSlogLogger(ctx, logging.DebugLevel, t.Name(), &Config{})
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		l.Debug(t.Name())
 	})
@@ -152,7 +152,7 @@ func Test_zerologLogger_Error(T *testing.T) {
 
 		ctx := t.Context()
 		l, err := NewOtelSlogLogger(ctx, logging.DebugLevel, t.Name(), &Config{})
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		l.Error(t.Name(), errors.New("blah"))
 	})
@@ -162,7 +162,7 @@ func Test_zerologLogger_Error(T *testing.T) {
 
 		ctx := t.Context()
 		l, err := NewOtelSlogLogger(ctx, logging.DebugLevel, t.Name(), &Config{})
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		l.Error(t.Name(), nil)
 	})
@@ -176,9 +176,9 @@ func Test_zerologLogger_Clone(T *testing.T) {
 
 		ctx := t.Context()
 		l, err := NewOtelSlogLogger(ctx, logging.DebugLevel, t.Name(), &Config{})
-		require.NoError(t, err)
+		must.NoError(t, err)
 
-		assert.NotNil(t, l.Clone())
+		test.NotNil(t, l.Clone())
 	})
 }
 
@@ -190,9 +190,9 @@ func Test_zerologLogger_WithValue(T *testing.T) {
 
 		ctx := t.Context()
 		l, err := NewOtelSlogLogger(ctx, logging.DebugLevel, t.Name(), &Config{})
-		require.NoError(t, err)
+		must.NoError(t, err)
 
-		assert.NotNil(t, l.WithValue("name", t.Name()))
+		test.NotNil(t, l.WithValue("name", t.Name()))
 	})
 }
 
@@ -204,9 +204,9 @@ func Test_zerologLogger_WithValues(T *testing.T) {
 
 		ctx := t.Context()
 		l, err := NewOtelSlogLogger(ctx, logging.DebugLevel, t.Name(), &Config{})
-		require.NoError(t, err)
+		must.NoError(t, err)
 
-		assert.NotNil(t, l.WithValues(map[string]any{"name": t.Name()}))
+		test.NotNil(t, l.WithValues(map[string]any{"name": t.Name()}))
 	})
 }
 
@@ -218,9 +218,9 @@ func Test_zerologLogger_WithError(T *testing.T) {
 
 		ctx := t.Context()
 		l, err := NewOtelSlogLogger(ctx, logging.DebugLevel, t.Name(), &Config{})
-		require.NoError(t, err)
+		must.NoError(t, err)
 
-		assert.NotNil(t, l.WithError(errors.New("blah")))
+		test.NotNil(t, l.WithError(errors.New("blah")))
 	})
 }
 
@@ -232,11 +232,11 @@ func Test_zerologLogger_WithSpan(T *testing.T) {
 
 		ctx := t.Context()
 		l, err := NewOtelSlogLogger(ctx, logging.DebugLevel, t.Name(), &Config{})
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		span := trace.SpanFromContext(ctx)
 
-		assert.NotNil(t, l.WithSpan(span))
+		test.NotNil(t, l.WithSpan(span))
 	})
 }
 
@@ -248,19 +248,19 @@ func Test_zerologLogger_WithRequest(T *testing.T) {
 
 		ctx := t.Context()
 		logger, err := NewOtelSlogLogger(ctx, logging.DebugLevel, t.Name(), &Config{})
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		l, ok := logger.(*otelSlogLogger)
-		require.True(t, ok)
+		must.True(t, ok)
 
 		l.requestIDFunc = func(*http.Request) string {
 			return t.Name()
 		}
 
 		u, err := url.ParseRequestURI("https://whatever.whocares.gov/path?things=stuff")
-		require.NoError(t, err)
+		must.NoError(t, err)
 
-		assert.NotNil(t, l.WithRequest(&http.Request{
+		test.NotNil(t, l.WithRequest(&http.Request{
 			URL: u,
 		}))
 	})
@@ -270,9 +270,9 @@ func Test_zerologLogger_WithRequest(T *testing.T) {
 
 		ctx := t.Context()
 		l, err := NewOtelSlogLogger(ctx, logging.DebugLevel, t.Name(), &Config{})
-		require.NoError(t, err)
+		must.NoError(t, err)
 
-		assert.NotNil(t, l.WithRequest(nil))
+		test.NotNil(t, l.WithRequest(nil))
 	})
 }
 
@@ -284,9 +284,9 @@ func Test_zerologLogger_WithResponse(T *testing.T) {
 
 		ctx := t.Context()
 		l, err := NewOtelSlogLogger(ctx, logging.DebugLevel, t.Name(), &Config{})
-		require.NoError(t, err)
+		must.NoError(t, err)
 
-		assert.NotNil(t, l.WithResponse(&http.Response{}))
+		test.NotNil(t, l.WithResponse(&http.Response{}))
 	})
 
 	T.Run("with nil response", func(t *testing.T) {
@@ -294,9 +294,9 @@ func Test_zerologLogger_WithResponse(T *testing.T) {
 
 		ctx := t.Context()
 		l, err := NewOtelSlogLogger(ctx, logging.DebugLevel, t.Name(), &Config{})
-		require.NoError(t, err)
+		must.NoError(t, err)
 
-		assert.NotNil(t, l.WithResponse(nil))
+		test.NotNil(t, l.WithResponse(nil))
 	})
 }
 
@@ -313,6 +313,6 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 
 		// NOTE: ValidateWithContext uses &c (double pointer) which causes
 		// ozzo-validation to reject it. This exercises the code path regardless.
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 }

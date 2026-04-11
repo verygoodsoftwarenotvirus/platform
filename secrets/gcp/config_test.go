@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 )
 
 func TestConfig_ValidateWithContext(T *testing.T) {
@@ -13,12 +13,12 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 	T.Run("valid", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{ProjectID: "my-project"}
-		require.NoError(t, cfg.ValidateWithContext(context.Background()))
+		must.NoError(t, cfg.ValidateWithContext(context.Background()))
 	})
 
 	T.Run("invalid missing ProjectID", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{ProjectID: ""}
-		require.Error(t, cfg.ValidateWithContext(context.Background()))
+		must.Error(t, cfg.ValidateWithContext(context.Background()))
 	})
 }

@@ -17,8 +17,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	elasticsearchcontainers "github.com/testcontainers/testcontainers-go/modules/elasticsearch"
 )
 
@@ -41,8 +41,8 @@ func buildEsTestInfra(t *testing.T) *esTestInfra {
 		"elasticsearch:8.10.2",
 		elasticsearchcontainers.WithPassword("arbitraryPassword"),
 	)
-	require.NoError(t, err)
-	require.NotNil(t, elasticsearchContainer)
+	must.NoError(t, err)
+	must.NotNil(t, elasticsearchContainer)
 
 	cfg := &Config{
 		Address:               elasticsearchContainer.Settings.Address,
@@ -80,15 +80,15 @@ func TestElasticsearch_Container(T *testing.T) {
 		ctx := t.Context()
 		indexName := "ensure_create_" + identifiers.New()
 		im, err := ProvideIndexManager[example](ctx, nil, nil, infra.cfg, indexName, cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
-		assert.NotNil(t, im)
+		must.NoError(t, err)
+		test.NotNil(t, im)
 
 		searchable := &example{
 			ID:   identifiers.New(),
 			Name: "test document",
 		}
 
-		assert.NoError(t, im.Index(ctx, searchable.ID, searchable))
+		test.NoError(t, im.Index(ctx, searchable.ID, searchable))
 	})
 
 	T.Run("ensureIndices handles existing index", func(t *testing.T) {
@@ -97,21 +97,21 @@ func TestElasticsearch_Container(T *testing.T) {
 		ctx := t.Context()
 		indexName := "ensure_existing_" + identifiers.New()
 		im1, err := ProvideIndexManager[example](ctx, nil, nil, infra.cfg, indexName, cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		im2, err := ProvideIndexManager[example](ctx, nil, nil, infra.cfg, indexName, cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
+		must.NoError(t, err)
 
-		assert.NotNil(t, im1)
-		assert.NotNil(t, im2)
+		test.NotNil(t, im1)
+		test.NotNil(t, im2)
 
 		searchable := &example{
 			ID:   identifiers.New(),
 			Name: "test document",
 		}
 
-		assert.NoError(t, im1.Index(ctx, searchable.ID, searchable))
-		assert.NoError(t, im2.Index(ctx, searchable.ID+"_2", searchable))
+		test.NoError(t, im1.Index(ctx, searchable.ID, searchable))
+		test.NoError(t, im2.Index(ctx, searchable.ID+"_2", searchable))
 	})
 
 	// --- ProvideIndexManager ---
@@ -121,8 +121,8 @@ func TestElasticsearch_Container(T *testing.T) {
 
 		ctx := t.Context()
 		im, err := ProvideIndexManager[example](ctx, nil, nil, infra.cfg, "provide_"+identifiers.New(), cbnoop.NewCircuitBreaker())
-		assert.NoError(t, err)
-		assert.NotNil(t, im)
+		test.NoError(t, err)
+		test.NotNil(t, im)
 	})
 
 	T.Run("ProvideIndexManager with logger and tracer", func(t *testing.T) {
@@ -133,8 +133,8 @@ func TestElasticsearch_Container(T *testing.T) {
 		tracerProvider := tracing.NewNoopTracerProvider()
 
 		im, err := ProvideIndexManager[example](ctx, logger, tracerProvider, infra.cfg, "provide_lt_"+identifiers.New(), cbnoop.NewCircuitBreaker())
-		assert.NoError(t, err)
-		assert.NotNil(t, im)
+		test.NoError(t, err)
+		test.NotNil(t, im)
 	})
 
 	// --- elasticsearchIsReadyToInit ---
@@ -146,7 +146,7 @@ func TestElasticsearch_Container(T *testing.T) {
 		logger := logging.NewNoopLogger()
 
 		ready := elasticsearchIsReadyToInit(ctx, infra.cfg, logger, 5)
-		assert.True(t, ready)
+		test.True(t, ready)
 	})
 
 	// --- provideElasticsearchClient ---
@@ -155,8 +155,8 @@ func TestElasticsearch_Container(T *testing.T) {
 		t.Parallel()
 
 		client, err := provideElasticsearchClient(infra.cfg)
-		assert.NoError(t, err)
-		assert.NotNil(t, client)
+		test.NoError(t, err)
+		test.NotNil(t, client)
 	})
 
 	// --- complete lifecycle ---
@@ -166,24 +166,24 @@ func TestElasticsearch_Container(T *testing.T) {
 
 		ctx := t.Context()
 		im, err := ProvideIndexManager[example](ctx, nil, nil, infra.cfg, "lifecycle_"+identifiers.New(), cbnoop.NewCircuitBreaker())
-		assert.NoError(t, err)
-		assert.NotNil(t, im)
+		test.NoError(t, err)
+		test.NotNil(t, im)
 
 		searchable := &example{
 			ID:   identifiers.New(),
 			Name: t.Name(),
 		}
 
-		assert.NoError(t, im.Index(ctx, searchable.ID, searchable))
+		test.NoError(t, im.Index(ctx, searchable.ID, searchable))
 
 		time.Sleep(5 * time.Second)
 
 		results, err := im.Search(ctx, searchable.Name[0:2])
-		assert.NoError(t, err)
-		assert.Len(t, results, 1)
-		assert.Equal(t, searchable, results[0])
+		test.NoError(t, err)
+		test.SliceLen(t, 1, results)
+		test.Eq(t, searchable, results[0])
 
-		assert.NoError(t, im.Delete(ctx, searchable.ID))
+		test.NoError(t, im.Delete(ctx, searchable.ID))
 	})
 
 	// --- Index ---
@@ -193,14 +193,14 @@ func TestElasticsearch_Container(T *testing.T) {
 
 		ctx := t.Context()
 		im, err := ProvideIndexManager[example](ctx, nil, nil, infra.cfg, "idx_ok_"+identifiers.New(), cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		searchable := &example{
 			ID:   identifiers.New(),
 			Name: t.Name(),
 		}
 
-		assert.NoError(t, im.Index(ctx, searchable.ID, searchable))
+		test.NoError(t, im.Index(ctx, searchable.ID, searchable))
 	})
 
 	T.Run("Index json marshaling error", func(t *testing.T) {
@@ -208,13 +208,13 @@ func TestElasticsearch_Container(T *testing.T) {
 
 		ctx := t.Context()
 		im, err := ProvideIndexManager[example](ctx, nil, nil, infra.cfg, "idx_json_"+identifiers.New(), cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		invalid := &invalidJSON{
 			Channel: make(chan int),
 		}
 
-		assert.Error(t, im.Index(ctx, "test-id", invalid))
+		test.Error(t, im.Index(ctx, "test-id", invalid))
 	})
 
 	T.Run("Index with noop circuit breaker", func(t *testing.T) {
@@ -223,14 +223,14 @@ func TestElasticsearch_Container(T *testing.T) {
 		ctx := t.Context()
 		cb := cbnoop.NewCircuitBreaker()
 		im, err := ProvideIndexManager[example](ctx, nil, nil, infra.cfg, "idx_cb_"+identifiers.New(), cb)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		searchable := &example{
 			ID:   identifiers.New(),
 			Name: t.Name(),
 		}
 
-		assert.NoError(t, im.Index(ctx, searchable.ID, searchable))
+		test.NoError(t, im.Index(ctx, searchable.ID, searchable))
 	})
 
 	// --- Search ---
@@ -240,20 +240,20 @@ func TestElasticsearch_Container(T *testing.T) {
 
 		ctx := t.Context()
 		im, err := ProvideIndexManager[example](ctx, nil, nil, infra.cfg, "search_ok_"+identifiers.New(), cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		searchable := &example{
 			ID:   identifiers.New(),
 			Name: "test search document",
 		}
-		require.NoError(t, im.Index(ctx, searchable.ID, searchable))
+		must.NoError(t, im.Index(ctx, searchable.ID, searchable))
 
 		time.Sleep(2 * time.Second)
 
 		results, err := im.Search(ctx, "test")
-		assert.NoError(t, err)
-		assert.Len(t, results, 1)
-		assert.Equal(t, searchable.ID, results[0].ID)
+		test.NoError(t, err)
+		test.SliceLen(t, 1, results)
+		test.EqOp(t, searchable.ID, results[0].ID)
 	})
 
 	T.Run("Search empty query error", func(t *testing.T) {
@@ -261,12 +261,12 @@ func TestElasticsearch_Container(T *testing.T) {
 
 		ctx := t.Context()
 		im, err := ProvideIndexManager[example](ctx, nil, nil, infra.cfg, "search_empty_"+identifiers.New(), cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		results, err := im.Search(ctx, "")
-		assert.Error(t, err)
-		assert.Nil(t, results)
-		assert.Equal(t, ErrEmptyQueryProvided, err)
+		test.Error(t, err)
+		test.Nil(t, results)
+		test.ErrorIs(t, err, ErrEmptyQueryProvided)
 	})
 
 	T.Run("Search no results found", func(t *testing.T) {
@@ -274,11 +274,11 @@ func TestElasticsearch_Container(T *testing.T) {
 
 		ctx := t.Context()
 		im, err := ProvideIndexManager[example](ctx, nil, nil, infra.cfg, "search_noresult_"+identifiers.New(), cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		results, err := im.Search(ctx, "nonexistent document")
-		assert.NoError(t, err)
-		assert.Len(t, results, 0)
+		test.NoError(t, err)
+		test.SliceLen(t, 0, results)
 	})
 
 	// --- Delete ---
@@ -288,15 +288,15 @@ func TestElasticsearch_Container(T *testing.T) {
 
 		ctx := t.Context()
 		im, err := ProvideIndexManager[example](ctx, nil, nil, infra.cfg, "del_ok_"+identifiers.New(), cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		searchable := &example{
 			ID:   identifiers.New(),
 			Name: "test delete document",
 		}
-		require.NoError(t, im.Index(ctx, searchable.ID, searchable))
+		must.NoError(t, im.Index(ctx, searchable.ID, searchable))
 
-		assert.NoError(t, im.Delete(ctx, searchable.ID))
+		test.NoError(t, im.Delete(ctx, searchable.ID))
 	})
 
 	T.Run("Delete non-existent document", func(t *testing.T) {
@@ -304,9 +304,9 @@ func TestElasticsearch_Container(T *testing.T) {
 
 		ctx := t.Context()
 		im, err := ProvideIndexManager[example](ctx, nil, nil, infra.cfg, "del_nf_"+identifiers.New(), cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
+		must.NoError(t, err)
 
-		assert.NoError(t, im.Delete(ctx, "non-existent-id"))
+		test.NoError(t, im.Delete(ctx, "non-existent-id"))
 	})
 
 	// --- Wipe ---
@@ -316,8 +316,8 @@ func TestElasticsearch_Container(T *testing.T) {
 
 		im := &indexManager[example]{}
 
-		assert.Error(t, im.Wipe(t.Context()))
-		assert.Equal(t, "unimplemented", im.Wipe(t.Context()).Error())
+		test.Error(t, im.Wipe(t.Context()))
+		test.EqOp(t, "unimplemented", im.Wipe(t.Context()).Error())
 	})
 }
 
@@ -334,8 +334,8 @@ func TestIndexManager_ensureIndices_CircuitBroken(T *testing.T) {
 		im := buildTestIndexManagerForUnit(t, cb)
 
 		err := im.ensureIndices(context.Background())
-		assert.Error(t, err)
-		assert.Equal(t, circuitbreaking.ErrCircuitBroken, err)
+		test.Error(t, err)
+		test.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
 	})
 
 	T.Run("with unreachable server", func(t *testing.T) {
@@ -349,7 +349,7 @@ func TestIndexManager_ensureIndices_CircuitBroken(T *testing.T) {
 		im := buildTestIndexManagerForUnit(t, cb)
 
 		err := im.ensureIndices(context.Background())
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 }
 
@@ -377,7 +377,7 @@ func TestIndexManager_ensureIndices_Unit(T *testing.T) {
 		im := buildTestIndexManagerWithServer(t, server, cb)
 
 		err := im.ensureIndices(context.Background())
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 
 	T.Run("index does not exist and create succeeds", func(t *testing.T) {
@@ -406,7 +406,7 @@ func TestIndexManager_ensureIndices_Unit(T *testing.T) {
 		im := buildTestIndexManagerWithServer(t, server, cb)
 
 		err := im.ensureIndices(context.Background())
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 
 	T.Run("index does not exist and create fails", func(t *testing.T) {
@@ -439,7 +439,7 @@ func TestIndexManager_ensureIndices_Unit(T *testing.T) {
 		im := buildTestIndexManagerWithServer(t, server, cb)
 
 		err := im.ensureIndices(context.Background())
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 }
 
@@ -454,8 +454,8 @@ func Test_provideElasticsearchClient_Unit(T *testing.T) {
 		}
 
 		client, err := provideElasticsearchClient(cfg)
-		assert.NoError(t, err)
-		assert.NotNil(t, client)
+		test.NoError(t, err)
+		test.NotNil(t, client)
 	})
 
 	T.Run("with credentials", func(t *testing.T) {
@@ -468,8 +468,8 @@ func Test_provideElasticsearchClient_Unit(T *testing.T) {
 		}
 
 		client, err := provideElasticsearchClient(cfg)
-		assert.NoError(t, err)
-		assert.NotNil(t, client)
+		test.NoError(t, err)
+		test.NotNil(t, client)
 	})
 }
 
@@ -490,7 +490,7 @@ func Test_elasticsearchIsReadyToInit_Unit(T *testing.T) {
 		// err != nil && res != nil && !res.IsError() which won't match when res is nil,
 		// so it falls through to the else branch and returns true.
 		// This is actually a bug in the code but we test the actual behavior.
-		assert.True(t, ready)
+		test.True(t, ready)
 	})
 
 	T.Run("returns true with reachable server", func(t *testing.T) {
@@ -510,7 +510,7 @@ func Test_elasticsearchIsReadyToInit_Unit(T *testing.T) {
 
 		logger := logging.NewNoopLogger()
 		ready := elasticsearchIsReadyToInit(context.Background(), cfg, logger, 3)
-		assert.True(t, ready)
+		test.True(t, ready)
 	})
 }
 
@@ -553,8 +553,8 @@ func TestProvideIndexManager_Unit(T *testing.T) {
 		}
 
 		im, err := ProvideIndexManager[example](context.Background(), logger, tracerProvider, cfg, "test", cb)
-		assert.NoError(t, err)
-		assert.NotNil(t, im)
+		test.NoError(t, err)
+		test.NotNil(t, im)
 	})
 
 	T.Run("fails when ensureIndices fails", func(t *testing.T) {
@@ -603,7 +603,7 @@ func TestProvideIndexManager_Unit(T *testing.T) {
 		}
 
 		im, err := ProvideIndexManager[example](context.Background(), logger, tracerProvider, cfg, "test", cb)
-		assert.Error(t, err)
-		assert.Nil(t, im)
+		test.Error(t, err)
+		test.Nil(t, im)
 	})
 }

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestConfig_Validate(T *testing.T) {
@@ -20,7 +20,7 @@ func TestConfig_Validate(T *testing.T) {
 			Debug:           true,
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("returns error with missing port", func(t *testing.T) {
@@ -31,7 +31,7 @@ func TestConfig_Validate(T *testing.T) {
 			StartupDeadline: time.Second,
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("returns error with missing startup deadline", func(t *testing.T) {
@@ -42,7 +42,7 @@ func TestConfig_Validate(T *testing.T) {
 			Port: 8080,
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("returns error with empty config", func(t *testing.T) {
@@ -51,6 +51,6 @@ func TestConfig_Validate(T *testing.T) {
 		ctx := t.Context()
 		cfg := &Config{}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 }

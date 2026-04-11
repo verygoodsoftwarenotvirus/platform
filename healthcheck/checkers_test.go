@@ -2,11 +2,14 @@ package healthcheck
 
 import (
 	"context"
+	"errors"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
+
+var errStub = errors.New("stub error")
 
 func TestNewDatabaseChecker(T *testing.T) {
 	T.Parallel()
@@ -18,9 +21,9 @@ func TestNewDatabaseChecker(T *testing.T) {
 		checker := NewDatabaseChecker("postgres", client)
 		ctx := context.Background()
 
-		assert.Equal(t, "postgres", checker.Name())
+		test.EqOp(t, "postgres", checker.Name())
 		err := checker.Check(ctx)
-		require.NoError(t, err)
+		must.NoError(t, err)
 	})
 
 	T.Run("not ready", func(t *testing.T) {
@@ -31,7 +34,7 @@ func TestNewDatabaseChecker(T *testing.T) {
 		ctx := context.Background()
 
 		err := checker.Check(ctx)
-		require.Error(t, err)
+		must.Error(t, err)
 	})
 
 	T.Run("nil client", func(t *testing.T) {
@@ -41,8 +44,8 @@ func TestNewDatabaseChecker(T *testing.T) {
 		ctx := context.Background()
 
 		err := checker.Check(ctx)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "nil")
+		must.Error(t, err)
+		test.StrContains(t, err.Error(), "nil")
 	})
 }
 
@@ -64,20 +67,20 @@ func TestNewCacheChecker(T *testing.T) {
 		checker := NewCacheChecker("redis", client)
 		ctx := context.Background()
 
-		assert.Equal(t, "redis", checker.Name())
+		test.EqOp(t, "redis", checker.Name())
 		err := checker.Check(ctx)
-		require.NoError(t, err)
+		must.NoError(t, err)
 	})
 
 	T.Run("not ready", func(t *testing.T) {
 		t.Parallel()
 
-		client := &mockCacheClient{err: assert.AnError}
+		client := &mockCacheClient{err: errStub}
 		checker := NewCacheChecker("redis", client)
 		ctx := context.Background()
 
 		err := checker.Check(ctx)
-		require.Error(t, err)
+		must.Error(t, err)
 	})
 
 	T.Run("nil client", func(t *testing.T) {
@@ -87,8 +90,8 @@ func TestNewCacheChecker(T *testing.T) {
 		ctx := context.Background()
 
 		err := checker.Check(ctx)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "nil")
+		must.Error(t, err)
+		test.StrContains(t, err.Error(), "nil")
 	})
 }
 
@@ -110,20 +113,20 @@ func TestNewMessageQueueChecker(T *testing.T) {
 		checker := NewMessageQueueChecker("redis", client)
 		ctx := context.Background()
 
-		assert.Equal(t, "redis", checker.Name())
+		test.EqOp(t, "redis", checker.Name())
 		err := checker.Check(ctx)
-		require.NoError(t, err)
+		must.NoError(t, err)
 	})
 
 	T.Run("not ready", func(t *testing.T) {
 		t.Parallel()
 
-		client := &mockMQClient{err: assert.AnError}
+		client := &mockMQClient{err: errStub}
 		checker := NewMessageQueueChecker("redis", client)
 		ctx := context.Background()
 
 		err := checker.Check(ctx)
-		require.Error(t, err)
+		must.Error(t, err)
 	})
 
 	T.Run("nil client", func(t *testing.T) {
@@ -133,8 +136,8 @@ func TestNewMessageQueueChecker(T *testing.T) {
 		ctx := context.Background()
 
 		err := checker.Check(ctx)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "nil")
+		must.Error(t, err)
+		test.StrContains(t, err.Error(), "nil")
 	})
 }
 

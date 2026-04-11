@@ -19,8 +19,8 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	"github.com/testcontainers/testcontainers-go"
 	postgrescontainer "github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -59,17 +59,17 @@ func buildContainerBackedPostgres(t *testing.T) (client *testDBClient, shutdown 
 		postgrescontainer.WithPassword("locktest"),
 		testcontainers.WithWaitStrategyAndDeadline(2*time.Minute, wait.ForLog("database system is ready to accept connections").WithOccurrence(2)),
 	)
-	require.NoError(t, err)
-	require.NotNil(t, container)
+	must.NoError(t, err)
+	must.NotNil(t, container)
 
 	connStr, err := container.ConnectionString(ctx, "sslmode=disable")
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	db, err := sql.Open("pgx", connStr)
-	require.NoError(t, err)
+	must.NoError(t, err)
 	// Allow plenty of conns so the parallel subtests don't starve.
 	db.SetMaxOpenConns(64)
-	require.NoError(t, db.PingContext(ctx))
+	must.NoError(t, db.PingContext(ctx))
 
 	return &testDBClient{db: db}, func(ctx context.Context) error {
 		_ = db.Close()
@@ -80,8 +80,8 @@ func buildContainerBackedPostgres(t *testing.T) (client *testDBClient, shutdown 
 func newTestLocker(t *testing.T, client database.Client) distributedlock.Locker {
 	t.Helper()
 	l, err := NewPostgresLocker(&Config{}, client, nil, nil, nil, cbnoop.NewCircuitBreaker())
-	require.NoError(t, err)
-	require.NotNil(t, l)
+	must.NoError(t, err)
+	must.NotNil(t, l)
 	return l
 }
 
@@ -125,15 +125,15 @@ func (p *errorAtCallProvider) NewFloat64Histogram(name string, options ...metric
 func buildSqlmockClient(t *testing.T) (*testDBClient, sqlmock.Sqlmock) {
 	t.Helper()
 	db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
-	require.NoError(t, err)
+	must.NoError(t, err)
 	return &testDBClient{db: db}, mock
 }
 
 func newTestLockerWithCB(t *testing.T, client database.Client, cb circuitbreaking.CircuitBreaker) distributedlock.Locker {
 	t.Helper()
 	l, err := NewPostgresLocker(&Config{}, client, nil, nil, nil, cb)
-	require.NoError(t, err)
-	require.NotNil(t, l)
+	must.NoError(t, err)
+	must.NotNil(t, l)
 	return l
 }
 
@@ -143,13 +143,13 @@ func TestNewPostgresLocker(T *testing.T) {
 	T.Run("nil config", func(t *testing.T) {
 		t.Parallel()
 		_, err := NewPostgresLocker(nil, &testDBClient{}, nil, nil, nil, cbnoop.NewCircuitBreaker())
-		require.ErrorIs(t, err, distributedlock.ErrNilConfig)
+		must.ErrorIs(t, err, distributedlock.ErrNilConfig)
 	})
 
 	T.Run("nil database", func(t *testing.T) {
 		t.Parallel()
 		_, err := NewPostgresLocker(&Config{}, nil, nil, nil, nil, cbnoop.NewCircuitBreaker())
-		require.ErrorIs(t, err, distributedlock.ErrNilDatabaseClient)
+		must.ErrorIs(t, err, distributedlock.ErrNilDatabaseClient)
 	})
 
 	T.Run("standard happy path", func(t *testing.T) {
@@ -157,8 +157,8 @@ func TestNewPostgresLocker(T *testing.T) {
 		client, _ := buildSqlmockClient(t)
 		t.Cleanup(func() { _ = client.Close() })
 		l, err := NewPostgresLocker(&Config{Namespace: 7}, client, nil, nil, nil, cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
-		require.NotNil(t, l)
+		must.NoError(t, err)
+		must.NotNil(t, l)
 	})
 
 	// Each Int64Counter creation has its own error branch; exercise them all so
@@ -170,7 +170,7 @@ func TestNewPostgresLocker(T *testing.T) {
 			t.Cleanup(func() { _ = client.Close() })
 			mp := newErrorAtCallProvider(idx, false)
 			_, err := NewPostgresLocker(&Config{}, client, nil, nil, mp, cbnoop.NewCircuitBreaker())
-			require.Error(t, err)
+			must.Error(t, err)
 		})
 	}
 
@@ -180,7 +180,7 @@ func TestNewPostgresLocker(T *testing.T) {
 		t.Cleanup(func() { _ = client.Close() })
 		mp := newErrorAtCallProvider(0, true)
 		_, err := NewPostgresLocker(&Config{}, client, nil, nil, mp, cbnoop.NewCircuitBreaker())
-		require.Error(t, err)
+		must.Error(t, err)
 	})
 }
 
@@ -198,11 +198,11 @@ func TestLocker_Acquire_Unit(T *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
 
 		got, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.NoError(t, err)
-		require.NotNil(t, got)
-		assert.Equal(t, "k", got.Key())
-		assert.Equal(t, time.Minute, got.TTL())
-		require.NoError(t, mock.ExpectationsWereMet())
+		must.NoError(t, err)
+		must.NotNil(t, got)
+		test.EqOp(t, "k", got.Key())
+		test.EqOp(t, time.Minute, got.TTL())
+		must.NoError(t, mock.ExpectationsWereMet())
 	})
 
 	T.Run("rejects empty key", func(t *testing.T) {
@@ -211,7 +211,7 @@ func TestLocker_Acquire_Unit(T *testing.T) {
 		t.Cleanup(func() { _ = client.Close() })
 		l := newTestLocker(t, client)
 		_, err := l.Acquire(t.Context(), "", time.Minute)
-		require.ErrorIs(t, err, distributedlock.ErrEmptyKey)
+		must.ErrorIs(t, err, distributedlock.ErrEmptyKey)
 	})
 
 	T.Run("rejects zero TTL", func(t *testing.T) {
@@ -220,7 +220,7 @@ func TestLocker_Acquire_Unit(T *testing.T) {
 		t.Cleanup(func() { _ = client.Close() })
 		l := newTestLocker(t, client)
 		_, err := l.Acquire(t.Context(), "k", 0)
-		require.ErrorIs(t, err, distributedlock.ErrInvalidTTL)
+		must.ErrorIs(t, err, distributedlock.ErrInvalidTTL)
 	})
 
 	T.Run("rejects negative TTL", func(t *testing.T) {
@@ -229,7 +229,7 @@ func TestLocker_Acquire_Unit(T *testing.T) {
 		t.Cleanup(func() { _ = client.Close() })
 		l := newTestLocker(t, client)
 		_, err := l.Acquire(t.Context(), "k", -time.Second)
-		require.ErrorIs(t, err, distributedlock.ErrInvalidTTL)
+		must.ErrorIs(t, err, distributedlock.ErrInvalidTTL)
 	})
 
 	T.Run("blocked by circuit breaker", func(t *testing.T) {
@@ -241,8 +241,8 @@ func TestLocker_Acquire_Unit(T *testing.T) {
 		}
 		l := newTestLockerWithCB(t, client, cb)
 		_, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
-		require.NotEmpty(t, cb.CannotProceedCalls())
+		must.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
+		must.SliceNotEmpty(t, cb.CannotProceedCalls())
 	})
 
 	T.Run("Conn reservation failure", func(t *testing.T) {
@@ -251,10 +251,10 @@ func TestLocker_Acquire_Unit(T *testing.T) {
 		mock.ExpectClose()
 		l := newTestLocker(t, client)
 		// Close the underlying DB so Conn() returns an error.
-		require.NoError(t, client.Close())
+		must.NoError(t, client.Close())
 
 		_, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.Error(t, err)
+		must.Error(t, err)
 	})
 
 	T.Run("pg_try_advisory_lock query failure", func(t *testing.T) {
@@ -268,8 +268,8 @@ func TestLocker_Acquire_Unit(T *testing.T) {
 			WillReturnError(errors.New("query boom"))
 
 		_, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.Error(t, err)
-		require.NoError(t, mock.ExpectationsWereMet())
+		must.Error(t, err)
+		must.NoError(t, mock.ExpectationsWereMet())
 	})
 
 	T.Run("contention returns ErrLockNotAcquired", func(t *testing.T) {
@@ -283,8 +283,8 @@ func TestLocker_Acquire_Unit(T *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(false))
 
 		_, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.ErrorIs(t, err, distributedlock.ErrLockNotAcquired)
-		require.NoError(t, mock.ExpectationsWereMet())
+		must.ErrorIs(t, err, distributedlock.ErrLockNotAcquired)
+		must.NoError(t, mock.ExpectationsWereMet())
 	})
 }
 
@@ -305,9 +305,9 @@ func TestLocker_Release_Unit(T *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
 
 		h, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.NoError(t, err)
-		require.NoError(t, h.Release(t.Context()))
-		require.NoError(t, mock.ExpectationsWereMet())
+		must.NoError(t, err)
+		must.NoError(t, h.Release(t.Context()))
+		must.NoError(t, mock.ExpectationsWereMet())
 	})
 
 	T.Run("blocked by circuit breaker", func(t *testing.T) {
@@ -329,10 +329,10 @@ func TestLocker_Release_Unit(T *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
 
 		h, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.NoError(t, err)
-		require.ErrorIs(t, h.Release(t.Context()), circuitbreaking.ErrCircuitBroken)
-		require.Len(t, cb.CannotProceedCalls(), 2)
-		require.Len(t, cb.SucceededCalls(), 1)
+		must.NoError(t, err)
+		must.ErrorIs(t, h.Release(t.Context()), circuitbreaking.ErrCircuitBroken)
+		must.SliceLen(t, 2, cb.CannotProceedCalls())
+		must.SliceLen(t, 1, cb.SucceededCalls())
 	})
 
 	T.Run("double release returns ErrLockNotHeld", func(t *testing.T) {
@@ -349,9 +349,9 @@ func TestLocker_Release_Unit(T *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
 
 		h, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.NoError(t, err)
-		require.NoError(t, h.Release(t.Context()))
-		require.ErrorIs(t, h.Release(t.Context()), distributedlock.ErrLockNotHeld)
+		must.NoError(t, err)
+		must.NoError(t, h.Release(t.Context()))
+		must.ErrorIs(t, h.Release(t.Context()), distributedlock.ErrLockNotHeld)
 	})
 
 	T.Run("releaseLocked deferred conn close error tolerated", func(t *testing.T) {
@@ -365,16 +365,16 @@ func TestLocker_Release_Unit(T *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
 
 		h, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		// Force the deferred conn.Close inside releaseLocked to fail by closing
 		// the conn here first. The QueryRowContext on the already-closed conn
 		// will also fail (covered by the SQL failure subtest below); the value
 		// of this case is exercising the deferred Close error branch.
 		inner := h.(*lock)
-		require.NoError(t, inner.conn.Close())
+		must.NoError(t, inner.conn.Close())
 
-		require.Error(t, h.Release(t.Context()))
+		must.Error(t, h.Release(t.Context()))
 	})
 
 	T.Run("releaseLocked SQL failure trips breaker", func(t *testing.T) {
@@ -396,10 +396,10 @@ func TestLocker_Release_Unit(T *testing.T) {
 			WillReturnError(errors.New("unlock boom"))
 
 		h, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.NoError(t, err)
-		require.Error(t, h.Release(t.Context()))
-		require.Len(t, cb.SucceededCalls(), 1)
-		require.Len(t, cb.FailedCalls(), 1)
+		must.NoError(t, err)
+		must.Error(t, h.Release(t.Context()))
+		must.SliceLen(t, 1, cb.SucceededCalls())
+		must.SliceLen(t, 1, cb.FailedCalls())
 	})
 }
 
@@ -419,9 +419,9 @@ func TestLocker_Refresh_Unit(T *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(1))
 
 		h, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.NoError(t, err)
-		require.NoError(t, h.Refresh(t.Context(), 5*time.Minute))
-		assert.Equal(t, 5*time.Minute, h.TTL())
+		must.NoError(t, err)
+		must.NoError(t, h.Refresh(t.Context(), 5*time.Minute))
+		test.EqOp(t, 5*time.Minute, h.TTL())
 	})
 
 	T.Run("rejects zero TTL", func(t *testing.T) {
@@ -435,9 +435,9 @@ func TestLocker_Refresh_Unit(T *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
 
 		h, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.NoError(t, err)
-		require.ErrorIs(t, h.Refresh(t.Context(), 0), distributedlock.ErrInvalidTTL)
-		assert.Equal(t, time.Minute, h.TTL())
+		must.NoError(t, err)
+		must.ErrorIs(t, h.Refresh(t.Context(), 0), distributedlock.ErrInvalidTTL)
+		test.EqOp(t, time.Minute, h.TTL())
 	})
 
 	T.Run("blocked by circuit breaker", func(t *testing.T) {
@@ -459,10 +459,10 @@ func TestLocker_Refresh_Unit(T *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
 
 		h, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.NoError(t, err)
-		require.ErrorIs(t, h.Refresh(t.Context(), time.Minute), circuitbreaking.ErrCircuitBroken)
-		require.Len(t, cb.CannotProceedCalls(), 2)
-		require.Len(t, cb.SucceededCalls(), 1)
+		must.NoError(t, err)
+		must.ErrorIs(t, h.Refresh(t.Context(), time.Minute), circuitbreaking.ErrCircuitBroken)
+		must.SliceLen(t, 2, cb.CannotProceedCalls())
+		must.SliceLen(t, 1, cb.SucceededCalls())
 	})
 
 	T.Run("refresh after release returns ErrLockNotHeld", func(t *testing.T) {
@@ -479,9 +479,9 @@ func TestLocker_Refresh_Unit(T *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
 
 		h, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.NoError(t, err)
-		require.NoError(t, h.Release(t.Context()))
-		require.ErrorIs(t, h.Refresh(t.Context(), time.Minute), distributedlock.ErrLockNotHeld)
+		must.NoError(t, err)
+		must.NoError(t, h.Release(t.Context()))
+		must.ErrorIs(t, h.Refresh(t.Context(), time.Minute), distributedlock.ErrLockNotHeld)
 	})
 
 	T.Run("liveness check failure returns ErrLockNotHeld", func(t *testing.T) {
@@ -497,10 +497,10 @@ func TestLocker_Refresh_Unit(T *testing.T) {
 			WillReturnError(errors.New("conn dead"))
 
 		h, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.NoError(t, err)
-		require.ErrorIs(t, h.Refresh(t.Context(), 5*time.Minute), distributedlock.ErrLockNotHeld)
+		must.NoError(t, err)
+		must.ErrorIs(t, h.Refresh(t.Context(), 5*time.Minute), distributedlock.ErrLockNotHeld)
 		// TTL must remain unchanged on failure.
-		assert.Equal(t, time.Minute, h.TTL())
+		test.EqOp(t, time.Minute, h.TTL())
 	})
 }
 
@@ -514,8 +514,8 @@ func TestLocker_PingClose_Unit(T *testing.T) {
 		l := newTestLocker(t, client)
 
 		mock.ExpectPing()
-		require.NoError(t, l.Ping(t.Context()))
-		require.NoError(t, mock.ExpectationsWereMet())
+		must.NoError(t, l.Ping(t.Context()))
+		must.NoError(t, mock.ExpectationsWereMet())
 	})
 
 	T.Run("ping error", func(t *testing.T) {
@@ -525,7 +525,7 @@ func TestLocker_PingClose_Unit(T *testing.T) {
 		l := newTestLocker(t, client)
 
 		mock.ExpectPing().WillReturnError(errors.New("ping boom"))
-		require.Error(t, l.Ping(t.Context()))
+		must.Error(t, l.Ping(t.Context()))
 	})
 
 	T.Run("close with no outstanding locks", func(t *testing.T) {
@@ -533,7 +533,7 @@ func TestLocker_PingClose_Unit(T *testing.T) {
 		client, _ := buildSqlmockClient(t)
 		t.Cleanup(func() { _ = client.Close() })
 		l := newTestLocker(t, client)
-		require.NoError(t, l.Close())
+		must.NoError(t, l.Close())
 	})
 
 	T.Run("close releases all outstanding locks", func(t *testing.T) {
@@ -550,9 +550,9 @@ func TestLocker_PingClose_Unit(T *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
 
 		_, err := l.Acquire(t.Context(), "a", time.Minute)
-		require.NoError(t, err)
-		require.NoError(t, l.Close())
-		require.NoError(t, mock.ExpectationsWereMet())
+		must.NoError(t, err)
+		must.NoError(t, l.Close())
+		must.NoError(t, mock.ExpectationsWereMet())
 	})
 
 	T.Run("close surfaces release errors", func(t *testing.T) {
@@ -569,8 +569,8 @@ func TestLocker_PingClose_Unit(T *testing.T) {
 			WillReturnError(errors.New("unlock boom"))
 
 		_, err := l.Acquire(t.Context(), "a", time.Minute)
-		require.NoError(t, err)
-		require.Error(t, l.Close())
+		must.NoError(t, err)
+		must.Error(t, l.Close())
 	})
 }
 
@@ -579,17 +579,17 @@ func TestHashLockID(T *testing.T) {
 
 	T.Run("stable across calls", func(t *testing.T) {
 		t.Parallel()
-		assert.Equal(t, hashLockID(0, "k"), hashLockID(0, "k"))
+		test.EqOp(t, hashLockID(0, "k"), hashLockID(0, "k"))
 	})
 
 	T.Run("namespace changes the result", func(t *testing.T) {
 		t.Parallel()
-		assert.NotEqual(t, hashLockID(0, "k"), hashLockID(1, "k"))
+		test.NotEq(t, hashLockID(0, "k"), hashLockID(1, "k"))
 	})
 
 	T.Run("different keys produce different ids", func(t *testing.T) {
 		t.Parallel()
-		assert.NotEqual(t, hashLockID(0, "a"), hashLockID(0, "b"))
+		test.NotEq(t, hashLockID(0, "a"), hashLockID(0, "b"))
 	})
 }
 
@@ -612,11 +612,11 @@ func TestPostgresLocker_Container(T *testing.T) {
 		key := "happy_" + identifiers.New()
 
 		lock, err := l.Acquire(ctx, key, time.Minute)
-		require.NoError(t, err)
-		require.NotNil(t, lock)
-		assert.Equal(t, key, lock.Key())
-		assert.Equal(t, time.Minute, lock.TTL())
-		require.NoError(t, lock.Release(ctx))
+		must.NoError(t, err)
+		must.NotNil(t, lock)
+		test.EqOp(t, key, lock.Key())
+		test.EqOp(t, time.Minute, lock.TTL())
+		must.NoError(t, lock.Release(ctx))
 	})
 
 	T.Run("Acquire contended on the same locker returns ErrLockNotAcquired", func(t *testing.T) {
@@ -626,11 +626,11 @@ func TestPostgresLocker_Container(T *testing.T) {
 		key := "contend_same_" + identifiers.New()
 
 		first, err := l.Acquire(ctx, key, time.Minute)
-		require.NoError(t, err)
+		must.NoError(t, err)
 		t.Cleanup(func() { _ = first.Release(ctx) })
 
 		_, err = l.Acquire(ctx, key, time.Minute)
-		require.ErrorIs(t, err, distributedlock.ErrLockNotAcquired)
+		must.ErrorIs(t, err, distributedlock.ErrLockNotAcquired)
 	})
 
 	T.Run("Acquire contended across separate lockers returns ErrLockNotAcquired", func(t *testing.T) {
@@ -641,25 +641,25 @@ func TestPostgresLocker_Container(T *testing.T) {
 		key := "contend_cross_" + identifiers.New()
 
 		first, err := l1.Acquire(ctx, key, time.Minute)
-		require.NoError(t, err)
+		must.NoError(t, err)
 		t.Cleanup(func() { _ = first.Release(ctx) })
 
 		_, err = l2.Acquire(ctx, key, time.Minute)
-		require.ErrorIs(t, err, distributedlock.ErrLockNotAcquired)
+		must.ErrorIs(t, err, distributedlock.ErrLockNotAcquired)
 	})
 
 	T.Run("Acquire rejects empty key", func(t *testing.T) {
 		t.Parallel()
 		l := newTestLocker(t, client)
 		_, err := l.Acquire(t.Context(), "", time.Minute)
-		require.ErrorIs(t, err, distributedlock.ErrEmptyKey)
+		must.ErrorIs(t, err, distributedlock.ErrEmptyKey)
 	})
 
 	T.Run("Acquire rejects zero TTL", func(t *testing.T) {
 		t.Parallel()
 		l := newTestLocker(t, client)
 		_, err := l.Acquire(t.Context(), "k", 0)
-		require.ErrorIs(t, err, distributedlock.ErrInvalidTTL)
+		must.ErrorIs(t, err, distributedlock.ErrInvalidTTL)
 	})
 
 	T.Run("Released lock can be reacquired", func(t *testing.T) {
@@ -669,12 +669,12 @@ func TestPostgresLocker_Container(T *testing.T) {
 		key := "reacquire_" + identifiers.New()
 
 		first, err := l.Acquire(ctx, key, time.Minute)
-		require.NoError(t, err)
-		require.NoError(t, first.Release(ctx))
+		must.NoError(t, err)
+		must.NoError(t, first.Release(ctx))
 
 		second, err := l.Acquire(ctx, key, time.Minute)
-		require.NoError(t, err)
-		require.NoError(t, second.Release(ctx))
+		must.NoError(t, err)
+		must.NoError(t, second.Release(ctx))
 	})
 
 	T.Run("Double release returns ErrLockNotHeld on second call", func(t *testing.T) {
@@ -684,9 +684,9 @@ func TestPostgresLocker_Container(T *testing.T) {
 		key := "double_" + identifiers.New()
 
 		lock, err := l.Acquire(ctx, key, time.Minute)
-		require.NoError(t, err)
-		require.NoError(t, lock.Release(ctx))
-		require.ErrorIs(t, lock.Release(ctx), distributedlock.ErrLockNotHeld)
+		must.NoError(t, err)
+		must.NoError(t, lock.Release(ctx))
+		must.ErrorIs(t, lock.Release(ctx), distributedlock.ErrLockNotHeld)
 	})
 
 	T.Run("Refresh succeeds and updates local TTL", func(t *testing.T) {
@@ -696,11 +696,11 @@ func TestPostgresLocker_Container(T *testing.T) {
 		key := "refresh_" + identifiers.New()
 
 		lock, err := l.Acquire(ctx, key, time.Minute)
-		require.NoError(t, err)
+		must.NoError(t, err)
 		t.Cleanup(func() { _ = lock.Release(ctx) })
 
-		require.NoError(t, lock.Refresh(ctx, 5*time.Minute))
-		assert.Equal(t, 5*time.Minute, lock.TTL())
+		must.NoError(t, lock.Refresh(ctx, 5*time.Minute))
+		test.EqOp(t, 5*time.Minute, lock.TTL())
 	})
 
 	T.Run("Refresh after release returns ErrLockNotHeld", func(t *testing.T) {
@@ -710,10 +710,10 @@ func TestPostgresLocker_Container(T *testing.T) {
 		key := "refresh_after_release_" + identifiers.New()
 
 		lock, err := l.Acquire(ctx, key, time.Minute)
-		require.NoError(t, err)
-		require.NoError(t, lock.Release(ctx))
+		must.NoError(t, err)
+		must.NoError(t, lock.Release(ctx))
 
-		require.ErrorIs(t, lock.Refresh(ctx, time.Minute), distributedlock.ErrLockNotHeld)
+		must.ErrorIs(t, lock.Refresh(ctx, time.Minute), distributedlock.ErrLockNotHeld)
 	})
 
 	T.Run("Close releases all outstanding locks", func(t *testing.T) {
@@ -724,24 +724,24 @@ func TestPostgresLocker_Container(T *testing.T) {
 		keyB := "close_b_" + identifiers.New()
 
 		_, err := l.Acquire(ctx, keyA, time.Minute)
-		require.NoError(t, err)
+		must.NoError(t, err)
 		_, err = l.Acquire(ctx, keyB, time.Minute)
-		require.NoError(t, err)
-		require.NoError(t, l.Close())
+		must.NoError(t, err)
+		must.NoError(t, l.Close())
 
 		// Both keys are acquirable again from a fresh locker.
 		l2 := newTestLocker(t, client)
 		t.Cleanup(func() { _ = l2.Close() })
 
 		_, err = l2.Acquire(ctx, keyA, time.Minute)
-		require.NoError(t, err)
+		must.NoError(t, err)
 		_, err = l2.Acquire(ctx, keyB, time.Minute)
-		require.NoError(t, err)
+		must.NoError(t, err)
 	})
 
 	T.Run("Ping success", func(t *testing.T) {
 		t.Parallel()
 		l := newTestLocker(t, client)
-		require.NoError(t, l.Ping(t.Context()))
+		must.NoError(t, l.Ping(t.Context()))
 	})
 }

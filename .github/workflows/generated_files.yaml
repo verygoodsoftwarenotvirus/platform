@@ -31,7 +31,7 @@ jobs:
           cache-dependency-path: go.sum
 
       - name: Regenerate
-        run: make generate
+        run: make generate format
 
       - name: Verify no drift
         run: |

@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestConfig_BuildClient(T *testing.T) {
@@ -22,9 +22,9 @@ func TestConfig_BuildClient(T *testing.T) {
 		cfg.EnsureDefaults()
 
 		client := cfg.BuildClient()
-		require.NotNil(t, client)
-		assert.Equal(t, 2*time.Second, client.Timeout)
-		assert.NotNil(t, client.Transport)
+		must.NotNil(t, client)
+		test.EqOp(t, 2*time.Second, client.Timeout)
+		test.NotNil(t, client.Transport)
 	})
 
 	T.Run("with tracing disabled", func(t *testing.T) {
@@ -37,9 +37,9 @@ func TestConfig_BuildClient(T *testing.T) {
 		cfg.EnsureDefaults()
 
 		client := cfg.BuildClient()
-		require.NotNil(t, client)
-		assert.Equal(t, 3*time.Second, client.Timeout)
-		assert.NotNil(t, client.Transport)
+		must.NotNil(t, client)
+		test.EqOp(t, 3*time.Second, client.Timeout)
+		test.NotNil(t, client.Transport)
 	})
 
 	T.Run("applies MaxIdleConns and MaxIdleConnsPerHost", func(t *testing.T) {
@@ -54,12 +54,12 @@ func TestConfig_BuildClient(T *testing.T) {
 		cfg.EnsureDefaults()
 
 		client := cfg.BuildClient()
-		require.NotNil(t, client)
+		must.NotNil(t, client)
 
 		transport, ok := client.Transport.(*http.Transport)
-		require.True(t, ok)
-		assert.Equal(t, 42, transport.MaxIdleConns)
-		assert.Equal(t, 21, transport.MaxIdleConnsPerHost)
+		must.True(t, ok)
+		test.EqOp(t, 42, transport.MaxIdleConns)
+		test.EqOp(t, 21, transport.MaxIdleConnsPerHost)
 	})
 }
 
@@ -70,8 +70,8 @@ func TestProvideHTTPClient(T *testing.T) {
 		t.Parallel()
 
 		client := ProvideHTTPClient(nil)
-		require.NotNil(t, client)
-		assert.Equal(t, defaultTimeout, client.Timeout)
+		must.NotNil(t, client)
+		test.EqOp(t, defaultTimeout, client.Timeout)
 	})
 
 	T.Run("with config uses config values", func(t *testing.T) {
@@ -81,7 +81,7 @@ func TestProvideHTTPClient(T *testing.T) {
 			Timeout: 7 * time.Second,
 		}
 		client := ProvideHTTPClient(cfg)
-		require.NotNil(t, client)
-		assert.Equal(t, 7*time.Second, client.Timeout)
+		must.NotNil(t, client)
+		test.EqOp(t, 7*time.Second, client.Timeout)
 	})
 }

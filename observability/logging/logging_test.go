@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 )
@@ -18,11 +18,11 @@ func TestAllLevels(T *testing.T) {
 		t.Parallel()
 
 		levels := AllLevels()
-		assert.NotEmpty(t, levels)
-		assert.Contains(t, levels, InfoLevel)
-		assert.Contains(t, levels, DebugLevel)
-		assert.Contains(t, levels, ErrorLevel)
-		assert.Contains(t, levels, WarnLevel)
+		test.SliceNotEmpty(t, levels)
+		test.SliceContains(t, levels, InfoLevel)
+		test.SliceContains(t, levels, DebugLevel)
+		test.SliceContains(t, levels, ErrorLevel)
+		test.SliceContains(t, levels, WarnLevel)
 	})
 }
 
@@ -32,13 +32,13 @@ func TestEnsureLogger(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, EnsureLogger(NewNoopLogger()))
+		test.NotNil(t, EnsureLogger(NewNoopLogger()))
 	})
 
 	T.Run("with nil", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, EnsureLogger(nil))
+		test.NotNil(t, EnsureLogger(nil))
 	})
 }
 
@@ -48,13 +48,13 @@ func TestNewNamedLogger(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, NewNamedLogger(NewNoopLogger(), "test"))
+		test.NotNil(t, NewNamedLogger(NewNoopLogger(), "test"))
 	})
 
 	T.Run("with nil logger", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, NewNamedLogger(nil, "test"))
+		test.NotNil(t, NewNamedLogger(nil, "test"))
 	})
 }
 
@@ -65,7 +65,7 @@ func TestNoopLogger(T *testing.T) {
 		t.Parallel()
 
 		l := NewNoopLogger()
-		assert.NotNil(t, l)
+		test.NotNil(t, l)
 	})
 
 	T.Run("Info", func(t *testing.T) {
@@ -95,46 +95,46 @@ func TestNoopLogger(T *testing.T) {
 	T.Run("WithName", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, NewNoopLogger().WithName("test"))
+		test.NotNil(t, NewNoopLogger().WithName("test"))
 	})
 
 	T.Run("Clone", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, NewNoopLogger().Clone())
+		test.NotNil(t, NewNoopLogger().Clone())
 	})
 
 	T.Run("WithValues", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, NewNoopLogger().WithValues(map[string]any{"key": "value"}))
+		test.NotNil(t, NewNoopLogger().WithValues(map[string]any{"key": "value"}))
 	})
 
 	T.Run("WithValue", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, NewNoopLogger().WithValue("key", "value"))
+		test.NotNil(t, NewNoopLogger().WithValue("key", "value"))
 	})
 
 	T.Run("WithRequest", func(t *testing.T) {
 		t.Parallel()
 
 		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com", http.NoBody)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
-		assert.NotNil(t, NewNoopLogger().WithRequest(req))
+		test.NotNil(t, NewNoopLogger().WithRequest(req))
 	})
 
 	T.Run("WithResponse", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, NewNoopLogger().WithResponse(&http.Response{}))
+		test.NotNil(t, NewNoopLogger().WithResponse(&http.Response{}))
 	})
 
 	T.Run("WithError", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, NewNoopLogger().WithError(errors.New("blah")))
+		test.NotNil(t, NewNoopLogger().WithError(errors.New("blah")))
 	})
 
 	T.Run("WithSpan", func(t *testing.T) {
@@ -145,7 +145,7 @@ func TestNoopLogger(T *testing.T) {
 		_, s := noop.NewTracerProvider().Tracer("test").Start(ctx, "test")
 
 		_ = span
-		assert.NotNil(t, NewNoopLogger().WithSpan(s))
+		test.NotNil(t, NewNoopLogger().WithSpan(s))
 	})
 }
 
@@ -159,8 +159,8 @@ func TestExtractSpanInfo(T *testing.T) {
 		_, span := noop.NewTracerProvider().Tracer("test").Start(ctx, "test")
 
 		info := ExtractSpanInfo(span)
-		assert.NotEmpty(t, info.SpanID)
-		assert.NotEmpty(t, info.TraceID)
+		test.NotEq(t, "", info.SpanID)
+		test.NotEq(t, "", info.TraceID)
 	})
 }
 
@@ -171,23 +171,23 @@ func TestExtractRequestInfo(T *testing.T) {
 		t.Parallel()
 
 		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com/path?foo=bar", http.NoBody)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		info := ExtractRequestInfo(req, func(r *http.Request) string { return "req-123" })
-		assert.Equal(t, http.MethodGet, info.Method)
-		assert.Equal(t, "/path", info.Path)
-		assert.Equal(t, "foo=bar", info.Query)
-		assert.Equal(t, "req-123", info.RequestID)
+		test.EqOp(t, http.MethodGet, info.Method)
+		test.EqOp(t, "/path", info.Path)
+		test.EqOp(t, "foo=bar", info.Query)
+		test.EqOp(t, "req-123", info.RequestID)
 	})
 
 	T.Run("with nil request", func(t *testing.T) {
 		t.Parallel()
 
 		info := ExtractRequestInfo(nil, nil)
-		assert.Empty(t, info.Method)
-		assert.Empty(t, info.Path)
-		assert.Empty(t, info.Query)
-		assert.Empty(t, info.RequestID)
+		test.EqOp(t, "", info.Method)
+		test.EqOp(t, "", info.Path)
+		test.EqOp(t, "", info.Query)
+		test.EqOp(t, "", info.RequestID)
 	})
 
 	T.Run("with nil URL", func(t *testing.T) {
@@ -196,20 +196,20 @@ func TestExtractRequestInfo(T *testing.T) {
 		req := &http.Request{Method: http.MethodPost}
 
 		info := ExtractRequestInfo(req, nil)
-		assert.Equal(t, http.MethodPost, info.Method)
-		assert.Empty(t, info.Path)
-		assert.Empty(t, info.Query)
+		test.EqOp(t, http.MethodPost, info.Method)
+		test.EqOp(t, "", info.Path)
+		test.EqOp(t, "", info.Query)
 	})
 
 	T.Run("with nil requestIDFunc", func(t *testing.T) {
 		t.Parallel()
 
 		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com/path", http.NoBody)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		info := ExtractRequestInfo(req, nil)
-		assert.Equal(t, http.MethodGet, info.Method)
-		assert.Empty(t, info.RequestID)
+		test.EqOp(t, http.MethodGet, info.Method)
+		test.EqOp(t, "", info.RequestID)
 	})
 }
 

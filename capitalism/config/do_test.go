@@ -9,8 +9,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/samber/do/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestRegisterPaymentManager(T *testing.T) {
@@ -30,7 +30,7 @@ func TestRegisterPaymentManager(T *testing.T) {
 		RegisterPaymentManager(i)
 
 		pm, err := do.Invoke[capitalism.PaymentManager](i)
-		require.NoError(t, err)
-		assert.NotNil(t, pm)
+		must.NoError(t, err)
+		test.NotNil(t, pm)
 	})
 }

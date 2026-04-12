@@ -10,12 +10,10 @@ import (
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/v5/reflection"
 
 	"github.com/keith-turner/ecoji/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestProvideClientEncoder(T *testing.T) {
@@ -24,7 +22,7 @@ func TestProvideClientEncoder(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, ProvideClientEncoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), ContentTypeJSON))
+		test.NotNil(t, ProvideClientEncoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), ContentTypeJSON))
 	})
 }
 
@@ -67,8 +65,8 @@ func Test_clientEncoder_Unmarshal(T *testing.T) {
 			expected := &example{Name: "name"}
 			actual := &example{}
 
-			assert.NoError(t, e.Unmarshal(ctx, []byte(tc.expected), &actual))
-			assert.Equal(t, expected, actual)
+			test.NoError(t, e.Unmarshal(ctx, []byte(tc.expected), &actual))
+			test.Eq(t, expected, actual)
 		})
 	}
 
@@ -80,8 +78,8 @@ func Test_clientEncoder_Unmarshal(T *testing.T) {
 
 		actual := &example{}
 
-		assert.Error(t, e.Unmarshal(ctx, []byte(`{"name"   `), &actual))
-		assert.Empty(t, actual.Name)
+		test.Error(t, e.Unmarshal(ctx, []byte(`{"name"   `), &actual))
+		test.EqOp(t, "", actual.Name)
 	})
 }
 
@@ -97,7 +95,7 @@ func Test_clientEncoder_Encode(T *testing.T) {
 
 			res := httptest.NewRecorder()
 
-			assert.NoError(t, e.Encode(ctx, res, &example{Name: t.Name()}))
+			test.NoError(t, e.Encode(ctx, res, &example{Name: t.Name()}))
 		})
 	}
 
@@ -108,10 +106,14 @@ func Test_clientEncoder_Encode(T *testing.T) {
 			ctx := t.Context()
 			e := ProvideClientEncoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), ct)
 
-			mw := &mockWriter{}
-			mw.On(reflection.GetMethodName(mw.Write), mock.Anything).Return(0, errors.New("blah"))
+			mw := &ioWriterMock{
+				WriteFunc: func(_ []byte) (int, error) {
+					return 0, errors.New("blah")
+				},
+			}
 
-			assert.Error(t, e.Encode(ctx, mw, &example{Name: t.Name()}))
+			test.Error(t, e.Encode(ctx, mw, &example{Name: t.Name()}))
+			test.SliceLen(t, 1, mw.WriteCalls())
 		})
 	}
 
@@ -121,7 +123,7 @@ func Test_clientEncoder_Encode(T *testing.T) {
 		ctx := t.Context()
 		e := ProvideClientEncoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), ContentTypeJSON)
 
-		assert.Error(t, e.Encode(ctx, nil, &broken{Name: json.Number(t.Name())}))
+		test.Error(t, e.Encode(ctx, nil, &broken{Name: json.Number(t.Name())}))
 	})
 
 	T.Run("with emoji encode error", func(t *testing.T) {
@@ -131,7 +133,7 @@ func Test_clientEncoder_Encode(T *testing.T) {
 		e := ProvideClientEncoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), ContentTypeEmoji)
 
 		var b bytes.Buffer
-		assert.Error(t, e.Encode(ctx, &b, make(chan int)))
+		test.Error(t, e.Encode(ctx, &b, make(chan int)))
 	})
 }
 
@@ -146,8 +148,8 @@ func Test_clientEncoder_EncodeReader(T *testing.T) {
 			e := ProvideClientEncoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), ct)
 
 			actual, err := e.EncodeReader(ctx, &example{Name: t.Name()})
-			assert.NoError(t, err)
-			assert.NotNil(t, actual)
+			test.NoError(t, err)
+			test.NotNil(t, actual)
 		})
 	}
 
@@ -158,8 +160,8 @@ func Test_clientEncoder_EncodeReader(T *testing.T) {
 		e := ProvideClientEncoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), ContentTypeJSON)
 
 		actual, err := e.EncodeReader(ctx, &broken{Name: json.Number(t.Name())})
-		assert.Error(t, err)
-		assert.Nil(t, actual)
+		test.Error(t, err)
+		test.Nil(t, actual)
 	})
 }
 
@@ -170,7 +172,7 @@ func Test_marshalEmoji(T *testing.T) {
 		t.Parallel()
 
 		_, err := marshalEmoji(make(chan int))
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 }
 
@@ -181,17 +183,17 @@ func Test_unmarshalEmoji(T *testing.T) {
 		t.Parallel()
 
 		var dest example
-		assert.Error(t, unmarshalEmoji([]byte("not valid ecoji data"), &dest))
+		test.Error(t, unmarshalEmoji([]byte("not valid ecoji data"), &dest))
 	})
 
 	T.Run("with valid ecoji but invalid gob data", func(t *testing.T) {
 		t.Parallel()
 
 		var buf bytes.Buffer
-		require.NoError(t, ecoji.EncodeV2(bytes.NewReader([]byte("not valid gob data")), &buf, 76))
+		must.NoError(t, ecoji.EncodeV2(bytes.NewReader([]byte("not valid gob data")), &buf, 76))
 
 		var dest example
-		assert.Error(t, unmarshalEmoji(buf.Bytes(), &dest))
+		test.Error(t, unmarshalEmoji(buf.Bytes(), &dest))
 	})
 }
 
@@ -202,6 +204,6 @@ func Test_tomlMarshalFunc(T *testing.T) {
 		t.Parallel()
 
 		_, err := tomlMarshalFunc(make(chan int))
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 }

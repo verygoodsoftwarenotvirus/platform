@@ -7,8 +7,8 @@ import (
 	"time"
 
 	fake "github.com/brianvoe/gofakeit/v7"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func init() {
@@ -21,7 +21,7 @@ func TestErrorResponse_Error(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotEmpty(t, (&APIError{}).Error())
+		test.NotEq(t, "", (&APIError{}).Error())
 	})
 }
 
@@ -39,12 +39,12 @@ func TestAPIResponse_EncodeToJSON(T *testing.T) {
 		}
 
 		encodedBytes, err := json.Marshal(example)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		expected := `{"error":{"message":"TestAPIResponse_EncodeToJSON/standard","code":"E104"},"details":{"currentAccountID":"","traceID":""}}`
 		actual := string(encodedBytes)
 
-		assert.Equal(t, expected, actual)
+		test.EqOp(t, expected, actual)
 	})
 }
 
@@ -55,7 +55,7 @@ func TestAPIError_AsError(T *testing.T) {
 		t.Parallel()
 
 		var e *APIError
-		assert.NoError(t, e.AsError())
+		test.NoError(t, e.AsError())
 	})
 
 	T.Run("with non-nil receiver", func(t *testing.T) {
@@ -65,7 +65,7 @@ func TestAPIError_AsError(T *testing.T) {
 			Message: "something went wrong",
 			Code:    ErrNothingSpecific,
 		}
-		assert.Error(t, e.AsError())
+		test.Error(t, e.AsError())
 	})
 }
 
@@ -82,11 +82,11 @@ func TestNewAPIErrorResponse(T *testing.T) {
 
 		resp := NewAPIErrorResponse("something broke", ErrTalkingToDatabase, details)
 
-		require.NotNil(t, resp)
-		require.NotNil(t, resp.Error)
-		assert.Equal(t, "something broke", resp.Error.Message)
-		assert.Equal(t, ErrTalkingToDatabase, resp.Error.Code)
-		assert.Equal(t, details, resp.Details)
+		must.NotNil(t, resp)
+		must.NotNil(t, resp.Error)
+		test.EqOp(t, "something broke", resp.Error.Message)
+		test.EqOp(t, ErrTalkingToDatabase, resp.Error.Code)
+		test.EqOp(t, details, resp.Details)
 	})
 }
 
@@ -97,14 +97,14 @@ func TestFloat32RangeWithOptionalMax_ValidateWithContext(T *testing.T) {
 		t.Parallel()
 
 		x := &Float32RangeWithOptionalMax{Min: 1.0}
-		assert.NoError(t, x.ValidateWithContext(context.Background()))
+		test.NoError(t, x.ValidateWithContext(context.Background()))
 	})
 
 	T.Run("invalid", func(t *testing.T) {
 		t.Parallel()
 
 		x := &Float32RangeWithOptionalMax{}
-		assert.Error(t, x.ValidateWithContext(context.Background()))
+		test.Error(t, x.ValidateWithContext(context.Background()))
 	})
 }
 
@@ -115,14 +115,14 @@ func TestUint16RangeWithOptionalMax_ValidateWithContext(T *testing.T) {
 		t.Parallel()
 
 		x := &Uint16RangeWithOptionalMax{Min: 1}
-		assert.NoError(t, x.ValidateWithContext(context.Background()))
+		test.NoError(t, x.ValidateWithContext(context.Background()))
 	})
 
 	T.Run("invalid", func(t *testing.T) {
 		t.Parallel()
 
 		x := &Uint16RangeWithOptionalMax{}
-		assert.Error(t, x.ValidateWithContext(context.Background()))
+		test.Error(t, x.ValidateWithContext(context.Background()))
 	})
 }
 
@@ -133,14 +133,14 @@ func TestUint32RangeWithOptionalMax_ValidateWithContext(T *testing.T) {
 		t.Parallel()
 
 		x := &Uint32RangeWithOptionalMax{Min: 1}
-		assert.NoError(t, x.ValidateWithContext(context.Background()))
+		test.NoError(t, x.ValidateWithContext(context.Background()))
 	})
 
 	T.Run("invalid", func(t *testing.T) {
 		t.Parallel()
 
 		x := &Uint32RangeWithOptionalMax{}
-		assert.Error(t, x.ValidateWithContext(context.Background()))
+		test.Error(t, x.ValidateWithContext(context.Background()))
 	})
 }
 
@@ -151,13 +151,13 @@ func TestRangeWithOptionalUpperBound_ValidateWithContext(T *testing.T) {
 		t.Parallel()
 
 		x := &RangeWithOptionalUpperBound[string]{Min: "a"}
-		assert.NoError(t, x.ValidateWithContext(context.Background()))
+		test.NoError(t, x.ValidateWithContext(context.Background()))
 	})
 
 	T.Run("invalid", func(t *testing.T) {
 		t.Parallel()
 
 		x := &RangeWithOptionalUpperBound[string]{}
-		assert.Error(t, x.ValidateWithContext(context.Background()))
+		test.Error(t, x.ValidateWithContext(context.Background()))
 	})
 }

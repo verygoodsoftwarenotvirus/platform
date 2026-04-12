@@ -9,8 +9,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestConfig_ValidateWithContext(T *testing.T) {
@@ -20,14 +20,14 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ""}
-		assert.NoError(t, cfg.ValidateWithContext(t.Context()))
+		test.NoError(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("with invalid provider", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: "invalid"}
-		assert.Error(t, cfg.ValidateWithContext(t.Context()))
+		test.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("openai provider with config", func(t *testing.T) {
@@ -37,14 +37,14 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider: ProviderOpenAI,
 			OpenAI:   &openai.Config{APIKey: t.Name()},
 		}
-		assert.NoError(t, cfg.ValidateWithContext(t.Context()))
+		test.NoError(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("openai provider requires config", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ProviderOpenAI}
-		assert.Error(t, cfg.ValidateWithContext(t.Context()))
+		test.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("ollama provider with config", func(t *testing.T) {
@@ -54,14 +54,14 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider: ProviderOllama,
 			Ollama:   &ollama.Config{},
 		}
-		assert.NoError(t, cfg.ValidateWithContext(t.Context()))
+		test.NoError(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("ollama provider requires config", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ProviderOllama}
-		assert.Error(t, cfg.ValidateWithContext(t.Context()))
+		test.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("cohere provider with config", func(t *testing.T) {
@@ -71,14 +71,14 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider: ProviderCohere,
 			Cohere:   &cohere.Config{APIKey: t.Name()},
 		}
-		assert.NoError(t, cfg.ValidateWithContext(t.Context()))
+		test.NoError(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("cohere provider requires config", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ProviderCohere}
-		assert.Error(t, cfg.ValidateWithContext(t.Context()))
+		test.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 }
 
@@ -93,8 +93,8 @@ func TestConfig_ProvideEmbedder_Empty(T *testing.T) {
 		tracer := tracing.NewTracerForTest("test")
 
 		embedder, err := cfg.ProvideEmbedder(t.Context(), logger, tracer)
-		require.NoError(t, err)
-		require.NotNil(t, embedder, "expected non-nil embedder (noop)")
+		must.NoError(t, err)
+		must.NotNil(t, embedder, must.Sprintf("expected non-nil embedder (noop)"))
 	})
 }
 
@@ -114,8 +114,8 @@ func TestConfig_ProvideEmbedder_OpenAI(T *testing.T) {
 		tracer := tracing.NewTracerForTest("test")
 
 		embedder, err := cfg.ProvideEmbedder(t.Context(), logger, tracer)
-		require.NoError(t, err)
-		require.NotNil(t, embedder)
+		must.NoError(t, err)
+		must.NotNil(t, embedder)
 	})
 }
 
@@ -133,8 +133,8 @@ func TestConfig_ProvideEmbedder_Ollama(T *testing.T) {
 		tracer := tracing.NewTracerForTest("test")
 
 		embedder, err := cfg.ProvideEmbedder(t.Context(), logger, tracer)
-		require.NoError(t, err)
-		require.NotNil(t, embedder)
+		must.NoError(t, err)
+		must.NotNil(t, embedder)
 	})
 }
 
@@ -154,7 +154,7 @@ func TestConfig_ProvideEmbedder_Cohere(T *testing.T) {
 		tracer := tracing.NewTracerForTest("test")
 
 		embedder, err := cfg.ProvideEmbedder(t.Context(), logger, tracer)
-		require.NoError(t, err)
-		require.NotNil(t, embedder)
+		must.NoError(t, err)
+		must.NotNil(t, embedder)
 	})
 }

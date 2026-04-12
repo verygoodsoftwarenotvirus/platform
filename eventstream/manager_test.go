@@ -3,13 +3,16 @@ package eventstream
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
+
+var errStub = errors.New("stub error")
 
 // mockStream implements EventStream for testing.
 type mockStream struct {
@@ -61,12 +64,12 @@ func TestNewStreamManager(T *testing.T) {
 		ctx := t.Context()
 
 		m := NewStreamManager[EventStream](nil, nil)
-		require.NotNil(t, m)
+		must.NotNil(t, m)
 
-		assert.False(t, m.GroupHasStreams(ctx, "any"))
-		assert.Equal(t, 0, m.GetStreamCount(ctx, "any"))
-		assert.Nil(t, m.Get(ctx, "any", "any"))
-		assert.Empty(t, m.GetGroupStreams(ctx, "any"))
+		test.False(t, m.GroupHasStreams(ctx, "any"))
+		test.EqOp(t, 0, m.GetStreamCount(ctx, "any"))
+		test.Nil(t, m.Get(ctx, "any", "any"))
+		test.SliceEmpty(t, m.GetGroupStreams(ctx, "any"))
 	})
 }
 
@@ -82,16 +85,16 @@ func TestStreamManager_Add_Get_Remove(T *testing.T) {
 		m := NewStreamManager[EventStream](nil, nil)
 
 		m.Add(ctx, "g1", "m1", stream)
-		assert.True(t, m.GroupHasStreams(ctx, "g1"))
-		assert.Equal(t, 1, m.GetStreamCount(ctx, "g1"))
-		assert.Equal(t, stream, m.Get(ctx, "g1", "m1"))
-		assert.Len(t, m.GetGroupStreams(ctx, "g1"), 1)
+		test.True(t, m.GroupHasStreams(ctx, "g1"))
+		test.EqOp(t, 1, m.GetStreamCount(ctx, "g1"))
+		test.True(t, EventStream(stream) == m.Get(ctx, "g1", "m1"))
+		test.SliceLen(t, 1, m.GetGroupStreams(ctx, "g1"))
 
 		m.Remove(ctx, "g1", "m1")
-		assert.False(t, m.GroupHasStreams(ctx, "g1"))
-		assert.Equal(t, 0, m.GetStreamCount(ctx, "g1"))
-		assert.Nil(t, m.Get(ctx, "g1", "m1"))
-		assert.Empty(t, m.GetGroupStreams(ctx, "g1"))
+		test.False(t, m.GroupHasStreams(ctx, "g1"))
+		test.EqOp(t, 0, m.GetStreamCount(ctx, "g1"))
+		test.Nil(t, m.Get(ctx, "g1", "m1"))
+		test.SliceEmpty(t, m.GetGroupStreams(ctx, "g1"))
 	})
 }
 
@@ -106,15 +109,15 @@ func TestStreamManager_Remove_empties_group(T *testing.T) {
 		m := NewStreamManager[EventStream](nil, nil)
 		m.Add(ctx, "g1", "m1", newMockStream())
 		m.Add(ctx, "g1", "m2", newMockStream())
-		assert.Equal(t, 2, m.GetStreamCount(ctx, "g1"))
+		test.EqOp(t, 2, m.GetStreamCount(ctx, "g1"))
 
 		m.Remove(ctx, "g1", "m1")
-		assert.Equal(t, 1, m.GetStreamCount(ctx, "g1"))
-		assert.NotNil(t, m.Get(ctx, "g1", "m2"))
+		test.EqOp(t, 1, m.GetStreamCount(ctx, "g1"))
+		test.NotNil(t, m.Get(ctx, "g1", "m2"))
 
 		m.Remove(ctx, "g1", "m2")
-		assert.False(t, m.GroupHasStreams(ctx, "g1"))
-		assert.Equal(t, 0, m.GetStreamCount(ctx, "g1"))
+		test.False(t, m.GroupHasStreams(ctx, "g1"))
+		test.EqOp(t, 0, m.GetStreamCount(ctx, "g1"))
 	})
 }
 
@@ -127,8 +130,8 @@ func TestStreamManager_Get_nonexistent(T *testing.T) {
 		ctx := t.Context()
 
 		m := NewStreamManager[EventStream](nil, nil)
-		assert.Nil(t, m.Get(ctx, "g1", "m1"))
-		assert.Nil(t, m.Get(ctx, "", ""))
+		test.Nil(t, m.Get(ctx, "g1", "m1"))
+		test.Nil(t, m.Get(ctx, "", ""))
 	})
 }
 
@@ -152,10 +155,10 @@ func TestStreamManager_BroadcastToGroup(T *testing.T) {
 		}
 		m.BroadcastToGroup(ctx, "g1", event)
 
-		assert.Len(t, s1.sentEvents(), 1)
-		assert.Equal(t, "test", s1.sentEvents()[0].Type)
-		assert.Len(t, s2.sentEvents(), 1)
-		assert.Equal(t, "test", s2.sentEvents()[0].Type)
+		test.SliceLen(t, 1, s1.sentEvents())
+		test.EqOp(t, "test", s1.sentEvents()[0].Type)
+		test.SliceLen(t, 1, s2.sentEvents())
+		test.EqOp(t, "test", s2.sentEvents()[0].Type)
 	})
 
 	T.Run("empty group", func(t *testing.T) {
@@ -193,9 +196,9 @@ func TestStreamManager_BroadcastToGroupFiltered(T *testing.T) {
 			return memberID == "m2"
 		})
 
-		assert.Empty(t, s1.sentEvents())
-		assert.Len(t, s2.sentEvents(), 1)
-		assert.Equal(t, "filtered", s2.sentEvents()[0].Type)
+		test.SliceEmpty(t, s1.sentEvents())
+		test.SliceLen(t, 1, s2.sentEvents())
+		test.EqOp(t, "filtered", s2.sentEvents()[0].Type)
 	})
 
 	T.Run("none match", func(t *testing.T) {
@@ -209,7 +212,7 @@ func TestStreamManager_BroadcastToGroupFiltered(T *testing.T) {
 
 		m.BroadcastToGroupFiltered(ctx, "g1", &Event{Type: "x"}, func(string) bool { return false })
 
-		assert.Empty(t, s1.sentEvents())
+		test.SliceEmpty(t, s1.sentEvents())
 	})
 }
 
@@ -229,11 +232,11 @@ func TestStreamManager_SendToMember(T *testing.T) {
 
 		event := &Event{Type: "direct", Payload: json.RawMessage(`"hi"`)}
 		err := m.SendToMember(ctx, "g1", "m1", event)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
-		assert.Len(t, s1.sentEvents(), 1)
-		assert.Equal(t, "direct", s1.sentEvents()[0].Type)
-		assert.Empty(t, s2.sentEvents())
+		test.SliceLen(t, 1, s1.sentEvents())
+		test.EqOp(t, "direct", s1.sentEvents()[0].Type)
+		test.SliceEmpty(t, s2.sentEvents())
 	})
 
 	T.Run("nonexistent member returns nil", func(t *testing.T) {
@@ -243,7 +246,7 @@ func TestStreamManager_SendToMember(T *testing.T) {
 		m := NewStreamManager[EventStream](nil, nil)
 
 		err := m.SendToMember(ctx, "g1", "m1", &Event{Type: "x"})
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 
 	T.Run("nonexistent group returns nil", func(t *testing.T) {
@@ -253,7 +256,7 @@ func TestStreamManager_SendToMember(T *testing.T) {
 		m := NewStreamManager[EventStream](nil, nil)
 
 		err := m.SendToMember(ctx, "g999", "m1", &Event{Type: "x"})
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 }
 
@@ -266,10 +269,10 @@ func TestStreamManager_GroupHasStreams(T *testing.T) {
 		ctx := t.Context()
 
 		m := NewStreamManager[EventStream](nil, nil)
-		assert.False(t, m.GroupHasStreams(ctx, "g1"))
+		test.False(t, m.GroupHasStreams(ctx, "g1"))
 
 		m.Add(ctx, "g1", "m1", newMockStream())
-		assert.True(t, m.GroupHasStreams(ctx, "g1"))
+		test.True(t, m.GroupHasStreams(ctx, "g1"))
 	})
 }
 
@@ -282,13 +285,13 @@ func TestStreamManager_GetStreamCount(T *testing.T) {
 		ctx := t.Context()
 
 		m := NewStreamManager[EventStream](nil, nil)
-		assert.Equal(t, 0, m.GetStreamCount(ctx, "g1"))
+		test.EqOp(t, 0, m.GetStreamCount(ctx, "g1"))
 
 		m.Add(ctx, "g1", "m1", newMockStream())
-		assert.Equal(t, 1, m.GetStreamCount(ctx, "g1"))
+		test.EqOp(t, 1, m.GetStreamCount(ctx, "g1"))
 
 		m.Add(ctx, "g1", "m2", newMockStream())
-		assert.Equal(t, 2, m.GetStreamCount(ctx, "g1"))
+		test.EqOp(t, 2, m.GetStreamCount(ctx, "g1"))
 	})
 }
 
@@ -321,7 +324,7 @@ func TestStreamManager_GetGroupStreams(T *testing.T) {
 		m.Add(ctx, "g1", "m2", s2)
 
 		streams := m.GetGroupStreams(ctx, "g1")
-		assert.Len(t, streams, 2)
+		test.SliceLen(t, 2, streams)
 	})
 
 	T.Run("nonexistent group", func(t *testing.T) {
@@ -331,7 +334,7 @@ func TestStreamManager_GetGroupStreams(T *testing.T) {
 
 		m := NewStreamManager[EventStream](nil, nil)
 		streams := m.GetGroupStreams(ctx, "g1")
-		assert.Empty(t, streams)
+		test.SliceEmpty(t, streams)
 	})
 }
 
@@ -356,13 +359,13 @@ func TestStreamManager_BroadcastToGroup_with_failing_stream(T *testing.T) {
 		// (we can't guarantee order due to map iteration, but we can check that
 		// at least the non-failing stream received it)
 		time.Sleep(10 * time.Millisecond)
-		assert.Len(t, s2.sentEvents(), 1)
+		test.SliceLen(t, 1, s2.sentEvents())
 	})
 }
 
 // failingStream is a stream that always returns an error on Send.
 type failingStream struct{}
 
-func (f *failingStream) Send(context.Context, *Event) error { return assert.AnError }
+func (f *failingStream) Send(context.Context, *Event) error { return errStub }
 func (f *failingStream) Done() <-chan struct{}              { return make(chan struct{}) }
 func (f *failingStream) Close() error                       { return nil }

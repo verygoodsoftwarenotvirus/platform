@@ -3,7 +3,7 @@ package segment
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 )
 
 func TestConfig_ValidateWithContext(T *testing.T) {
@@ -14,7 +14,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 
 		cfg := &Config{APIToken: t.Name()}
 
-		require.NoError(t, cfg.ValidateWithContext(t.Context()))
+		must.NoError(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("with empty API token", func(t *testing.T) {
@@ -22,6 +22,6 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 
 		cfg := &Config{}
 
-		require.Error(t, cfg.ValidateWithContext(t.Context()))
+		must.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 }

@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestPublisherProvider_ProvidePublisher(T *testing.T) {
@@ -16,8 +16,8 @@ func TestPublisherProvider_ProvidePublisher(T *testing.T) {
 
 		p := NewPublisherProvider()
 		pub, err := p.ProvidePublisher(context.Background(), "topic")
-		require.NoError(t, err)
-		assert.NotNil(t, pub)
+		must.NoError(t, err)
+		test.NotNil(t, pub)
 	})
 }
 
@@ -40,7 +40,7 @@ func TestPublisherProvider_Ping(T *testing.T) {
 
 		p := NewPublisherProvider()
 		err := p.Ping(context.Background())
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 }
 
@@ -52,7 +52,7 @@ func TestPublisher_Publish(T *testing.T) {
 
 		p := NewPublisher()
 		err := p.Publish(context.Background(), "data")
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 }
 
@@ -86,8 +86,8 @@ func TestConsumerProvider_ProvideConsumer(T *testing.T) {
 
 		p := NewConsumerProvider()
 		c, err := p.ProvideConsumer(context.Background(), "topic", func(_ context.Context, _ []byte) error { return nil })
-		require.NoError(t, err)
-		assert.NotNil(t, c)
+		must.NoError(t, err)
+		test.NotNil(t, c)
 	})
 }
 

@@ -3,7 +3,7 @@ package messagequeue
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestErrEmptyTopicName(T *testing.T) {
@@ -12,7 +12,7 @@ func TestErrEmptyTopicName(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, ErrEmptyTopicName)
-		assert.Error(t, ErrEmptyTopicName)
+		test.NotNil(t, ErrEmptyTopicName)
+		test.Error(t, ErrEmptyTopicName)
 	})
 }

@@ -8,8 +8,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/identifiers"
 
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestRequestIDFunc(T *testing.T) {
@@ -22,9 +22,9 @@ func TestRequestIDFunc(T *testing.T) {
 		ctx := context.WithValue(t.Context(), chimiddleware.RequestIDKey, expected)
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/", http.NoBody)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		actual := RequestIDFunc(req)
-		assert.Equal(t, expected, actual)
+		test.EqOp(t, expected, actual)
 	})
 }

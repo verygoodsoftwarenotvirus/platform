@@ -3,7 +3,6 @@ package metrics
 import (
 	"context"
 
-	"github.com/stretchr/testify/mock"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
@@ -13,9 +12,7 @@ func NewNoopMetricsProvider() Provider {
 	return &noopProvider{}
 }
 
-type noopProvider struct {
-	mock.Mock
-}
+type noopProvider struct{}
 
 // NewFloat64Counter is a no-op method.
 func (m *noopProvider) NewFloat64Counter(name string, options ...metric.Float64CounterOption) (Float64Counter, error) {

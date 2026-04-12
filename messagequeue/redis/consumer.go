@@ -12,7 +12,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 )
 
 type (
@@ -33,7 +33,7 @@ type (
 	}
 )
 
-func provideRedisConsumer(ctx context.Context, logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider, redisClient subscriptionProvider, topic string, handlerFunc func(context.Context, []byte) error) *redisConsumer {
+func provideRedisConsumer(ctx context.Context, logger logging.Logger, tracerProvider tracing.TracerProvider, metricsProvider metrics.Provider, redisClient subscriptionProvider, topic string, handlerFunc func(context.Context, []byte) error) (*redisConsumer, error) {
 	mp := metrics.EnsureMetricsProvider(metricsProvider)
 
 	consumedCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_consumed", topic))
@@ -43,6 +43,14 @@ func provideRedisConsumer(ctx context.Context, logger logging.Logger, tracerProv
 
 	subscription := redisClient.Subscribe(ctx, topic)
 
+	// Block until Redis confirms the SUBSCRIBE has been registered on the
+	// server. Without this, a publisher racing us would silently drop the
+	// first message — Redis pub/sub does not buffer for late subscribers.
+	// See go-redis's own Subscribe doc comment for the rationale.
+	if _, err = subscription.Receive(ctx); err != nil {
+		return nil, fmt.Errorf("confirming redis subscription to %q: %w", topic, err)
+	}
+
 	logger.Debug("subscribed to topic!")
 
 	return &redisConsumer{
@@ -51,7 +59,7 @@ func provideRedisConsumer(ctx context.Context, logger logging.Logger, tracerProv
 		logger:          logging.EnsureLogger(logger),
 		tracer:          tracing.NewNamedTracer(tracerProvider, fmt.Sprintf("%s_consumer", topic)),
 		consumedCounter: consumedCounter,
-	}
+	}, nil
 }
 
 // Consume reads messages and applies the handler to their payloads.
@@ -129,13 +137,27 @@ func (p *consumerProvider) ProvideConsumer(ctx context.Context, topic string, ha
 		return nil, ErrEmptyInputProvided
 	}
 
+	p.consumerCacheMu.RLock()
+	if cachedPub, ok := p.consumerCache[topic]; ok {
+		p.consumerCacheMu.RUnlock()
+		return cachedPub, nil
+	}
+	p.consumerCacheMu.RUnlock()
+
+	// Build the consumer outside the cache lock — provideRedisConsumer now
+	// does a network RTT waiting for SUBSCRIBE confirmation, and we don't
+	// want to serialize that behind the mutex.
+	c, err := provideRedisConsumer(ctx, logger, p.tracerProvider, p.metricsProvider, p.redisClient, topic, handlerFunc)
+	if err != nil {
+		return nil, err
+	}
+
 	p.consumerCacheMu.Lock()
 	defer p.consumerCacheMu.Unlock()
+	// Re-check in case a concurrent caller beat us to it.
 	if cachedPub, ok := p.consumerCache[topic]; ok {
 		return cachedPub, nil
 	}
-
-	c := provideRedisConsumer(ctx, logger, p.tracerProvider, p.metricsProvider, p.redisClient, topic, handlerFunc)
 	p.consumerCache[topic] = c
 
 	return c, nil

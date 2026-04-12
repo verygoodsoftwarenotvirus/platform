@@ -3,8 +3,8 @@ package ses
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestConfig_ValidateWithContext(T *testing.T) {
@@ -17,7 +17,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Region: "us-east-1",
 		}
 
-		require.NoError(t, cfg.ValidateWithContext(t.Context()))
+		must.NoError(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("with missing region", func(t *testing.T) {
@@ -26,7 +26,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		cfg := &Config{}
 
 		err := cfg.ValidateWithContext(t.Context())
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "region")
+		must.Error(t, err)
+		test.StrContains(t, err.Error(), "region")
 	})
 }

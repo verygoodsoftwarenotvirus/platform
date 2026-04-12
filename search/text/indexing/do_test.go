@@ -11,12 +11,10 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/v5/reflection"
 
 	"github.com/samber/do/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	otelmetric "go.opentelemetry.io/otel/metric"
 )
 
@@ -26,13 +24,20 @@ func TestRegisterIndexScheduler(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		metricsProvider := &mockmetrics.MetricsProvider{}
-		int64Counter := &mockmetrics.Int64Counter{}
-		metricsProvider.On(reflection.GetMethodName(metricsProvider.NewInt64Counter), "indexer.handled_records", []otelmetric.Int64CounterOption(nil)).Return(int64Counter, nil)
+		int64Counter := &mockmetrics.Int64CounterMock{}
+		metricsProvider := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...otelmetric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, "indexer.handled_records", counterName)
+				return int64Counter, nil
+			},
+		}
 
-		messageQueueProvider := &mockpublishers.PublisherProvider{}
-		publisher := &mockpublishers.Publisher{}
-		messageQueueProvider.On(reflection.GetMethodName(messageQueueProvider.ProvidePublisher), "test_topic").Return(publisher, nil)
+		publisher := &mockpublishers.PublisherMock{}
+		messageQueueProvider := &mockpublishers.PublisherProviderMock{
+			ProvidePublisherFunc: func(_ context.Context, _ string) (messagequeue.Publisher, error) {
+				return publisher, nil
+			},
+		}
 
 		i := do.New()
 		do.ProvideValue(i, t.Context())
@@ -50,9 +55,11 @@ func TestRegisterIndexScheduler(T *testing.T) {
 		RegisterIndexScheduler(i)
 
 		scheduler, err := do.Invoke[*IndexScheduler](i)
-		require.NoError(t, err)
-		assert.NotNil(t, scheduler)
+		must.NoError(t, err)
+		test.NotNil(t, scheduler)
 
-		mock.AssertExpectationsForObjects(t, metricsProvider, messageQueueProvider)
+		test.SliceLen(t, 1, metricsProvider.NewInt64CounterCalls())
+		test.SliceLen(t, 1, messageQueueProvider.ProvidePublisherCalls())
+		test.EqOp(t, "test_topic", messageQueueProvider.ProvidePublisherCalls()[0].Topic)
 	})
 }

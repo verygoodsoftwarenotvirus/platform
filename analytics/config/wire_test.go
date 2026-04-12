@@ -8,7 +8,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 )
 
 func TestProvideCollector(T *testing.T) {
@@ -22,8 +22,8 @@ func TestProvideCollector(T *testing.T) {
 		logger := logging.NewNoopLogger()
 
 		actual, err := ProvideEventReporter(ctx, cfg, logger, tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider())
-		require.NoError(t, err)
-		require.NotNil(t, actual)
+		must.NoError(t, err)
+		must.NotNil(t, actual)
 	})
 
 	T.Run("with segment", func(t *testing.T) {
@@ -41,7 +41,7 @@ func TestProvideCollector(T *testing.T) {
 		logger := logging.NewNoopLogger()
 
 		actual, err := ProvideEventReporter(ctx, cfg, logger, tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider())
-		require.NoError(t, err)
-		require.NotNil(t, actual)
+		must.NoError(t, err)
+		must.NotNil(t, actual)
 	})
 }

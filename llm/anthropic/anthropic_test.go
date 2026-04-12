@@ -12,8 +12,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -40,16 +40,16 @@ func TestNewProvider(T *testing.T) {
 		t.Parallel()
 
 		provider, err := NewProvider(nil, nil, nil, nil)
-		require.Error(t, err)
-		require.Nil(t, provider)
+		must.Error(t, err)
+		must.Nil(t, provider)
 	})
 
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
 		provider, err := NewProvider(&Config{APIKey: "test-key"}, nil, nil, nil)
-		require.NoError(t, err)
-		require.NotNil(t, provider)
+		must.NoError(t, err)
+		must.NotNil(t, provider)
 	})
 
 	T.Run("with base URL", func(t *testing.T) {
@@ -60,8 +60,8 @@ func TestNewProvider(T *testing.T) {
 			BaseURL:      "https://custom.example.com",
 			DefaultModel: "claude-sonnet-4",
 		}, nil, nil, nil)
-		require.NoError(t, err)
-		require.NotNil(t, provider)
+		must.NoError(t, err)
+		must.NotNil(t, provider)
 	})
 
 	T.Run("with timeout", func(t *testing.T) {
@@ -71,35 +71,48 @@ func TestNewProvider(T *testing.T) {
 			APIKey:  "test-key",
 			Timeout: 5 * time.Second,
 		}, nil, nil, nil)
-		require.NoError(t, err)
-		require.NotNil(t, provider)
+		must.NoError(t, err)
+		must.NotNil(t, provider)
 	})
 
 	T.Run("with error creating request counter", func(t *testing.T) {
 		t.Parallel()
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", name+"_requests", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, name+"_requests", counterName)
+				return metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary")
+			},
+		}
 
 		provider, err := NewProvider(&Config{APIKey: "test-key"}, nil, nil, mp)
-		require.Error(t, err)
-		require.Nil(t, provider)
+		must.Error(t, err)
+		must.Nil(t, provider)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("with error creating error counter", func(t *testing.T) {
 		t.Parallel()
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", name+"_requests", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
-		mp.On("NewInt64Counter", name+"_errors", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				switch counterName {
+				case name + "_requests":
+					return metrics.Int64CounterForTest(t, "x"), nil
+				case name + "_errors":
+					return metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary")
+				}
+				t.Fatalf("unexpected NewInt64Counter call: %q", counterName)
+				return nil, nil
+			},
+		}
 
 		provider, err := NewProvider(&Config{APIKey: "test-key"}, nil, nil, mp)
-		require.Error(t, err)
-		require.Nil(t, provider)
+		must.Error(t, err)
+		must.Nil(t, provider)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 2, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("with error creating latency histogram", func(t *testing.T) {
@@ -107,18 +120,24 @@ func TestNewProvider(T *testing.T) {
 
 		noopMP := metrics.NewNoopMetricsProvider()
 		h, histErr := noopMP.NewFloat64Histogram("test")
-		require.NoError(t, histErr)
+		must.NoError(t, histErr)
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", name+"_requests", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
-		mp.On("NewInt64Counter", name+"_errors", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
-		mp.On("NewFloat64Histogram", name+"_latency_ms", []metric.Float64HistogramOption(nil)).Return(h, errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(_ string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				return metrics.Int64CounterForTest(t, "x"), nil
+			},
+			NewFloat64HistogramFunc: func(histName string, _ ...metric.Float64HistogramOption) (metrics.Float64Histogram, error) {
+				test.EqOp(t, name+"_latency_ms", histName)
+				return h, errors.New("arbitrary")
+			},
+		}
 
 		provider, err := NewProvider(&Config{APIKey: "test-key"}, nil, nil, mp)
-		require.Error(t, err)
-		require.Nil(t, provider)
+		must.Error(t, err)
+		must.Nil(t, provider)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 2, mp.NewInt64CounterCalls())
+		test.SliceLen(t, 1, mp.NewFloat64HistogramCalls())
 	})
 }
 
@@ -129,10 +148,10 @@ func TestAnthropicProvider_Completion(T *testing.T) {
 		t.Parallel()
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			require.Equal(t, "/v1/messages", r.URL.Path)
-			require.Equal(t, http.MethodPost, r.Method)
+			must.EqOp(t, "/v1/messages", r.URL.Path)
+			must.EqOp(t, http.MethodPost, r.Method)
 			w.Header().Set("Content-Type", "application/json")
-			require.NoError(t, json.NewEncoder(w).Encode(anthropicMessageResponse("Hello from Claude mock!")))
+			must.NoError(t, json.NewEncoder(w).Encode(anthropicMessageResponse("Hello from Claude mock!")))
 		}))
 		t.Cleanup(ts.Close)
 
@@ -140,8 +159,8 @@ func TestAnthropicProvider_Completion(T *testing.T) {
 			APIKey:  "test-key",
 			BaseURL: ts.URL,
 		}, nil, nil, nil)
-		require.NoError(t, err)
-		require.NotNil(t, provider)
+		must.NoError(t, err)
+		must.NotNil(t, provider)
 
 		ctx := t.Context()
 		result, err := provider.Completion(ctx, llm.CompletionParams{
@@ -150,9 +169,9 @@ func TestAnthropicProvider_Completion(T *testing.T) {
 				{Role: "user", Content: "Hello"},
 			},
 		})
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		require.Equal(t, "Hello from Claude mock!", result.Content)
+		must.NoError(t, err)
+		must.NotNil(t, result)
+		must.EqOp(t, "Hello from Claude mock!", result.Content)
 	})
 
 	T.Run("uses default model when not specified", func(t *testing.T) {
@@ -160,7 +179,7 @@ func TestAnthropicProvider_Completion(T *testing.T) {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			require.NoError(t, json.NewEncoder(w).Encode(anthropicMessageResponse("Hi there!")))
+			must.NoError(t, json.NewEncoder(w).Encode(anthropicMessageResponse("Hi there!")))
 		}))
 		t.Cleanup(ts.Close)
 
@@ -169,14 +188,14 @@ func TestAnthropicProvider_Completion(T *testing.T) {
 			BaseURL:      ts.URL,
 			DefaultModel: "claude-sonnet-4",
 		}, nil, nil, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		ctx := t.Context()
 		result, err := provider.Completion(ctx, llm.CompletionParams{
 			Messages: []llm.Message{{Role: "user", Content: "Hi"}},
 		})
-		require.NoError(t, err)
-		require.Equal(t, "Hi there!", result.Content)
+		must.NoError(t, err)
+		must.EqOp(t, "Hi there!", result.Content)
 	})
 
 	T.Run("with API error", func(t *testing.T) {
@@ -192,14 +211,14 @@ func TestAnthropicProvider_Completion(T *testing.T) {
 			APIKey:  "test-key",
 			BaseURL: ts.URL,
 		}, nil, nil, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		ctx := t.Context()
 		result, err := provider.Completion(ctx, llm.CompletionParams{
 			Model:    "claude-sonnet-4-20250514",
 			Messages: []llm.Message{{Role: "user", Content: "Hi"}},
 		})
-		require.Error(t, err)
-		require.Nil(t, result)
+		must.Error(t, err)
+		must.Nil(t, result)
 	})
 }

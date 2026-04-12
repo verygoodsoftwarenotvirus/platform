@@ -7,8 +7,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestConfig_ValidateWithContext(T *testing.T) {
@@ -23,7 +23,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		}
 
 		err := cfg.ValidateWithContext(t.Context())
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 
 	T.Run("missing collector endpoint", func(t *testing.T) {
@@ -34,8 +34,8 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		}
 
 		err := cfg.ValidateWithContext(t.Context())
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "metricsCollectorEndpoint")
+		test.Error(t, err)
+		test.StrContains(t, err.Error(), "metricsCollectorEndpoint")
 	})
 
 	T.Run("missing collection interval", func(t *testing.T) {
@@ -46,8 +46,8 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		}
 
 		err := cfg.ValidateWithContext(t.Context())
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "collectionInterval")
+		test.Error(t, err)
+		test.StrContains(t, err.Error(), "collectionInterval")
 	})
 
 	T.Run("empty collector endpoint", func(t *testing.T) {
@@ -59,8 +59,8 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		}
 
 		err := cfg.ValidateWithContext(t.Context())
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "metricsCollectorEndpoint")
+		test.Error(t, err)
+		test.StrContains(t, err.Error(), "metricsCollectorEndpoint")
 	})
 }
 
@@ -74,10 +74,10 @@ func TestSetupMetricsProvider(T *testing.T) {
 		logger := logging.NewNoopLogger()
 
 		provider, shutdown, err := setupMetricsProvider(ctx, logger, "test-service", nil)
-		assert.Nil(t, provider)
-		assert.Nil(t, shutdown)
-		assert.Error(t, err)
-		assert.Equal(t, ErrNilConfig, err)
+		test.Nil(t, provider)
+		test.Nil(t, shutdown)
+		test.Error(t, err)
+		test.ErrorIs(t, err, ErrNilConfig)
 	})
 
 	T.Run("valid config", func(t *testing.T) {
@@ -94,9 +94,9 @@ func TestSetupMetricsProvider(T *testing.T) {
 		}
 
 		provider, shutdown, err := setupMetricsProvider(ctx, logger, "test-service", cfg)
-		assert.NoError(t, err)
-		assert.NotNil(t, provider)
-		assert.NotNil(t, shutdown)
+		test.NoError(t, err)
+		test.NotNil(t, provider)
+		test.NotNil(t, shutdown)
 	})
 
 	T.Run("with runtime metrics enabled", func(t *testing.T) {
@@ -113,9 +113,9 @@ func TestSetupMetricsProvider(T *testing.T) {
 		}
 
 		provider, shutdown, err := setupMetricsProvider(ctx, logger, "test-service", cfg)
-		assert.NoError(t, err)
-		assert.NotNil(t, provider)
-		assert.NotNil(t, shutdown)
+		test.NoError(t, err)
+		test.NotNil(t, provider)
+		test.NotNil(t, shutdown)
 	})
 
 	T.Run("with host metrics enabled", func(t *testing.T) {
@@ -132,9 +132,9 @@ func TestSetupMetricsProvider(T *testing.T) {
 		}
 
 		provider, shutdown, err := setupMetricsProvider(ctx, logger, "test-service", cfg)
-		assert.NoError(t, err)
-		assert.NotNil(t, provider)
-		assert.NotNil(t, shutdown)
+		test.NoError(t, err)
+		test.NotNil(t, provider)
+		test.NotNil(t, shutdown)
 	})
 }
 
@@ -148,9 +148,9 @@ func TestProvideMetricsProvider(T *testing.T) {
 		logger := logging.NewNoopLogger()
 
 		provider, err := ProvideMetricsProvider(ctx, logger, "test-service", nil)
-		assert.Nil(t, provider)
-		assert.Error(t, err)
-		assert.Equal(t, ErrNilConfig, err)
+		test.Nil(t, provider)
+		test.Error(t, err)
+		test.ErrorIs(t, err, ErrNilConfig)
 	})
 
 	T.Run("valid config", func(t *testing.T) {
@@ -167,9 +167,10 @@ func TestProvideMetricsProvider(T *testing.T) {
 		}
 
 		provider, err := ProvideMetricsProvider(ctx, logger, "test-service", cfg)
-		assert.NoError(t, err)
-		assert.NotNil(t, provider)
-		assert.Implements(t, (*metrics.Provider)(nil), provider)
+		test.NoError(t, err)
+		test.NotNil(t, provider)
+		_, ok := any(provider).(metrics.Provider)
+		test.True(t, ok)
 	})
 }
 
@@ -190,10 +191,10 @@ func TestProviderImpl_MeterProvider(T *testing.T) {
 		}
 
 		provider, err := ProvideMetricsProvider(ctx, logger, "test-service", cfg)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		meterProvider := provider.MeterProvider()
-		assert.NotNil(t, meterProvider)
+		test.NotNil(t, meterProvider)
 	})
 }
 
@@ -226,12 +227,13 @@ func TestProviderImpl_NewFloat64Counter(T *testing.T) {
 		}
 
 		provider, err := ProvideMetricsProvider(ctx, logger, "test-service", cfg)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		counter, err := provider.NewFloat64Counter("test_counter")
-		assert.NoError(t, err)
-		assert.NotNil(t, counter)
-		assert.Implements(t, (*metrics.Float64Counter)(nil), counter)
+		test.NoError(t, err)
+		test.NotNil(t, counter)
+		_, ok := any(counter).(metrics.Float64Counter)
+		test.True(t, ok)
 	})
 }
 
@@ -252,12 +254,13 @@ func TestProviderImpl_NewFloat64Gauge(T *testing.T) {
 		}
 
 		provider, err := ProvideMetricsProvider(ctx, logger, "test-service", cfg)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		gauge, err := provider.NewFloat64Gauge("test_gauge")
-		assert.NoError(t, err)
-		assert.NotNil(t, gauge)
-		assert.Implements(t, (*metrics.Float64Gauge)(nil), gauge)
+		test.NoError(t, err)
+		test.NotNil(t, gauge)
+		_, ok := any(gauge).(metrics.Float64Gauge)
+		test.True(t, ok)
 	})
 }
 
@@ -278,12 +281,13 @@ func TestProviderImpl_NewFloat64UpDownCounter(T *testing.T) {
 		}
 
 		provider, err := ProvideMetricsProvider(ctx, logger, "test-service", cfg)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		counter, err := provider.NewFloat64UpDownCounter("test_updown_counter")
-		assert.NoError(t, err)
-		assert.NotNil(t, counter)
-		assert.Implements(t, (*metrics.Float64UpDownCounter)(nil), counter)
+		test.NoError(t, err)
+		test.NotNil(t, counter)
+		_, ok := any(counter).(metrics.Float64UpDownCounter)
+		test.True(t, ok)
 	})
 }
 
@@ -304,12 +308,13 @@ func TestProviderImpl_NewFloat64Histogram(T *testing.T) {
 		}
 
 		provider, err := ProvideMetricsProvider(ctx, logger, "test-service", cfg)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		histogram, err := provider.NewFloat64Histogram("test_histogram")
-		assert.NoError(t, err)
-		assert.NotNil(t, histogram)
-		assert.Implements(t, (*metrics.Float64Histogram)(nil), histogram)
+		test.NoError(t, err)
+		test.NotNil(t, histogram)
+		_, ok := any(histogram).(metrics.Float64Histogram)
+		test.True(t, ok)
 	})
 }
 
@@ -330,12 +335,13 @@ func TestProviderImpl_NewInt64Counter(T *testing.T) {
 		}
 
 		provider, err := ProvideMetricsProvider(ctx, logger, "test-service", cfg)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		counter, err := provider.NewInt64Counter("test_counter")
-		assert.NoError(t, err)
-		assert.NotNil(t, counter)
-		assert.Implements(t, (*metrics.Int64Counter)(nil), counter)
+		test.NoError(t, err)
+		test.NotNil(t, counter)
+		_, ok := any(counter).(metrics.Int64Counter)
+		test.True(t, ok)
 	})
 }
 
@@ -356,12 +362,13 @@ func TestProviderImpl_NewInt64Gauge(T *testing.T) {
 		}
 
 		provider, err := ProvideMetricsProvider(ctx, logger, "test-service", cfg)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		gauge, err := provider.NewInt64Gauge("test_gauge")
-		assert.NoError(t, err)
-		assert.NotNil(t, gauge)
-		assert.Implements(t, (*metrics.Int64Gauge)(nil), gauge)
+		test.NoError(t, err)
+		test.NotNil(t, gauge)
+		_, ok := any(gauge).(metrics.Int64Gauge)
+		test.True(t, ok)
 	})
 }
 
@@ -382,12 +389,13 @@ func TestProviderImpl_NewInt64UpDownCounter(T *testing.T) {
 		}
 
 		provider, err := ProvideMetricsProvider(ctx, logger, "test-service", cfg)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		counter, err := provider.NewInt64UpDownCounter("test_updown_counter")
-		assert.NoError(t, err)
-		assert.NotNil(t, counter)
-		assert.Implements(t, (*metrics.Int64UpDownCounter)(nil), counter)
+		test.NoError(t, err)
+		test.NotNil(t, counter)
+		_, ok := any(counter).(metrics.Int64UpDownCounter)
+		test.True(t, ok)
 	})
 }
 
@@ -408,12 +416,13 @@ func TestProviderImpl_NewInt64Histogram(T *testing.T) {
 		}
 
 		provider, err := ProvideMetricsProvider(ctx, logger, "test-service", cfg)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		histogram, err := provider.NewInt64Histogram("test_histogram")
-		assert.NoError(t, err)
-		assert.NotNil(t, histogram)
-		assert.Implements(t, (*metrics.Int64Histogram)(nil), histogram)
+		test.NoError(t, err)
+		test.NotNil(t, histogram)
+		_, ok := any(histogram).(metrics.Int64Histogram)
+		test.True(t, ok)
 	})
 }
 
@@ -434,12 +443,12 @@ func TestProviderImpl_ServiceNamePrefixing(T *testing.T) {
 		}
 
 		provider, err := ProvideMetricsProvider(ctx, logger, "my-service", cfg)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		// Test that metrics are created with service name prefix
 		counter, err := provider.NewInt64Counter("test_metric")
-		assert.NoError(t, err)
-		assert.NotNil(t, counter)
+		test.NoError(t, err)
+		test.NotNil(t, counter)
 
 		// The actual metric name should be "my-service.test_metric" but we can't easily test that
 		// without accessing internal OpenTelemetry state, so we just verify the metric was created

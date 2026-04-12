@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestSecretSource_GetSecret(T *testing.T) {
@@ -18,8 +18,8 @@ func TestSecretSource_GetSecret(T *testing.T) {
 		ctx := context.Background()
 
 		got, err := source.GetSecret(ctx, "any-key")
-		require.NoError(t, err)
-		assert.Empty(t, got)
+		must.NoError(t, err)
+		test.EqOp(t, "", got)
 	})
 }
 
@@ -31,6 +31,6 @@ func TestSecretSource_Close(T *testing.T) {
 
 		source := NewSecretSource()
 		err := source.Close()
-		require.NoError(t, err)
+		must.NoError(t, err)
 	})
 }

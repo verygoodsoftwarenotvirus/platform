@@ -9,8 +9,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/uploads"
 
 	"github.com/samber/do/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestRegisterUploadManager(T *testing.T) {
@@ -32,11 +32,11 @@ func TestRegisterUploadManager(T *testing.T) {
 		RegisterUploadManager(i)
 
 		uploader, err := do.Invoke[*Uploader](i)
-		require.NoError(t, err)
-		assert.NotNil(t, uploader)
+		must.NoError(t, err)
+		test.NotNil(t, uploader)
 
 		uploadManager, err := do.Invoke[uploads.UploadManager](i)
-		require.NoError(t, err)
-		assert.NotNil(t, uploadManager)
+		must.NoError(t, err)
+		test.NotNil(t, uploadManager)
 	})
 }

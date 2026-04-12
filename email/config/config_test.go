@@ -18,8 +18,8 @@ import (
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -34,7 +34,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Sendgrid: &sendgrid.Config{APIToken: t.Name()},
 		}
 
-		require.NoError(t, cfg.ValidateWithContext(ctx))
+		must.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with invalid token", func(t *testing.T) {
@@ -45,42 +45,42 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider: "sendgrid",
 		}
 
-		require.Error(t, cfg.ValidateWithContext(ctx))
+		must.Error(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("mailgun provider requires config", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ProviderMailgun}
-		require.Error(t, cfg.ValidateWithContext(t.Context()))
+		must.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("mailjet provider requires config", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ProviderMailjet}
-		require.Error(t, cfg.ValidateWithContext(t.Context()))
+		must.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("resend provider requires config", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ProviderResend}
-		require.Error(t, cfg.ValidateWithContext(t.Context()))
+		must.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("postmark provider requires config", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ProviderPostmark}
-		require.Error(t, cfg.ValidateWithContext(t.Context()))
+		must.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("ses provider requires config", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ProviderSES}
-		require.Error(t, cfg.ValidateWithContext(t.Context()))
+		must.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 }
 
@@ -95,11 +95,11 @@ func TestConfig_BuildHermes(T *testing.T) {
 			CompanyName: "Acme",
 			LogoURL:     "https://example.com/logo.png",
 		})
-		require.NotNil(t, h)
-		assert.Equal(t, "Acme", h.Product.Name)
-		assert.Equal(t, "https://example.com/logo.png", h.Product.Logo)
-		assert.Equal(t, "https://example.com", h.Product.Link)
-		assert.Contains(t, h.Product.Copyright, "Acme")
+		must.NotNil(t, h)
+		test.EqOp(t, "Acme", h.Product.Name)
+		test.EqOp(t, "https://example.com/logo.png", h.Product.Logo)
+		test.EqOp(t, "https://example.com", h.Product.Link)
+		test.StrContains(t, h.Product.Copyright, "Acme")
 	})
 
 	T.Run("without branding", func(t *testing.T) {
@@ -107,10 +107,10 @@ func TestConfig_BuildHermes(T *testing.T) {
 
 		cfg := &Config{BaseURL: "https://example.com"}
 		h := cfg.BuildHermes(nil)
-		require.NotNil(t, h)
-		assert.Empty(t, h.Product.Name)
-		assert.Empty(t, h.Product.Logo)
-		assert.Empty(t, h.Product.Copyright)
+		must.NotNil(t, h)
+		test.EqOp(t, "", h.Product.Name)
+		test.EqOp(t, "", h.Product.Logo)
+		test.EqOp(t, "", h.Product.Copyright)
 	})
 }
 
@@ -122,7 +122,7 @@ func TestConfig_EnsureDefaults(T *testing.T) {
 
 		cfg := &Config{}
 		cfg.EnsureDefaults()
-		assert.NotEmpty(t, cfg.CircuitBreaker.Name)
+		test.NotEq(t, "", cfg.CircuitBreaker.Name)
 	})
 }
 
@@ -152,8 +152,8 @@ func TestConfig_ProvideEmailer(T *testing.T) {
 			}
 
 			actual, err := cfg.ProvideEmailer(t.Context(), logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
-			assert.NotNil(t, actual)
-			assert.NoError(t, err)
+			test.NotNil(t, actual)
+			test.NoError(t, err)
 		})
 	}
 
@@ -167,8 +167,8 @@ func TestConfig_ProvideEmailer(T *testing.T) {
 		}
 
 		actual, err := cfg.ProvideEmailer(t.Context(), logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
-		assert.NotNil(t, actual)
-		assert.NoError(t, err)
+		test.NotNil(t, actual)
+		test.NoError(t, err)
 	})
 
 	T.Run("with invalid provider", func(t *testing.T) {
@@ -180,8 +180,8 @@ func TestConfig_ProvideEmailer(T *testing.T) {
 		}
 
 		actual, err := cfg.ProvideEmailer(t.Context(), logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
-		assert.NotNil(t, actual)
-		assert.NoError(t, err)
+		test.NotNil(t, actual)
+		test.NoError(t, err)
 	})
 }
 
@@ -202,8 +202,8 @@ func TestProvideEmailer(T *testing.T) {
 			metrics.NewNoopMetricsProvider(),
 			&http.Client{},
 		)
-		require.NoError(t, err)
-		assert.NotNil(t, emailer)
+		must.NoError(t, err)
+		test.NotNil(t, emailer)
 	})
 
 	T.Run("with sendgrid provider", func(t *testing.T) {
@@ -223,8 +223,8 @@ func TestProvideEmailer(T *testing.T) {
 			metrics.NewNoopMetricsProvider(),
 			&http.Client{},
 		)
-		require.NoError(t, err)
-		assert.NotNil(t, emailer)
+		must.NoError(t, err)
+		test.NotNil(t, emailer)
 	})
 
 	T.Run("circuit breaker init failure", func(t *testing.T) {
@@ -235,9 +235,12 @@ func TestProvideEmailer(T *testing.T) {
 		cfg.CircuitBreaker.ErrorRate = 50
 		cfg.CircuitBreaker.MinimumSampleThreshold = 10
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", "email-breaker_circuit_breaker_tripped", []metric.Int64CounterOption(nil)).
-			Return(&mockmetrics.Int64Counter{}, fmt.Errorf("counter init failure"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, "email-breaker_circuit_breaker_tripped", counterName)
+				return &mockmetrics.Int64CounterMock{}, fmt.Errorf("counter init failure")
+			},
+		}
 
 		emailer, err := ProvideEmailer(
 			t.Context(),
@@ -247,8 +250,9 @@ func TestProvideEmailer(T *testing.T) {
 			mp,
 			&http.Client{},
 		)
-		require.Error(t, err)
-		assert.Nil(t, emailer)
-		mp.AssertExpectations(t)
+		must.Error(t, err)
+		test.Nil(t, emailer)
+
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 }

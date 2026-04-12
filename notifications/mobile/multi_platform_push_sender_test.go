@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,8 +16,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 // fakeServiceAccountJSON is a syntactically-valid Firebase service-account JSON.
@@ -26,10 +27,10 @@ func createTestP8File(t *testing.T) string {
 	t.Helper()
 
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	keyBytes, err := x509.MarshalPKCS8PrivateKey(key)
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	block := &pem.Block{
 		Type:  "PRIVATE KEY",
@@ -38,7 +39,7 @@ func createTestP8File(t *testing.T) string {
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "AuthKey.p8")
-	require.NoError(t, os.WriteFile(path, pem.EncodeToMemory(block), 0o600))
+	must.NoError(t, os.WriteFile(path, pem.EncodeToMemory(block), 0o600))
 	return path
 }
 
@@ -47,7 +48,7 @@ func createTestFCMCredsFile(t *testing.T) string {
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "fcm-creds.json")
-	require.NoError(t, os.WriteFile(path, []byte(fakeServiceAccountJSON), 0o600))
+	must.NoError(t, os.WriteFile(path, []byte(fakeServiceAccountJSON), 0o600))
 	return path
 }
 
@@ -63,8 +64,8 @@ func TestMultiPlatformPushSender_SendPush(T *testing.T) {
 
 		sender := NewMultiPlatformPushSender(nil, nil, logger, tracer)
 		err := sender.SendPush(ctx, "ios", "token", PushMessage{Title: "title", Body: "body"})
-		assert.Error(t, err)
-		assert.ErrorIs(t, err, ErrPlatformNotSupported)
+		test.Error(t, err)
+		test.ErrorIs(t, err, ErrPlatformNotSupported)
 	})
 
 	T.Run("android returns ErrPlatformNotSupported when fcmSender nil", func(t *testing.T) {
@@ -72,8 +73,8 @@ func TestMultiPlatformPushSender_SendPush(T *testing.T) {
 
 		sender := NewMultiPlatformPushSender(nil, nil, logger, tracer)
 		err := sender.SendPush(ctx, "android", "token", PushMessage{Title: "title", Body: "body"})
-		assert.Error(t, err)
-		assert.ErrorIs(t, err, ErrPlatformNotSupported)
+		test.Error(t, err)
+		test.ErrorIs(t, err, ErrPlatformNotSupported)
 	})
 
 	T.Run("unknown platform returns error", func(t *testing.T) {
@@ -81,8 +82,8 @@ func TestMultiPlatformPushSender_SendPush(T *testing.T) {
 
 		sender := NewMultiPlatformPushSender(nil, nil, logger, tracer)
 		err := sender.SendPush(ctx, "unknown", "token", PushMessage{Title: "title", Body: "body"})
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "unknown platform")
+		test.Error(t, err)
+		test.StrContains(t, err.Error(), "unknown platform")
 	})
 
 	T.Run("ios delegates to apns sender", func(t *testing.T) {
@@ -96,13 +97,13 @@ func TestMultiPlatformPushSender_SendPush(T *testing.T) {
 			BundleID:    "com.example.app",
 		}
 		apnsSender, err := apns.NewSender(apnsCfg, tracer, logger, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		sender := NewMultiPlatformPushSender(apnsSender, nil, logger, tracer)
 		err = sender.SendPush(ctx, "ios", "not-a-valid-token", PushMessage{Title: "title", Body: "body"})
 		// The apns sender will reject the token format, but the delegation code path is covered.
-		assert.Error(t, err)
-		assert.NotErrorIs(t, err, ErrPlatformNotSupported)
+		test.Error(t, err)
+		test.True(t, !errors.Is(err, ErrPlatformNotSupported))
 	})
 
 	T.Run("android delegates to fcm sender", func(t *testing.T) {
@@ -111,12 +112,12 @@ func TestMultiPlatformPushSender_SendPush(T *testing.T) {
 		credsPath := createTestFCMCredsFile(t)
 		fcmCfg := &fcm.Config{CredentialsPath: credsPath}
 		fcmSender, err := fcm.NewSender(ctx, fcmCfg, tracer, logger, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		sender := NewMultiPlatformPushSender(nil, fcmSender, logger, tracer)
 		err = sender.SendPush(ctx, "android", "device-token-abc", PushMessage{Title: "title", Body: "body"})
 		// The fcm sender will fail at the HTTP level, but the delegation code path is covered.
-		assert.Error(t, err)
-		assert.NotErrorIs(t, err, ErrPlatformNotSupported)
+		test.Error(t, err)
+		test.True(t, !errors.Is(err, ErrPlatformNotSupported))
 	})
 }

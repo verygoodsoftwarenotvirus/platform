@@ -9,8 +9,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/samber/do/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestRegisterMessageQueue(T *testing.T) {
@@ -29,11 +29,11 @@ func TestRegisterMessageQueue(T *testing.T) {
 		RegisterMessageQueue(i)
 
 		consumer, err := do.Invoke[messagequeue.ConsumerProvider](i)
-		require.NoError(t, err)
-		assert.NotNil(t, consumer)
+		must.NoError(t, err)
+		test.NotNil(t, consumer)
 
 		publisher, err := do.Invoke[messagequeue.PublisherProvider](i)
-		require.NoError(t, err)
-		assert.NotNil(t, publisher)
+		must.NoError(t, err)
+		test.NotNil(t, publisher)
 	})
 }

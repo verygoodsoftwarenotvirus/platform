@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestIndexManager_Search(T *testing.T) {
@@ -17,9 +17,9 @@ func TestIndexManager_Search(T *testing.T) {
 		m := NewIndexManager[string]()
 		results, err := m.Search(context.Background(), "query")
 
-		require.NoError(t, err)
-		assert.Empty(t, results)
-		assert.NotNil(t, results)
+		must.NoError(t, err)
+		test.SliceEmpty(t, results)
+		test.NotNil(t, results)
 	})
 }
 
@@ -32,7 +32,7 @@ func TestIndexManager_Index(T *testing.T) {
 		m := NewIndexManager[string]()
 		err := m.Index(context.Background(), "id", "value")
 
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 }
 
@@ -45,7 +45,7 @@ func TestIndexManager_Delete(T *testing.T) {
 		m := NewIndexManager[string]()
 		err := m.Delete(context.Background(), "id")
 
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 }
 
@@ -58,6 +58,6 @@ func TestIndexManager_Wipe(T *testing.T) {
 		m := NewIndexManager[string]()
 		err := m.Wipe(context.Background())
 
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 }

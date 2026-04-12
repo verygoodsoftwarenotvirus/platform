@@ -10,8 +10,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/samber/do/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestRegisterPushSender(T *testing.T) {
@@ -30,8 +30,8 @@ func TestRegisterPushSender(T *testing.T) {
 		RegisterPushSender(i)
 
 		sender, err := do.Invoke[mobile.PushNotificationSender](i)
-		require.NoError(t, err)
-		assert.NotNil(t, sender)
+		must.NoError(t, err)
+		test.NotNil(t, sender)
 	})
 }
 
@@ -48,7 +48,7 @@ func TestProvidePushSender(T *testing.T) {
 			tracing.NewNoopTracerProvider(),
 			nil,
 		)
-		require.NoError(t, err)
-		assert.NotNil(t, sender)
+		must.NoError(t, err)
+		test.NotNil(t, sender)
 	})
 }

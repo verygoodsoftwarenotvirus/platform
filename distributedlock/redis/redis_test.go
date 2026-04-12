@@ -16,11 +16,14 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/testutils/containers"
 
-	"github.com/go-redis/redis/v8"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/redis/go-redis/v9"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
+	"github.com/testcontainers/testcontainers-go"
 	rediscontainers "github.com/testcontainers/testcontainers-go/modules/redis"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -32,15 +35,24 @@ func buildContainerBackedRedisConfig(t *testing.T) (cfg *Config, shutdown func(c
 	t.Helper()
 
 	ctx := t.Context()
-	container, err := rediscontainers.Run(ctx,
-		redisImage,
-		rediscontainers.WithLogLevel(rediscontainers.LogLevelNotice),
-	)
-	require.NoError(t, err)
-	require.NotNil(t, container)
+	// Explicitly wait for both the TCP port and the "Ready to accept connections"
+	// log line so we don't race the redis-server bootstrap. The module's default
+	// wait strategy is implementation-defined, so pin it here for predictability.
+	container, err := containers.StartWithRetry(ctx, func(ctx context.Context) (*rediscontainers.RedisContainer, error) {
+		return rediscontainers.Run(ctx,
+			redisImage,
+			rediscontainers.WithLogLevel(rediscontainers.LogLevelNotice),
+			testcontainers.WithWaitStrategyAndDeadline(2*time.Minute, wait.ForAll(
+				wait.ForListeningPort("6379/tcp"),
+				wait.ForLog("Ready to accept connections"),
+			)),
+		)
+	})
+	must.NoError(t, err)
+	must.NotNil(t, container)
 
 	addr, err := container.ConnectionString(ctx)
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	cfg = &Config{
 		Addresses: []string{strings.TrimPrefix(addr, "redis://")},
@@ -52,8 +64,8 @@ func buildContainerBackedRedisConfig(t *testing.T) (cfg *Config, shutdown func(c
 func newTestLocker(t *testing.T, cfg *Config) distributedlock.Locker {
 	t.Helper()
 	l, err := NewRedisLocker(cfg, nil, nil, nil, cbnoop.NewCircuitBreaker())
-	require.NoError(t, err)
-	require.NotNil(t, l)
+	must.NoError(t, err)
+	must.NotNil(t, l)
 	return l
 }
 
@@ -172,17 +184,17 @@ func newUnitLocker(t *testing.T, client redisClient, cb circuitbreaking.CircuitB
 	t.Helper()
 	mp := metrics.NewNoopMetricsProvider()
 	acquireCounter, err := mp.NewInt64Counter("redis_distributed_lock_acquires")
-	require.NoError(t, err)
+	must.NoError(t, err)
 	releaseCounter, err := mp.NewInt64Counter("redis_distributed_lock_releases")
-	require.NoError(t, err)
+	must.NoError(t, err)
 	refreshCounter, err := mp.NewInt64Counter("redis_distributed_lock_refreshes")
-	require.NoError(t, err)
+	must.NoError(t, err)
 	contendCounter, err := mp.NewInt64Counter("redis_distributed_lock_contended")
-	require.NoError(t, err)
+	must.NoError(t, err)
 	errCounter, err := mp.NewInt64Counter("redis_distributed_lock_errors")
-	require.NoError(t, err)
+	must.NoError(t, err)
 	latencyHist, err := mp.NewFloat64Histogram("redis_distributed_lock_latency_ms")
-	require.NoError(t, err)
+	must.NoError(t, err)
 	if cb == nil {
 		cb = cbnoop.NewCircuitBreaker()
 	}
@@ -207,25 +219,25 @@ func TestNewRedisLocker(T *testing.T) {
 	T.Run("nil config", func(t *testing.T) {
 		t.Parallel()
 		_, err := NewRedisLocker(nil, nil, nil, nil, cbnoop.NewCircuitBreaker())
-		require.ErrorIs(t, err, distributedlock.ErrNilConfig)
+		must.ErrorIs(t, err, distributedlock.ErrNilConfig)
 	})
 
 	T.Run("standard happy path", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Addresses: []string{"localhost:0"}, KeyPrefix: "lock:"}
 		l, err := NewRedisLocker(cfg, nil, nil, nil, cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
-		require.NotNil(t, l)
-		require.NoError(t, l.Close())
+		must.NoError(t, err)
+		must.NotNil(t, l)
+		must.NoError(t, l.Close())
 	})
 
 	T.Run("cluster mode happy path", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Addresses: []string{"localhost:0", "localhost:1"}, KeyPrefix: "lock:"}
 		l, err := NewRedisLocker(cfg, nil, nil, nil, cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
-		require.NotNil(t, l)
-		require.NoError(t, l.Close())
+		must.NoError(t, err)
+		must.NotNil(t, l)
+		must.NoError(t, l.Close())
 	})
 
 	// Each metric counter creation has its own error branch; exercise them all so
@@ -236,7 +248,7 @@ func TestNewRedisLocker(T *testing.T) {
 			cfg := &Config{Addresses: []string{"localhost:0"}}
 			mp := newErrorAtCallProvider(idx, false)
 			_, err := NewRedisLocker(cfg, nil, nil, mp, cbnoop.NewCircuitBreaker())
-			require.Error(t, err)
+			must.Error(t, err)
 		})
 	}
 
@@ -245,7 +257,7 @@ func TestNewRedisLocker(T *testing.T) {
 		cfg := &Config{Addresses: []string{"localhost:0"}}
 		mp := newErrorAtCallProvider(0, true)
 		_, err := NewRedisLocker(cfg, nil, nil, mp, cbnoop.NewCircuitBreaker())
-		require.Error(t, err)
+		must.Error(t, err)
 	})
 }
 
@@ -258,70 +270,75 @@ func TestLocker_Acquire(T *testing.T) {
 		l := newUnitLocker(t, fc, nil)
 
 		got, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.NoError(t, err)
-		require.NotNil(t, got)
-		assert.Equal(t, "k", got.Key())
-		assert.Equal(t, time.Minute, got.TTL())
-		assert.Equal(t, "lock:k", fc.lastSetKey)
-		assert.Equal(t, time.Minute, fc.lastSetTTL)
+		must.NoError(t, err)
+		must.NotNil(t, got)
+		test.EqOp(t, "k", got.Key())
+		test.EqOp(t, time.Minute, got.TTL())
+		test.EqOp(t, "lock:k", fc.lastSetKey)
+		test.EqOp(t, time.Minute, fc.lastSetTTL)
 	})
 
 	T.Run("rejects empty key", func(t *testing.T) {
 		t.Parallel()
 		l := newUnitLocker(t, &fakeRedisClient{}, nil)
 		_, err := l.Acquire(t.Context(), "", time.Minute)
-		require.ErrorIs(t, err, distributedlock.ErrEmptyKey)
+		must.ErrorIs(t, err, distributedlock.ErrEmptyKey)
 	})
 
 	T.Run("rejects zero TTL", func(t *testing.T) {
 		t.Parallel()
 		l := newUnitLocker(t, &fakeRedisClient{}, nil)
 		_, err := l.Acquire(t.Context(), "k", 0)
-		require.ErrorIs(t, err, distributedlock.ErrInvalidTTL)
+		must.ErrorIs(t, err, distributedlock.ErrInvalidTTL)
 	})
 
 	T.Run("rejects negative TTL", func(t *testing.T) {
 		t.Parallel()
 		l := newUnitLocker(t, &fakeRedisClient{}, nil)
 		_, err := l.Acquire(t.Context(), "k", -time.Second)
-		require.ErrorIs(t, err, distributedlock.ErrInvalidTTL)
+		must.ErrorIs(t, err, distributedlock.ErrInvalidTTL)
 	})
 
 	T.Run("blocked by circuit breaker", func(t *testing.T) {
 		t.Parallel()
-		cb := &cbmock.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(true)
+		cb := &cbmock.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return true },
+		}
 		l := newUnitLocker(t, &fakeRedisClient{}, cb)
 
 		_, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
-		cb.AssertExpectations(t)
+		must.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
+		must.SliceNotEmpty(t, cb.CannotProceedCalls())
 	})
 
 	T.Run("SetNX backend error trips breaker", func(t *testing.T) {
 		t.Parallel()
 		fc := &fakeRedisClient{setNXErr: errors.New("redis down")}
-		cb := &cbmock.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false)
-		cb.On("Failed").Return()
+		cb := &cbmock.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+			FailedFunc:        func() {},
+		}
 		l := newUnitLocker(t, fc, cb)
 
 		_, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.Error(t, err)
-		cb.AssertExpectations(t)
+		must.Error(t, err)
+		must.SliceNotEmpty(t, cb.CannotProceedCalls())
+		must.SliceNotEmpty(t, cb.FailedCalls())
 	})
 
 	T.Run("contention does not fail breaker", func(t *testing.T) {
 		t.Parallel()
 		fc := &fakeRedisClient{setNXResult: false}
-		cb := &cbmock.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false)
-		cb.On("Succeeded").Return()
+		cb := &cbmock.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+			SucceededFunc:     func() {},
+		}
 		l := newUnitLocker(t, fc, cb)
 
 		_, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.ErrorIs(t, err, distributedlock.ErrLockNotAcquired)
-		cb.AssertExpectations(t)
+		must.ErrorIs(t, err, distributedlock.ErrLockNotAcquired)
+		must.SliceNotEmpty(t, cb.CannotProceedCalls())
+		must.SliceNotEmpty(t, cb.SucceededCalls())
 	})
 }
 
@@ -334,9 +351,9 @@ func TestLocker_Release(T *testing.T) {
 		l := newUnitLocker(t, fc, nil)
 
 		h, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.NoError(t, err)
-		require.NoError(t, h.Release(t.Context()))
-		assert.Equal(t, "lock:k", fc.lastEvalKey)
+		must.NoError(t, err)
+		must.NoError(t, h.Release(t.Context()))
+		test.EqOp(t, "lock:k", fc.lastEvalKey)
 	})
 
 	T.Run("eval reports caller no longer holds lock", func(t *testing.T) {
@@ -345,43 +362,49 @@ func TestLocker_Release(T *testing.T) {
 		l := newUnitLocker(t, fc, nil)
 
 		h, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.NoError(t, err)
-		require.ErrorIs(t, h.Release(t.Context()), distributedlock.ErrLockNotHeld)
+		must.NoError(t, err)
+		must.ErrorIs(t, h.Release(t.Context()), distributedlock.ErrLockNotHeld)
 	})
 
 	T.Run("eval backend error trips breaker", func(t *testing.T) {
 		t.Parallel()
 		fc := &fakeRedisClient{setNXResult: true}
-		cb := &cbmock.MockCircuitBreaker{}
-		// Acquire path
-		cb.On("CannotProceed").Return(false).Once()
-		cb.On("Succeeded").Return().Once()
-		// Release path: proceed, then evalErr triggers Failed.
-		cb.On("CannotProceed").Return(false).Once()
-		cb.On("Failed").Return().Once()
+		// Acquire path: proceed + succeeded. Release path: proceed + failed.
+		cb := &cbmock.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+			SucceededFunc:     func() {},
+			FailedFunc:        func() {},
+		}
 		l := newUnitLocker(t, fc, cb)
 
 		h, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		fc.evalErr = errors.New("eval boom")
-		require.Error(t, h.Release(t.Context()))
-		cb.AssertExpectations(t)
+		must.Error(t, h.Release(t.Context()))
+		must.SliceLen(t, 2, cb.CannotProceedCalls())
+		must.SliceLen(t, 1, cb.SucceededCalls())
+		must.SliceLen(t, 1, cb.FailedCalls())
 	})
 
 	T.Run("blocked by circuit breaker", func(t *testing.T) {
 		t.Parallel()
 		fc := &fakeRedisClient{setNXResult: true}
-		cb := &cbmock.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false).Once()
-		cb.On("Succeeded").Return().Once()
-		cb.On("CannotProceed").Return(true).Once()
+		var cannotProceedCalls int
+		cb := &cbmock.CircuitBreakerMock{
+			CannotProceedFunc: func() bool {
+				cannotProceedCalls++
+				return cannotProceedCalls > 1 // first call (Acquire) proceeds, second (Release) is blocked
+			},
+			SucceededFunc: func() {},
+		}
 		l := newUnitLocker(t, fc, cb)
 
 		h, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.NoError(t, err)
-		require.ErrorIs(t, h.Release(t.Context()), circuitbreaking.ErrCircuitBroken)
-		cb.AssertExpectations(t)
+		must.NoError(t, err)
+		must.ErrorIs(t, h.Release(t.Context()), circuitbreaking.ErrCircuitBroken)
+		must.SliceLen(t, 2, cb.CannotProceedCalls())
+		must.SliceLen(t, 1, cb.SucceededCalls())
 	})
 }
 
@@ -394,10 +417,10 @@ func TestLocker_Refresh(T *testing.T) {
 		l := newUnitLocker(t, fc, nil)
 
 		h, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
-		require.NoError(t, h.Refresh(t.Context(), 5*time.Minute))
-		assert.Equal(t, 5*time.Minute, h.TTL())
+		must.NoError(t, h.Refresh(t.Context(), 5*time.Minute))
+		test.EqOp(t, 5*time.Minute, h.TTL())
 	})
 
 	T.Run("rejects zero TTL", func(t *testing.T) {
@@ -406,10 +429,10 @@ func TestLocker_Refresh(T *testing.T) {
 		l := newUnitLocker(t, fc, nil)
 
 		h, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.NoError(t, err)
-		require.ErrorIs(t, h.Refresh(t.Context(), 0), distributedlock.ErrInvalidTTL)
+		must.NoError(t, err)
+		must.ErrorIs(t, h.Refresh(t.Context(), 0), distributedlock.ErrInvalidTTL)
 		// TTL must remain unchanged on failure.
-		assert.Equal(t, time.Minute, h.TTL())
+		test.EqOp(t, time.Minute, h.TTL())
 	})
 
 	T.Run("eval reports caller no longer holds lock", func(t *testing.T) {
@@ -418,43 +441,50 @@ func TestLocker_Refresh(T *testing.T) {
 		l := newUnitLocker(t, fc, nil)
 
 		h, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.NoError(t, err)
+		must.NoError(t, err)
 		// Force the refresh script to "not held" by returning 0.
-		require.ErrorIs(t, h.Refresh(t.Context(), 2*time.Minute), distributedlock.ErrLockNotHeld)
-		assert.Equal(t, time.Minute, h.TTL())
+		must.ErrorIs(t, h.Refresh(t.Context(), 2*time.Minute), distributedlock.ErrLockNotHeld)
+		test.EqOp(t, time.Minute, h.TTL())
 	})
 
 	T.Run("eval backend error trips breaker", func(t *testing.T) {
 		t.Parallel()
 		fc := &fakeRedisClient{setNXResult: true}
-		cb := &cbmock.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false).Once()
-		cb.On("Succeeded").Return().Once()
-		cb.On("CannotProceed").Return(false).Once()
-		cb.On("Failed").Return().Once()
+		cb := &cbmock.CircuitBreakerMock{
+			CannotProceedFunc: func() bool { return false },
+			SucceededFunc:     func() {},
+			FailedFunc:        func() {},
+		}
 		l := newUnitLocker(t, fc, cb)
 
 		h, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		fc.evalErr = errors.New("eval boom")
-		require.Error(t, h.Refresh(t.Context(), 5*time.Minute))
-		cb.AssertExpectations(t)
+		must.Error(t, h.Refresh(t.Context(), 5*time.Minute))
+		must.SliceLen(t, 2, cb.CannotProceedCalls())
+		must.SliceLen(t, 1, cb.SucceededCalls())
+		must.SliceLen(t, 1, cb.FailedCalls())
 	})
 
 	T.Run("blocked by circuit breaker", func(t *testing.T) {
 		t.Parallel()
 		fc := &fakeRedisClient{setNXResult: true}
-		cb := &cbmock.MockCircuitBreaker{}
-		cb.On("CannotProceed").Return(false).Once()
-		cb.On("Succeeded").Return().Once()
-		cb.On("CannotProceed").Return(true).Once()
+		var cannotProceedCalls int
+		cb := &cbmock.CircuitBreakerMock{
+			CannotProceedFunc: func() bool {
+				cannotProceedCalls++
+				return cannotProceedCalls > 1 // first call (Acquire) proceeds, second (Refresh) is blocked
+			},
+			SucceededFunc: func() {},
+		}
 		l := newUnitLocker(t, fc, cb)
 
 		h, err := l.Acquire(t.Context(), "k", time.Minute)
-		require.NoError(t, err)
-		require.ErrorIs(t, h.Refresh(t.Context(), time.Minute), circuitbreaking.ErrCircuitBroken)
-		cb.AssertExpectations(t)
+		must.NoError(t, err)
+		must.ErrorIs(t, h.Refresh(t.Context(), time.Minute), circuitbreaking.ErrCircuitBroken)
+		must.SliceLen(t, 2, cb.CannotProceedCalls())
+		must.SliceLen(t, 1, cb.SucceededCalls())
 	})
 }
 
@@ -465,30 +495,30 @@ func TestLocker_PingClose(T *testing.T) {
 		t.Parallel()
 		fc := &fakeRedisClient{}
 		l := newUnitLocker(t, fc, nil)
-		require.NoError(t, l.Ping(t.Context()))
-		assert.Equal(t, 1, fc.pingCalls)
+		must.NoError(t, l.Ping(t.Context()))
+		test.EqOp(t, 1, fc.pingCalls)
 	})
 
 	T.Run("ping error", func(t *testing.T) {
 		t.Parallel()
 		fc := &fakeRedisClient{pingErr: errors.New("ping boom")}
 		l := newUnitLocker(t, fc, nil)
-		require.Error(t, l.Ping(t.Context()))
+		must.Error(t, l.Ping(t.Context()))
 	})
 
 	T.Run("close success", func(t *testing.T) {
 		t.Parallel()
 		fc := &fakeRedisClient{}
 		l := newUnitLocker(t, fc, nil)
-		require.NoError(t, l.Close())
-		assert.Equal(t, 1, fc.closeCalls)
+		must.NoError(t, l.Close())
+		test.EqOp(t, 1, fc.closeCalls)
 	})
 
 	T.Run("close error", func(t *testing.T) {
 		t.Parallel()
 		fc := &fakeRedisClient{closeErr: errors.New("close boom")}
 		l := newUnitLocker(t, fc, nil)
-		require.Error(t, l.Close())
+		must.Error(t, l.Close())
 	})
 }
 
@@ -499,9 +529,9 @@ func TestBuildRedisClient(T *testing.T) {
 		t.Parallel()
 		cfg := &Config{Addresses: []string{"localhost:6379"}}
 		c := buildRedisClient(cfg)
-		require.NotNil(t, c)
+		must.NotNil(t, c)
 		_, ok := c.(*redis.Client)
-		assert.True(t, ok)
+		test.True(t, ok)
 		_ = c.Close()
 	})
 
@@ -509,9 +539,9 @@ func TestBuildRedisClient(T *testing.T) {
 		t.Parallel()
 		cfg := &Config{Addresses: []string{"localhost:6379", "localhost:6380"}}
 		c := buildRedisClient(cfg)
-		require.NotNil(t, c)
+		must.NotNil(t, c)
 		_, ok := c.(*redis.ClusterClient)
-		assert.True(t, ok)
+		test.True(t, ok)
 		_ = c.Close()
 	})
 }
@@ -535,12 +565,12 @@ func TestRedisLocker_Container(T *testing.T) {
 		key := "happy_" + identifiers.New()
 
 		lock, err := l.Acquire(ctx, key, time.Minute)
-		require.NoError(t, err)
-		require.NotNil(t, lock)
-		assert.Equal(t, key, lock.Key())
-		assert.Equal(t, time.Minute, lock.TTL())
+		must.NoError(t, err)
+		must.NotNil(t, lock)
+		test.EqOp(t, key, lock.Key())
+		test.EqOp(t, time.Minute, lock.TTL())
 
-		require.NoError(t, lock.Release(ctx))
+		must.NoError(t, lock.Release(ctx))
 	})
 
 	T.Run("Acquire contended returns ErrLockNotAcquired", func(t *testing.T) {
@@ -550,25 +580,25 @@ func TestRedisLocker_Container(T *testing.T) {
 		key := "contended_" + identifiers.New()
 
 		first, err := l.Acquire(ctx, key, time.Minute)
-		require.NoError(t, err)
+		must.NoError(t, err)
 		t.Cleanup(func() { _ = first.Release(ctx) })
 
 		_, err = l.Acquire(ctx, key, time.Minute)
-		require.ErrorIs(t, err, distributedlock.ErrLockNotAcquired)
+		must.ErrorIs(t, err, distributedlock.ErrLockNotAcquired)
 	})
 
 	T.Run("Acquire rejects empty key", func(t *testing.T) {
 		t.Parallel()
 		l := newTestLocker(t, cfg)
 		_, err := l.Acquire(t.Context(), "", time.Minute)
-		require.ErrorIs(t, err, distributedlock.ErrEmptyKey)
+		must.ErrorIs(t, err, distributedlock.ErrEmptyKey)
 	})
 
 	T.Run("Acquire rejects zero TTL", func(t *testing.T) {
 		t.Parallel()
 		l := newTestLocker(t, cfg)
 		_, err := l.Acquire(t.Context(), "k", 0)
-		require.ErrorIs(t, err, distributedlock.ErrInvalidTTL)
+		must.ErrorIs(t, err, distributedlock.ErrInvalidTTL)
 	})
 
 	T.Run("Release after expiration returns ErrLockNotHeld", func(t *testing.T) {
@@ -578,10 +608,10 @@ func TestRedisLocker_Container(T *testing.T) {
 		key := "expired_" + identifiers.New()
 
 		lock, err := l.Acquire(ctx, key, 100*time.Millisecond)
-		require.NoError(t, err)
+		must.NoError(t, err)
 		time.Sleep(250 * time.Millisecond)
 
-		require.ErrorIs(t, lock.Release(ctx), distributedlock.ErrLockNotHeld)
+		must.ErrorIs(t, lock.Release(ctx), distributedlock.ErrLockNotHeld)
 	})
 
 	T.Run("Release wrong owner returns ErrLockNotHeld", func(t *testing.T) {
@@ -591,14 +621,14 @@ func TestRedisLocker_Container(T *testing.T) {
 		key := "stolen_" + identifiers.New()
 
 		lock, err := l.Acquire(ctx, key, time.Minute)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		// Forge a different owner by overwriting the value out-of-band.
 		direct := directRedisClient(t, cfg)
 		t.Cleanup(func() { _ = direct.Close() })
-		require.NoError(t, direct.Set(ctx, "lock:"+key, "someone-else", time.Minute).Err())
+		must.NoError(t, direct.Set(ctx, "lock:"+key, "someone-else", time.Minute).Err())
 
-		require.ErrorIs(t, lock.Release(ctx), distributedlock.ErrLockNotHeld)
+		must.ErrorIs(t, lock.Release(ctx), distributedlock.ErrLockNotHeld)
 	})
 
 	T.Run("Refresh extends TTL", func(t *testing.T) {
@@ -608,16 +638,16 @@ func TestRedisLocker_Container(T *testing.T) {
 		key := "refresh_" + identifiers.New()
 
 		lock, err := l.Acquire(ctx, key, 200*time.Millisecond)
-		require.NoError(t, err)
-		require.NoError(t, lock.Refresh(ctx, 5*time.Second))
+		must.NoError(t, err)
+		must.NoError(t, lock.Refresh(ctx, 5*time.Second))
 		t.Cleanup(func() { _ = lock.Release(ctx) })
 
 		// Sleep past the original TTL; lock should still be held.
 		time.Sleep(300 * time.Millisecond)
 
 		_, err = l.Acquire(ctx, key, time.Minute)
-		require.ErrorIs(t, err, distributedlock.ErrLockNotAcquired)
-		assert.Equal(t, 5*time.Second, lock.TTL())
+		must.ErrorIs(t, err, distributedlock.ErrLockNotAcquired)
+		test.EqOp(t, 5*time.Second, lock.TTL())
 	})
 
 	T.Run("Refresh rejects invalid TTL", func(t *testing.T) {
@@ -627,10 +657,10 @@ func TestRedisLocker_Container(T *testing.T) {
 		key := "refreshinv_" + identifiers.New()
 
 		lock, err := l.Acquire(ctx, key, time.Minute)
-		require.NoError(t, err)
+		must.NoError(t, err)
 		t.Cleanup(func() { _ = lock.Release(ctx) })
 
-		require.ErrorIs(t, lock.Refresh(ctx, 0), distributedlock.ErrInvalidTTL)
+		must.ErrorIs(t, lock.Refresh(ctx, 0), distributedlock.ErrInvalidTTL)
 	})
 
 	T.Run("Double release returns ErrLockNotHeld on second call", func(t *testing.T) {
@@ -640,9 +670,9 @@ func TestRedisLocker_Container(T *testing.T) {
 		key := "double_" + identifiers.New()
 
 		lock, err := l.Acquire(ctx, key, time.Minute)
-		require.NoError(t, err)
-		require.NoError(t, lock.Release(ctx))
-		require.ErrorIs(t, lock.Release(ctx), distributedlock.ErrLockNotHeld)
+		must.NoError(t, err)
+		must.NoError(t, lock.Release(ctx))
+		must.ErrorIs(t, lock.Release(ctx), distributedlock.ErrLockNotHeld)
 	})
 
 	T.Run("Released lock can be reacquired", func(t *testing.T) {
@@ -652,17 +682,17 @@ func TestRedisLocker_Container(T *testing.T) {
 		key := "reacquire_" + identifiers.New()
 
 		first, err := l.Acquire(ctx, key, time.Minute)
-		require.NoError(t, err)
-		require.NoError(t, first.Release(ctx))
+		must.NoError(t, err)
+		must.NoError(t, first.Release(ctx))
 
 		second, err := l.Acquire(ctx, key, time.Minute)
-		require.NoError(t, err)
-		require.NoError(t, second.Release(ctx))
+		must.NoError(t, err)
+		must.NoError(t, second.Release(ctx))
 	})
 
 	T.Run("Ping success", func(t *testing.T) {
 		t.Parallel()
 		l := newTestLocker(t, cfg)
-		require.NoError(t, l.Ping(t.Context()))
+		must.NoError(t, l.Ping(t.Context()))
 	})
 }

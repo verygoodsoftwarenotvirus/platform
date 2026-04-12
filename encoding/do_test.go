@@ -7,8 +7,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/samber/do/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestRegisterServerEncoderDecoder(T *testing.T) {
@@ -25,11 +25,11 @@ func TestRegisterServerEncoderDecoder(T *testing.T) {
 		RegisterServerEncoderDecoder(i)
 
 		ct, err := do.Invoke[ContentType](i)
-		require.NoError(t, err)
-		assert.NotNil(t, ct)
+		must.NoError(t, err)
+		test.NotNil(t, ct)
 
 		sed, err := do.Invoke[ServerEncoderDecoder](i)
-		require.NoError(t, err)
-		assert.NotNil(t, sed)
+		must.NoError(t, err)
+		test.NotNil(t, sed)
 	})
 }

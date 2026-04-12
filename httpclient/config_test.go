@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestConfig_EnsureDefaults(T *testing.T) {
@@ -18,9 +18,9 @@ func TestConfig_EnsureDefaults(T *testing.T) {
 		cfg := &Config{}
 		cfg.EnsureDefaults()
 
-		assert.Equal(t, defaultTimeout, cfg.Timeout)
-		assert.Equal(t, defaultMaxIdleConns, cfg.MaxIdleConns)
-		assert.Equal(t, defaultMaxIdleConnsPerHost, cfg.MaxIdleConnsPerHost)
+		test.EqOp(t, defaultTimeout, cfg.Timeout)
+		test.EqOp(t, defaultMaxIdleConns, cfg.MaxIdleConns)
+		test.EqOp(t, defaultMaxIdleConnsPerHost, cfg.MaxIdleConnsPerHost)
 	})
 
 	T.Run("preserves non-zero values", func(t *testing.T) {
@@ -33,9 +33,9 @@ func TestConfig_EnsureDefaults(T *testing.T) {
 		}
 		cfg.EnsureDefaults()
 
-		assert.Equal(t, 5*time.Second, cfg.Timeout)
-		assert.Equal(t, 50, cfg.MaxIdleConns)
-		assert.Equal(t, 25, cfg.MaxIdleConnsPerHost)
+		test.EqOp(t, 5*time.Second, cfg.Timeout)
+		test.EqOp(t, 50, cfg.MaxIdleConns)
+		test.EqOp(t, 25, cfg.MaxIdleConnsPerHost)
 	})
 }
 
@@ -53,7 +53,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		}
 
 		err := cfg.ValidateWithContext(ctx)
-		require.NoError(t, err)
+		must.NoError(t, err)
 	})
 
 	T.Run("invalid timeout", func(t *testing.T) {
@@ -67,7 +67,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		}
 
 		err := cfg.ValidateWithContext(ctx)
-		require.Error(t, err)
+		must.Error(t, err)
 	})
 
 	T.Run("invalid MaxIdleConns", func(t *testing.T) {
@@ -81,7 +81,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		}
 
 		err := cfg.ValidateWithContext(ctx)
-		require.Error(t, err)
+		must.Error(t, err)
 	})
 
 	T.Run("invalid MaxIdleConnsPerHost", func(t *testing.T) {
@@ -95,6 +95,6 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		}
 
 		err := cfg.ValidateWithContext(ctx)
-		require.Error(t, err)
+		must.Error(t, err)
 	})
 }

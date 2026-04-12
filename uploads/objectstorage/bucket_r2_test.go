@@ -3,7 +3,7 @@ package objectstorage
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestR2Config_ValidateWithContext(T *testing.T) {
@@ -20,7 +20,7 @@ func TestR2Config_ValidateWithContext(T *testing.T) {
 			SecretAccessKey: t.Name(),
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with missing account ID", func(t *testing.T) {
@@ -33,7 +33,7 @@ func TestR2Config_ValidateWithContext(T *testing.T) {
 			SecretAccessKey: t.Name(),
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with missing bucket name", func(t *testing.T) {
@@ -46,7 +46,7 @@ func TestR2Config_ValidateWithContext(T *testing.T) {
 			SecretAccessKey: t.Name(),
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with missing access key ID", func(t *testing.T) {
@@ -59,7 +59,7 @@ func TestR2Config_ValidateWithContext(T *testing.T) {
 			SecretAccessKey: t.Name(),
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with missing secret access key", func(t *testing.T) {
@@ -72,6 +72,6 @@ func TestR2Config_ValidateWithContext(T *testing.T) {
 			AccessKeyID: t.Name(),
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 }

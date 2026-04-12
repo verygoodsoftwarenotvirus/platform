@@ -1,6 +1,7 @@
 package circuitbreakingcfg
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -10,11 +11,9 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
-	"github.com/verygoodsoftwarenotvirus/platform/v5/reflection"
 
 	circuit "github.com/rubyist/circuitbreaker"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
+	"github.com/shoenig/test"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -32,7 +31,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		}
 
 		err := cfg.ValidateWithContext(ctx)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 
 	T.Run("with missing name", func(t *testing.T) {
@@ -45,7 +44,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		}
 
 		err := cfg.ValidateWithContext(ctx)
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 
 	T.Run("with error rate exceeding max", func(t *testing.T) {
@@ -58,7 +57,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		}
 
 		err := cfg.ValidateWithContext(ctx)
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 }
 
@@ -71,9 +70,9 @@ func TestConfig_EnsureDefaults(T *testing.T) {
 		cfg := &Config{}
 		cfg.EnsureDefaults()
 
-		assert.Equal(t, "UNKNOWN", cfg.Name)
-		assert.Equal(t, float64(100), cfg.ErrorRate)
-		assert.Equal(t, uint64(1_000_000), cfg.MinimumSampleThreshold)
+		test.EqOp(t, "UNKNOWN", cfg.Name)
+		test.EqOp(t, float64(100), cfg.ErrorRate)
+		test.EqOp(t, uint64(1_000_000), cfg.MinimumSampleThreshold)
 	})
 
 	T.Run("does not override set values", func(t *testing.T) {
@@ -86,9 +85,9 @@ func TestConfig_EnsureDefaults(T *testing.T) {
 		}
 		cfg.EnsureDefaults()
 
-		assert.Equal(t, "test", cfg.Name)
-		assert.Equal(t, 50.0, cfg.ErrorRate)
-		assert.Equal(t, uint64(500), cfg.MinimumSampleThreshold)
+		test.EqOp(t, "test", cfg.Name)
+		test.EqOp(t, 50.0, cfg.ErrorRate)
+		test.EqOp(t, uint64(500), cfg.MinimumSampleThreshold)
 	})
 }
 
@@ -101,8 +100,8 @@ func TestProvideCircuitBreakerFromConfig(T *testing.T) {
 		ctx := t.Context()
 
 		cb, err := ProvideCircuitBreakerFromConfig(ctx, cfg, logging.NewNoopLogger(), metrics.NewNoopMetricsProvider())
-		assert.NotNil(t, cb)
-		assert.NoError(t, err)
+		test.NotNil(t, cb)
+		test.NoError(t, err)
 	})
 
 	T.Run("with error providing first metric", func(t *testing.T) {
@@ -110,16 +109,19 @@ func TestProvideCircuitBreakerFromConfig(T *testing.T) {
 		cfg.EnsureDefaults()
 
 		ctx := t.Context()
-		i64Counter := &mockmetrics.Int64Counter{}
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On(reflection.GetMethodName(mp.NewInt64Counter), fmt.Sprintf("%s_circuit_breaker_tripped", cfg.Name), []metric.Int64CounterOption(nil)).Return(i64Counter, errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, fmt.Sprintf("%s_circuit_breaker_tripped", cfg.Name), counterName)
+				return &mockmetrics.Int64CounterMock{}, errors.New("arbitrary")
+			},
+		}
 
 		cb, err := ProvideCircuitBreakerFromConfig(ctx, cfg, logging.NewNoopLogger(), mp)
-		assert.Nil(t, cb)
-		assert.Error(t, err)
+		test.Nil(t, cb)
+		test.Error(t, err)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("with error providing second metric", func(t *testing.T) {
@@ -127,17 +129,25 @@ func TestProvideCircuitBreakerFromConfig(T *testing.T) {
 		cfg.EnsureDefaults()
 
 		ctx := t.Context()
-		i64Counter := &mockmetrics.Int64Counter{}
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On(reflection.GetMethodName(mp.NewInt64Counter), fmt.Sprintf("%s_circuit_breaker_tripped", cfg.Name), []metric.Int64CounterOption(nil)).Return(i64Counter, nil)
-		mp.On(reflection.GetMethodName(mp.NewInt64Counter), fmt.Sprintf("%s_circuit_breaker_failed", cfg.Name), []metric.Int64CounterOption(nil)).Return(i64Counter, errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				switch counterName {
+				case fmt.Sprintf("%s_circuit_breaker_tripped", cfg.Name):
+					return &mockmetrics.Int64CounterMock{}, nil
+				case fmt.Sprintf("%s_circuit_breaker_failed", cfg.Name):
+					return &mockmetrics.Int64CounterMock{}, errors.New("arbitrary")
+				}
+				t.Fatalf("unexpected NewInt64Counter call: %q", counterName)
+				return nil, nil
+			},
+		}
 
 		cb, err := ProvideCircuitBreakerFromConfig(ctx, cfg, logging.NewNoopLogger(), mp)
-		assert.Nil(t, cb)
-		assert.Error(t, err)
+		test.Nil(t, cb)
+		test.Error(t, err)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 2, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("with error providing third metric", func(t *testing.T) {
@@ -145,18 +155,26 @@ func TestProvideCircuitBreakerFromConfig(T *testing.T) {
 		cfg.EnsureDefaults()
 
 		ctx := t.Context()
-		i64Counter := &mockmetrics.Int64Counter{}
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On(reflection.GetMethodName(mp.NewInt64Counter), fmt.Sprintf("%s_circuit_breaker_tripped", cfg.Name), []metric.Int64CounterOption(nil)).Return(i64Counter, nil)
-		mp.On(reflection.GetMethodName(mp.NewInt64Counter), fmt.Sprintf("%s_circuit_breaker_failed", cfg.Name), []metric.Int64CounterOption(nil)).Return(i64Counter, nil)
-		mp.On(reflection.GetMethodName(mp.NewInt64Counter), fmt.Sprintf("%s_circuit_breaker_reset", cfg.Name), []metric.Int64CounterOption(nil)).Return(i64Counter, errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				switch counterName {
+				case fmt.Sprintf("%s_circuit_breaker_tripped", cfg.Name),
+					fmt.Sprintf("%s_circuit_breaker_failed", cfg.Name):
+					return &mockmetrics.Int64CounterMock{}, nil
+				case fmt.Sprintf("%s_circuit_breaker_reset", cfg.Name):
+					return &mockmetrics.Int64CounterMock{}, errors.New("arbitrary")
+				}
+				t.Fatalf("unexpected NewInt64Counter call: %q", counterName)
+				return nil, nil
+			},
+		}
 
 		cb, err := ProvideCircuitBreakerFromConfig(ctx, cfg, logging.NewNoopLogger(), mp)
-		assert.Nil(t, cb)
-		assert.Error(t, err)
+		test.Nil(t, cb)
+		test.Error(t, err)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 3, mp.NewInt64CounterCalls())
 	})
 }
 
@@ -164,13 +182,13 @@ func TestProvideCircuitBreakerFromConfig(T *testing.T) {
 func TestEnsureCircuitBreaker(T *testing.T) {
 	T.Run("with nil breaker", func(t *testing.T) {
 		actual := EnsureCircuitBreaker(nil)
-		assert.NotNil(t, actual)
+		test.NotNil(t, actual)
 	})
 
 	T.Run("with non-nil breaker", func(t *testing.T) {
 		input := noop.NewCircuitBreaker()
 		actual := EnsureCircuitBreaker(input)
-		assert.Equal(t, input, actual)
+		test.Eq(t, input, actual)
 	})
 }
 
@@ -181,8 +199,8 @@ func TestConfig_ProvideCircuitBreaker(T *testing.T) {
 
 		var cfg *Config
 		cb, err := cfg.ProvideCircuitBreaker(ctx, logging.NewNoopLogger(), metrics.NewNoopMetricsProvider())
-		assert.Nil(t, cb)
-		assert.Error(t, err)
+		test.Nil(t, cb)
+		test.Error(t, err)
 	})
 
 	T.Run("with invalid config", func(t *testing.T) {
@@ -194,8 +212,8 @@ func TestConfig_ProvideCircuitBreaker(T *testing.T) {
 		}
 
 		cb, err := cfg.ProvideCircuitBreaker(ctx, logging.NewNoopLogger(), metrics.NewNoopMetricsProvider())
-		assert.NotNil(t, cb)
-		assert.NoError(t, err)
+		test.NotNil(t, cb)
+		test.NoError(t, err)
 	})
 }
 
@@ -211,8 +229,8 @@ func TestBaseImplementation(T *testing.T) {
 		}
 
 		cb, err := cfg.ProvideCircuitBreaker(ctx, logging.NewNoopLogger(), metrics.NewNoopMetricsProvider())
-		assert.NotNil(t, cb)
-		assert.NoError(t, err)
+		test.NotNil(t, cb)
+		test.NoError(t, err)
 
 		cb.Failed()
 	})
@@ -227,8 +245,8 @@ func TestBaseImplementation(T *testing.T) {
 		}
 
 		cb, err := cfg.ProvideCircuitBreaker(ctx, logging.NewNoopLogger(), metrics.NewNoopMetricsProvider())
-		assert.NotNil(t, cb)
-		assert.NoError(t, err)
+		test.NotNil(t, cb)
+		test.NoError(t, err)
 
 		cb.Succeeded()
 	})
@@ -243,10 +261,10 @@ func TestBaseImplementation(T *testing.T) {
 		}
 
 		cb, err := cfg.ProvideCircuitBreaker(ctx, logging.NewNoopLogger(), metrics.NewNoopMetricsProvider())
-		assert.NotNil(t, cb)
-		assert.NoError(t, err)
+		test.NotNil(t, cb)
+		test.NoError(t, err)
 
-		assert.True(t, cb.CanProceed())
+		test.True(t, cb.CanProceed())
 	})
 
 	T.Run("CannotProceed", func(t *testing.T) {
@@ -259,10 +277,10 @@ func TestBaseImplementation(T *testing.T) {
 		}
 
 		cb, err := cfg.ProvideCircuitBreaker(ctx, logging.NewNoopLogger(), metrics.NewNoopMetricsProvider())
-		assert.NotNil(t, cb)
-		assert.NoError(t, err)
+		test.NotNil(t, cb)
+		test.NoError(t, err)
 
-		assert.False(t, cb.CannotProceed())
+		test.False(t, cb.CannotProceed())
 	})
 }
 
@@ -271,20 +289,27 @@ func TestHandleCircuitBreakerEvents(T *testing.T) {
 	T.Run("handles all event types and exits on channel close", func(t *testing.T) {
 		ctx := t.Context()
 
-		i64Counter := &mockmetrics.Int64Counter{}
-		i64Counter.On("Add", mock.Anything, int64(1), []metric.AddOption(nil)).Return()
+		i64Counter := &mockmetrics.Int64CounterMock{
+			AddFunc: func(_ context.Context, _ int64, _ ...metric.AddOption) {},
+		}
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On(reflection.GetMethodName(mp.NewInt64Counter), "failure", []metric.Int64CounterOption(nil)).Return(i64Counter, nil)
-		mp.On(reflection.GetMethodName(mp.NewInt64Counter), "reset", []metric.Int64CounterOption(nil)).Return(i64Counter, nil)
-		mp.On(reflection.GetMethodName(mp.NewInt64Counter), "broken", []metric.Int64CounterOption(nil)).Return(i64Counter, nil)
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				switch counterName {
+				case "failure", "reset", "broken":
+					return i64Counter, nil
+				}
+				t.Fatalf("unexpected NewInt64Counter call: %q", counterName)
+				return nil, nil
+			},
+		}
 
 		failure, err := mp.NewInt64Counter("failure")
-		assert.NoError(t, err)
+		test.NoError(t, err)
 		reset, err := mp.NewInt64Counter("reset")
-		assert.NoError(t, err)
+		test.NoError(t, err)
 		broken, err := mp.NewInt64Counter("broken")
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		events := make(chan circuit.BreakerEvent, 4)
 		events <- circuit.BreakerTripped
@@ -295,7 +320,8 @@ func TestHandleCircuitBreakerEvents(T *testing.T) {
 
 		handleCircuitBreakerEvents(ctx, logging.NewNoopLogger(), events, failure, reset, broken)
 
-		mock.AssertExpectationsForObjects(t, i64Counter, mp)
+		test.SliceLen(t, 3, mp.NewInt64CounterCalls())
+		test.SliceLen(t, 3, i64Counter.AddCalls())
 	})
 }
 
@@ -313,20 +339,22 @@ func TestCircuitBreaker_Integration(T *testing.T) {
 		}
 
 		cb, err := ProvideCircuitBreakerFromConfig(ctx, cfg, logging.NewNoopLogger(), metrics.NewNoopMetricsProvider())
-		assert.NotNil(t, cb)
-		assert.NoError(t, err)
+		test.NotNil(t, cb)
+		test.NoError(t, err)
 
-		assert.True(t, cb.CanProceed())
+		test.True(t, cb.CanProceed())
 		cb.Failed()
-		assert.True(t, cb.CannotProceed())
+		test.True(t, cb.CannotProceed())
 		cb.Succeeded()
-		assert.Eventually(
-			t,
-			func() bool {
-				return cb.CanProceed()
-			},
-			5*time.Second,
-			500*time.Millisecond,
-		)
+		deadline := time.Now().Add(5 * time.Second)
+		var proceeded bool
+		for time.Now().Before(deadline) {
+			if cb.CanProceed() {
+				proceeded = true
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+		test.True(t, proceeded)
 	})
 }

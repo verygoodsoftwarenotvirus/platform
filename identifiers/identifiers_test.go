@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/rs/xid"
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestNew(T *testing.T) {
@@ -14,7 +14,7 @@ func TestNew(T *testing.T) {
 		t.Parallel()
 
 		actual := New()
-		assert.NotEmpty(t, actual)
+		test.NotEq(t, "", actual)
 	})
 }
 
@@ -25,6 +25,6 @@ func TestValidate(T *testing.T) {
 		t.Parallel()
 
 		actual := Validate(xid.New().String())
-		assert.NoError(t, actual)
+		test.NoError(t, actual)
 	})
 }

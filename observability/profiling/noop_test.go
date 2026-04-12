@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestNewNoopProvider(T *testing.T) {
@@ -13,18 +13,18 @@ func TestNewNoopProvider(T *testing.T) {
 	T.Run("returns non-nil provider", func(t *testing.T) {
 		t.Parallel()
 		p := NewNoopProvider()
-		assert.NotNil(t, p)
+		test.NotNil(t, p)
 	})
 
 	T.Run("Start returns nil", func(t *testing.T) {
 		t.Parallel()
 		p := NewNoopProvider()
-		assert.NoError(t, p.Start(context.Background()))
+		test.NoError(t, p.Start(context.Background()))
 	})
 
 	T.Run("Shutdown returns nil", func(t *testing.T) {
 		t.Parallel()
 		p := NewNoopProvider()
-		assert.NoError(t, p.Shutdown(context.Background()))
+		test.NoError(t, p.Shutdown(context.Background()))
 	})
 }

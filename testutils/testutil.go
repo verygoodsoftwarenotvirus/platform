@@ -12,8 +12,8 @@ import (
 	"time"
 
 	fake "github.com/brianvoe/gofakeit/v7"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func init() {
@@ -65,8 +65,8 @@ func BuildTestRequest(t *testing.T) *http.Request {
 		http.NoBody,
 	)
 
-	require.NotNil(t, req)
-	assert.NoError(t, err)
+	must.NotNil(t, req)
+	test.NoError(t, err)
 
 	return req
 }

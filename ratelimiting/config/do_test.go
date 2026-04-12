@@ -7,8 +7,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/ratelimiting"
 
 	"github.com/samber/do/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestRegisterRateLimiter(T *testing.T) {
@@ -24,7 +24,7 @@ func TestRegisterRateLimiter(T *testing.T) {
 		RegisterRateLimiter(i)
 
 		limiter, err := do.Invoke[ratelimiting.RateLimiter](i)
-		require.NoError(t, err)
-		assert.NotNil(t, limiter)
+		must.NoError(t, err)
+		test.NotNil(t, limiter)
 	})
 }

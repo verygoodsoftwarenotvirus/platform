@@ -89,6 +89,12 @@ shellcheck:
 .PHONY: lint
 lint: golang_lint shellcheck
 
+## GENERATION
+
+.PHONY: generate
+generate:
+	go generate ./...
+
 ## EXECUTION
 
 .PHONY: build

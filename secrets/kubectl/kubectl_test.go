@@ -8,9 +8,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/metric"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,17 +21,17 @@ func TestNewKubectlSecretSource(T *testing.T) {
 	T.Run("nil config returns error", func(t *testing.T) {
 		t.Parallel()
 		source, err := NewKubectlSecretSource(context.Background(), nil, nil, nil, nil, nil)
-		require.Error(t, err)
-		assert.Nil(t, source)
-		assert.Contains(t, err.Error(), "config is required")
+		must.Error(t, err)
+		test.Nil(t, source)
+		test.StrContains(t, err.Error(), "config is required")
 	})
 
 	T.Run("missing namespace returns error", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{}
 		source, err := NewKubectlSecretSource(context.Background(), cfg, nil, nil, nil, nil)
-		require.Error(t, err)
-		assert.Nil(t, source)
+		must.Error(t, err)
+		test.Nil(t, source)
 	})
 
 	T.Run("with mock client succeeds", func(t *testing.T) {
@@ -40,37 +39,50 @@ func TestNewKubectlSecretSource(T *testing.T) {
 		cfg := &Config{Namespace: "default"}
 		mc := &mockSecretGetter{}
 		source, err := NewKubectlSecretSource(context.Background(), cfg, mc, nil, nil, nil)
-		require.NoError(t, err)
-		require.NotNil(t, source)
+		must.NoError(t, err)
+		must.NotNil(t, source)
 	})
 
 	T.Run("with error creating lookup counter", func(t *testing.T) {
 		t.Parallel()
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", name+"_lookups", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, name+"_lookups", counterName)
+				return metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary")
+			},
+		}
 
 		cfg := &Config{Namespace: "default"}
 		source, err := NewKubectlSecretSource(context.Background(), cfg, &mockSecretGetter{}, nil, nil, mp)
-		require.Error(t, err)
-		assert.Nil(t, source)
+		must.Error(t, err)
+		test.Nil(t, source)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("with error creating error counter", func(t *testing.T) {
 		t.Parallel()
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", name+"_lookups", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
-		mp.On("NewInt64Counter", name+"_errors", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				switch counterName {
+				case name + "_lookups":
+					return metrics.Int64CounterForTest(t, "x"), nil
+				case name + "_errors":
+					return metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary")
+				}
+				t.Fatalf("unexpected NewInt64Counter call: %q", counterName)
+				return nil, nil
+			},
+		}
 
 		cfg := &Config{Namespace: "default"}
 		source, err := NewKubectlSecretSource(context.Background(), cfg, &mockSecretGetter{}, nil, nil, mp)
-		require.Error(t, err)
-		assert.Nil(t, source)
+		must.Error(t, err)
+		test.Nil(t, source)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 2, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("with error creating latency histogram", func(t *testing.T) {
@@ -78,19 +90,25 @@ func TestNewKubectlSecretSource(T *testing.T) {
 
 		noopMP := metrics.NewNoopMetricsProvider()
 		h, histErr := noopMP.NewFloat64Histogram("test")
-		require.NoError(t, histErr)
+		must.NoError(t, histErr)
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", name+"_lookups", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
-		mp.On("NewInt64Counter", name+"_errors", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
-		mp.On("NewFloat64Histogram", name+"_latency_ms", []metric.Float64HistogramOption(nil)).Return(h, errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(_ string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				return metrics.Int64CounterForTest(t, "x"), nil
+			},
+			NewFloat64HistogramFunc: func(histName string, _ ...metric.Float64HistogramOption) (metrics.Float64Histogram, error) {
+				test.EqOp(t, name+"_latency_ms", histName)
+				return h, errors.New("arbitrary")
+			},
+		}
 
 		cfg := &Config{Namespace: "default"}
 		source, err := NewKubectlSecretSource(context.Background(), cfg, &mockSecretGetter{}, nil, nil, mp)
-		require.Error(t, err)
-		assert.Nil(t, source)
+		must.Error(t, err)
+		test.Nil(t, source)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 2, mp.NewInt64CounterCalls())
+		test.SliceLen(t, 1, mp.NewFloat64HistogramCalls())
 	})
 }
 
@@ -108,12 +126,12 @@ func TestKubectlSecretSource_GetSecret(T *testing.T) {
 			},
 		}
 		source, err := NewKubectlSecretSource(context.Background(), cfg, mc, nil, nil, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		got, err := source.GetSecret(context.Background(), "db-creds/password")
-		require.NoError(t, err)
-		assert.Equal(t, "s3cret", got)
-		assert.Equal(t, "db-creds", mc.lastName)
+		must.NoError(t, err)
+		test.EqOp(t, "s3cret", got)
+		test.EqOp(t, "db-creds", mc.lastName)
 	})
 
 	T.Run("missing slash in name", func(t *testing.T) {
@@ -121,11 +139,11 @@ func TestKubectlSecretSource_GetSecret(T *testing.T) {
 		cfg := &Config{Namespace: "default"}
 		mc := &mockSecretGetter{}
 		source, err := NewKubectlSecretSource(context.Background(), cfg, mc, nil, nil, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		_, err = source.GetSecret(context.Background(), "no-slash")
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "expected format")
+		must.Error(t, err)
+		test.StrContains(t, err.Error(), "expected format")
 	})
 
 	T.Run("key not found", func(t *testing.T) {
@@ -139,11 +157,11 @@ func TestKubectlSecretSource_GetSecret(T *testing.T) {
 			},
 		}
 		source, err := NewKubectlSecretSource(context.Background(), cfg, mc, nil, nil, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		_, err = source.GetSecret(context.Background(), "db-creds/password")
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "key \"password\" not found")
+		must.Error(t, err)
+		test.StrContains(t, err.Error(), "key \"password\" not found")
 	})
 
 	T.Run("client error", func(t *testing.T) {
@@ -151,11 +169,11 @@ func TestKubectlSecretSource_GetSecret(T *testing.T) {
 		cfg := &Config{Namespace: "default"}
 		mc := &mockSecretGetter{err: errors.New("k8s api error")}
 		source, err := NewKubectlSecretSource(context.Background(), cfg, mc, nil, nil, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		_, err = source.GetSecret(context.Background(), "db-creds/password")
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "k8s api error")
+		must.Error(t, err)
+		test.StrContains(t, err.Error(), "k8s api error")
 	})
 }
 
@@ -167,10 +185,10 @@ func TestKubectlSecretSource_Close(T *testing.T) {
 		cfg := &Config{Namespace: "default"}
 		mc := &mockSecretGetter{}
 		source, err := NewKubectlSecretSource(context.Background(), cfg, mc, nil, nil, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		err = source.Close()
-		require.NoError(t, err)
+		must.NoError(t, err)
 	})
 }
 
@@ -180,24 +198,24 @@ func TestResolveName(T *testing.T) {
 	T.Run("valid name", func(t *testing.T) {
 		t.Parallel()
 		secretName, key, err := resolveName("my-secret/my-key")
-		require.NoError(t, err)
-		assert.Equal(t, "my-secret", secretName)
-		assert.Equal(t, "my-key", key)
+		must.NoError(t, err)
+		test.EqOp(t, "my-secret", secretName)
+		test.EqOp(t, "my-key", key)
 	})
 
 	T.Run("name with multiple slashes", func(t *testing.T) {
 		t.Parallel()
 		secretName, key, err := resolveName("my-secret/nested/key")
-		require.NoError(t, err)
-		assert.Equal(t, "my-secret", secretName)
-		assert.Equal(t, "nested/key", key)
+		must.NoError(t, err)
+		test.EqOp(t, "my-secret", secretName)
+		test.EqOp(t, "nested/key", key)
 	})
 
 	T.Run("no slash", func(t *testing.T) {
 		t.Parallel()
 		_, _, err := resolveName("no-slash")
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "expected format")
+		must.Error(t, err)
+		test.StrContains(t, err.Error(), "expected format")
 	})
 }
 

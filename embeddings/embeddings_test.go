@@ -3,8 +3,8 @@ package embeddings
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestNoopEmbedder_GenerateEmbedding(T *testing.T) {
@@ -20,13 +20,13 @@ func TestNoopEmbedder_GenerateEmbedding(T *testing.T) {
 			Content: "hello world",
 		})
 
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		assert.Equal(t, "hello world", result.SourceText)
-		assert.Equal(t, "noop", result.Model)
-		assert.Equal(t, "noop", result.Provider)
-		assert.Equal(t, 0, result.Dimensions)
-		assert.Empty(t, result.Vector)
-		assert.False(t, result.GeneratedAt.IsZero())
+		must.NoError(t, err)
+		must.NotNil(t, result)
+		test.EqOp(t, "hello world", result.SourceText)
+		test.EqOp(t, "noop", result.Model)
+		test.EqOp(t, "noop", result.Provider)
+		test.EqOp(t, 0, result.Dimensions)
+		test.SliceEmpty(t, result.Vector)
+		test.False(t, result.GeneratedAt.IsZero())
 	})
 }

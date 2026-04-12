@@ -11,8 +11,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 type mockChannelPublisher struct {
@@ -32,16 +32,16 @@ func TestNewNotifier(T *testing.T) {
 		n, err := NewNotifier(&Config{
 			APIKey: "appid.keyid:keysecret",
 		}, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil)
-		require.NoError(t, err)
-		require.NotNil(t, n)
+		must.NoError(t, err)
+		must.NotNil(t, n)
 	})
 
 	T.Run("nil config", func(t *testing.T) {
 		t.Parallel()
 
 		n, err := NewNotifier(nil, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil)
-		assert.Error(t, err)
-		assert.Nil(t, n)
+		test.Error(t, err)
+		test.Nil(t, n)
 	})
 }
 
@@ -74,9 +74,9 @@ func TestNotifier_Publish(T *testing.T) {
 			Type: "greeting",
 			Data: json.RawMessage(`{"hello":"world"}`),
 		})
-		assert.NoError(t, err)
-		assert.Equal(t, "my-channel", capturedChannel)
-		assert.Equal(t, "greeting", capturedName)
+		test.NoError(t, err)
+		test.EqOp(t, "my-channel", capturedChannel)
+		test.EqOp(t, "greeting", capturedName)
 	})
 
 	T.Run("publish error", func(t *testing.T) {
@@ -101,7 +101,7 @@ func TestNotifier_Publish(T *testing.T) {
 		err := n.Publish(context.Background(), "my-channel", &async.Event{
 			Type: "test",
 		})
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 }
 
@@ -116,6 +116,6 @@ func TestNotifier_Close(T *testing.T) {
 			tracer: tracing.NewTracerForTest("test"),
 		}
 
-		assert.NoError(t, n.Close())
+		test.NoError(t, n.Close())
 	})
 }

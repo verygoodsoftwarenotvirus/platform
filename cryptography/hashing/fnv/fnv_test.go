@@ -3,7 +3,7 @@ package fnv
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func Test_fnvHasher_Hash(T *testing.T) {
@@ -15,7 +15,7 @@ func Test_fnvHasher_Hash(T *testing.T) {
 		hasher := NewFNVHasher()
 
 		result, err := hasher.Hash(t.Name())
-		assert.NoError(t, err)
-		assert.Equal(t, "546573745f666e764861736865725f486173682f7374616e646172646c62272e07bb014262b821756295c58d", result)
+		test.NoError(t, err)
+		test.EqOp(t, "546573745f666e764861736865725f486173682f7374616e646172646c62272e07bb014262b821756295c58d", result)
 	})
 }

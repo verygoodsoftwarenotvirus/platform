@@ -11,8 +11,8 @@ import (
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -29,8 +29,8 @@ func TestNewRudderstackEventReporter(T *testing.T) {
 		}
 
 		collector, err := NewRudderstackEventReporter(logger, tracing.NewNoopTracerProvider(), nil, cfg, cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
-		require.NotNil(t, collector)
+		must.NoError(t, err)
+		must.NotNil(t, collector)
 	})
 
 	T.Run("with nil config", func(t *testing.T) {
@@ -39,8 +39,8 @@ func TestNewRudderstackEventReporter(T *testing.T) {
 		logger := logging.NewNoopLogger()
 
 		collector, err := NewRudderstackEventReporter(logger, tracing.NewNoopTracerProvider(), nil, nil, cbnoop.NewCircuitBreaker())
-		require.Error(t, err)
-		require.Nil(t, collector)
+		must.Error(t, err)
+		must.Nil(t, collector)
 	})
 
 	T.Run("with empty API key", func(t *testing.T) {
@@ -53,8 +53,8 @@ func TestNewRudderstackEventReporter(T *testing.T) {
 		}
 
 		collector, err := NewRudderstackEventReporter(logger, tracing.NewNoopTracerProvider(), nil, cfg, cbnoop.NewCircuitBreaker())
-		require.Error(t, err)
-		require.Nil(t, collector)
+		must.Error(t, err)
+		must.Nil(t, collector)
 	})
 
 	T.Run("with empty DataPlane URL", func(t *testing.T) {
@@ -67,8 +67,8 @@ func TestNewRudderstackEventReporter(T *testing.T) {
 		}
 
 		collector, err := NewRudderstackEventReporter(logger, tracing.NewNoopTracerProvider(), nil, cfg, cbnoop.NewCircuitBreaker())
-		require.Error(t, err)
-		require.Nil(t, collector)
+		must.Error(t, err)
+		must.Nil(t, collector)
 	})
 
 	T.Run("with error creating event counter", func(t *testing.T) {
@@ -79,14 +79,18 @@ func TestNewRudderstackEventReporter(T *testing.T) {
 			DataPlaneURL: t.Name(),
 		}
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", name+"_events", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, name+"_events", counterName)
+				return metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary")
+			},
+		}
 
 		collector, err := NewRudderstackEventReporter(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, cfg, cbnoop.NewCircuitBreaker())
-		require.Error(t, err)
-		require.Nil(t, collector)
+		must.Error(t, err)
+		must.Nil(t, collector)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("with error creating error counter", func(t *testing.T) {
@@ -97,15 +101,24 @@ func TestNewRudderstackEventReporter(T *testing.T) {
 			DataPlaneURL: t.Name(),
 		}
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", name+"_events", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
-		mp.On("NewInt64Counter", name+"_errors", []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				switch counterName {
+				case name + "_events":
+					return metrics.Int64CounterForTest(t, "x"), nil
+				case name + "_errors":
+					return metrics.Int64CounterForTest(t, "x"), errors.New("arbitrary")
+				}
+				t.Fatalf("unexpected NewInt64Counter call: %q", counterName)
+				return nil, nil
+			},
+		}
 
 		collector, err := NewRudderstackEventReporter(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, cfg, cbnoop.NewCircuitBreaker())
-		require.Error(t, err)
-		require.Nil(t, collector)
+		must.Error(t, err)
+		must.Nil(t, collector)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 2, mp.NewInt64CounterCalls())
 	})
 }
 
@@ -122,8 +135,8 @@ func TestRudderstackEventReporter_Close(T *testing.T) {
 		}
 
 		collector, err := NewRudderstackEventReporter(logger, tracing.NewNoopTracerProvider(), nil, cfg, cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
-		require.NotNil(t, collector)
+		must.NoError(t, err)
+		must.NotNil(t, collector)
 
 		collector.Close()
 	})
@@ -148,10 +161,10 @@ func TestRudderstackEventReporter_AddUser(T *testing.T) {
 		}
 
 		collector, err := NewRudderstackEventReporter(logger, tracing.NewNoopTracerProvider(), nil, cfg, cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
-		require.NotNil(t, collector)
+		must.NoError(t, err)
+		must.NotNil(t, collector)
 
-		require.NoError(t, collector.AddUser(ctx, exampleUserID, properties))
+		must.NoError(t, collector.AddUser(ctx, exampleUserID, properties))
 	})
 }
 
@@ -174,10 +187,10 @@ func TestRudderstackEventReporter_EventOccurred(T *testing.T) {
 		}
 
 		collector, err := NewRudderstackEventReporter(logger, tracing.NewNoopTracerProvider(), nil, cfg, cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
-		require.NotNil(t, collector)
+		must.NoError(t, err)
+		must.NotNil(t, collector)
 
-		require.NoError(t, collector.EventOccurred(ctx, t.Name(), exampleUserID, properties))
+		must.NoError(t, collector.EventOccurred(ctx, t.Name(), exampleUserID, properties))
 	})
 }
 
@@ -200,9 +213,9 @@ func TestRudderstackEventReporter_EventOccurredAnonymous(T *testing.T) {
 		}
 
 		collector, err := NewRudderstackEventReporter(logger, tracing.NewNoopTracerProvider(), nil, cfg, cbnoop.NewCircuitBreaker())
-		require.NoError(t, err)
-		require.NotNil(t, collector)
+		must.NoError(t, err)
+		must.NotNil(t, collector)
 
-		require.NoError(t, collector.EventOccurredAnonymous(ctx, t.Name(), exampleAnonymousID, properties))
+		must.NoError(t, collector.EventOccurredAnonymous(ctx, t.Name(), exampleAnonymousID, properties))
 	})
 }

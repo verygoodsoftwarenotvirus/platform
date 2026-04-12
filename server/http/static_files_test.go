@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestRootLevelAssetsHandler(T *testing.T) {
@@ -19,7 +19,7 @@ func TestRootLevelAssetsHandler(T *testing.T) {
 
 		dir := t.TempDir()
 		err := os.WriteFile(filepath.Join(dir, "robots.txt"), []byte("User-agent: *"), 0o600)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		handler := RootLevelAssetsHandler(dir)
 		req := httptest.NewRequest(http.MethodGet, "/robots.txt", http.NoBody)
@@ -27,8 +27,8 @@ func TestRootLevelAssetsHandler(T *testing.T) {
 
 		handler.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusOK, w.Code)
-		assert.Contains(t, w.Body.String(), "User-agent")
+		test.EqOp(t, http.StatusOK, w.Code)
+		test.StrContains(t, w.Body.String(), "User-agent")
 	})
 
 	T.Run("returns 404 for subdirectory paths", func(t *testing.T) {
@@ -41,7 +41,7 @@ func TestRootLevelAssetsHandler(T *testing.T) {
 
 		handler.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusNotFound, w.Code)
+		test.EqOp(t, http.StatusNotFound, w.Code)
 	})
 
 	T.Run("returns 404 for nonexistent file", func(t *testing.T) {
@@ -54,7 +54,7 @@ func TestRootLevelAssetsHandler(T *testing.T) {
 
 		handler.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusNotFound, w.Code)
+		test.EqOp(t, http.StatusNotFound, w.Code)
 	})
 
 	T.Run("returns 404 for directory", func(t *testing.T) {
@@ -62,7 +62,7 @@ func TestRootLevelAssetsHandler(T *testing.T) {
 
 		dir := t.TempDir()
 		err := os.Mkdir(filepath.Join(dir, "subdir"), 0o755)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		handler := RootLevelAssetsHandler(dir)
 		req := httptest.NewRequest(http.MethodGet, "/subdir", http.NoBody)
@@ -70,7 +70,7 @@ func TestRootLevelAssetsHandler(T *testing.T) {
 
 		handler.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusNotFound, w.Code)
+		test.EqOp(t, http.StatusNotFound, w.Code)
 	})
 
 	T.Run("blocks path traversal attempts", func(t *testing.T) {
@@ -83,7 +83,7 @@ func TestRootLevelAssetsHandler(T *testing.T) {
 
 		handler.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusNotFound, w.Code)
+		test.EqOp(t, http.StatusNotFound, w.Code)
 	})
 
 	T.Run("blocks single-segment traversal", func(t *testing.T) {
@@ -98,6 +98,6 @@ func TestRootLevelAssetsHandler(T *testing.T) {
 
 		handler.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusNotFound, w.Code)
+		test.EqOp(t, http.StatusNotFound, w.Code)
 	})
 }

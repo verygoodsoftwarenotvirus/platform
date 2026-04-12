@@ -8,8 +8,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/samber/do/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestRegisterTracerProvider(T *testing.T) {
@@ -26,7 +26,7 @@ func TestRegisterTracerProvider(T *testing.T) {
 		RegisterTracerProvider(i)
 
 		tp, err := do.Invoke[tracing.TracerProvider](i)
-		require.NoError(t, err)
-		assert.NotNil(t, tp)
+		must.NoError(t, err)
+		test.NotNil(t, tp)
 	})
 }

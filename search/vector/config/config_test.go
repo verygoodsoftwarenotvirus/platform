@@ -18,8 +18,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/search/vector/pgvector"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/search/vector/qdrant"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -42,7 +42,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			},
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(t.Context()))
+		test.NoError(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("qdrant provider", func(t *testing.T) {
@@ -57,35 +57,35 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			},
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(t.Context()))
+		test.NoError(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("invalid provider", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: "made-up"}
-		assert.Error(t, cfg.ValidateWithContext(t.Context()))
+		test.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("pgvector provider without config", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: PgvectorProvider}
-		assert.Error(t, cfg.ValidateWithContext(t.Context()))
+		test.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("qdrant provider without config", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: QdrantProvider}
-		assert.Error(t, cfg.ValidateWithContext(t.Context()))
+		test.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("empty provider is valid (defaults to noop)", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{}
-		assert.NoError(t, cfg.ValidateWithContext(t.Context()))
+		test.NoError(t, cfg.ValidateWithContext(t.Context()))
 	})
 }
 
@@ -104,8 +104,8 @@ func TestConfig_ProvideIndex(T *testing.T) {
 			nil,
 			"idx",
 		)
-		assert.ErrorIs(t, err, vectorsearch.ErrNilConfig)
-		assert.Nil(t, idx)
+		test.ErrorIs(t, err, vectorsearch.ErrNilConfig)
+		test.Nil(t, idx)
 	})
 
 	T.Run("unknown provider returns noop", func(t *testing.T) {
@@ -120,9 +120,9 @@ func TestConfig_ProvideIndex(T *testing.T) {
 			nil,
 			"idx",
 		)
-		require.NoError(t, err)
-		require.NotNil(t, idx)
-		assert.NoError(t, idx.Wipe(t.Context()))
+		must.NoError(t, err)
+		must.NotNil(t, idx)
+		test.NoError(t, idx.Wipe(t.Context()))
 	})
 
 	T.Run("empty provider returns noop", func(t *testing.T) {
@@ -137,8 +137,8 @@ func TestConfig_ProvideIndex(T *testing.T) {
 			nil,
 			"idx",
 		)
-		require.NoError(t, err)
-		require.NotNil(t, idx)
+		must.NoError(t, err)
+		must.NotNil(t, idx)
 	})
 
 	T.Run("provider with whitespace returns noop", func(t *testing.T) {
@@ -153,8 +153,8 @@ func TestConfig_ProvideIndex(T *testing.T) {
 			nil,
 			"idx",
 		)
-		require.NoError(t, err)
-		require.NotNil(t, idx)
+		must.NoError(t, err)
+		must.NotNil(t, idx)
 	})
 
 	T.Run("pgvector provider with nil db returns error", func(t *testing.T) {
@@ -177,8 +177,8 @@ func TestConfig_ProvideIndex(T *testing.T) {
 			nil,
 			"idx",
 		)
-		assert.Error(t, err)
-		assert.Nil(t, idx)
+		test.Error(t, err)
+		test.Nil(t, idx)
 	})
 
 	T.Run("qdrant provider via httptest server", func(t *testing.T) {
@@ -217,8 +217,8 @@ func TestConfig_ProvideIndex(T *testing.T) {
 			nil,
 			"stub",
 		)
-		require.NoError(t, err)
-		require.NotNil(t, idx)
+		must.NoError(t, err)
+		must.NotNil(t, idx)
 	})
 
 	T.Run("circuit breaker init failure", func(t *testing.T) {
@@ -234,9 +234,12 @@ func TestConfig_ProvideIndex(T *testing.T) {
 			},
 		}
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", "test-breaker_circuit_breaker_tripped", []metric.Int64CounterOption(nil)).
-			Return(&mockmetrics.Int64Counter{}, errors.New("counter init failure"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, "test-breaker_circuit_breaker_tripped", counterName)
+				return &mockmetrics.Int64CounterMock{}, errors.New("counter init failure")
+			},
+		}
 
 		idx, err := ProvideIndex[testStruct](
 			ctx,
@@ -247,9 +250,10 @@ func TestConfig_ProvideIndex(T *testing.T) {
 			nil,
 			"idx",
 		)
-		assert.Error(t, err)
-		assert.Nil(t, idx)
-		assert.Contains(t, err.Error(), "circuit breaker")
-		mp.AssertExpectations(t)
+		test.Error(t, err)
+		test.Nil(t, idx)
+		test.StrContains(t, err.Error(), "circuit breaker")
+
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 }

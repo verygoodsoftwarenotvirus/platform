@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestMustOtelResource(T *testing.T) {
@@ -13,12 +13,12 @@ func TestMustOtelResource(T *testing.T) {
 	T.Run("with service name", func(t *testing.T) {
 		t.Parallel()
 		res := MustOtelResource(context.Background(), "test-service")
-		assert.NotNil(t, res)
+		test.NotNil(t, res)
 	})
 
 	T.Run("without service name", func(t *testing.T) {
 		t.Parallel()
 		res := MustOtelResource(context.Background(), "")
-		assert.NotNil(t, res)
+		test.NotNil(t, res)
 	})
 }

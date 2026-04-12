@@ -3,7 +3,7 @@ package database
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestErrUserAlreadyExists(T *testing.T) {
@@ -12,8 +12,8 @@ func TestErrUserAlreadyExists(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, ErrUserAlreadyExists)
-		assert.Contains(t, ErrUserAlreadyExists.Error(), "user already exists")
+		test.NotNil(t, ErrUserAlreadyExists)
+		test.StrContains(t, ErrUserAlreadyExists.Error(), "user already exists")
 	})
 }
 
@@ -23,7 +23,7 @@ func TestErrDatabaseNotReady(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, ErrDatabaseNotReady)
-		assert.Contains(t, ErrDatabaseNotReady.Error(), "database is not ready yet")
+		test.NotNil(t, ErrDatabaseNotReady)
+		test.StrContains(t, ErrDatabaseNotReady.Error(), "database is not ready yet")
 	})
 }

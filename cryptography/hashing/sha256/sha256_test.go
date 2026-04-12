@@ -3,7 +3,7 @@ package sha256
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func Test_sha256Hasher_Hash(T *testing.T) {
@@ -15,7 +15,7 @@ func Test_sha256Hasher_Hash(T *testing.T) {
 		hasher := NewSHA256Hasher()
 
 		result, err := hasher.Hash(t.Name())
-		assert.NoError(t, err)
-		assert.Equal(t, "546573745f7368613235364861736865725f486173682f7374616e64617264e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", result)
+		test.NoError(t, err)
+		test.EqOp(t, "546573745f7368613235364861736865725f486173682f7374616e64617264e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", result)
 	})
 }

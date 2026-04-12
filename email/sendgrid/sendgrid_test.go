@@ -13,7 +13,7 @@ import (
 
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 )
 
 func TestNewSendGridEmailer(T *testing.T) {
@@ -25,8 +25,8 @@ func TestNewSendGridEmailer(T *testing.T) {
 		logger := logging.NewNoopLogger()
 
 		client, err := NewSendGridEmailer(&Config{APIToken: t.Name()}, logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
-		require.NotNil(t, client)
-		require.NoError(t, err)
+		must.NotNil(t, client)
+		must.NoError(t, err)
 	})
 }
 
@@ -43,8 +43,8 @@ func TestSendGridEmailer_SendEmail(T *testing.T) {
 		}))
 
 		c, err := NewSendGridEmailer(&Config{APIToken: t.Name()}, logger, tracing.NewNoopTracerProvider(), ts.Client(), cbnoop.NewCircuitBreaker(), nil)
-		require.NotNil(t, c)
-		require.NoError(t, err)
+		must.NotNil(t, c)
+		must.NoError(t, err)
 
 		c.client.BaseURL = ts.URL
 
@@ -58,7 +58,7 @@ func TestSendGridEmailer_SendEmail(T *testing.T) {
 			HTMLContent: t.Name(),
 		}
 
-		require.NoError(t, c.SendEmail(ctx, details))
+		must.NoError(t, c.SendEmail(ctx, details))
 	})
 
 	T.Run("with error executing request", func(t *testing.T) {
@@ -73,8 +73,8 @@ func TestSendGridEmailer_SendEmail(T *testing.T) {
 		client.Timeout = time.Millisecond
 
 		c, err := NewSendGridEmailer(&Config{APIToken: t.Name()}, logger, tracing.NewNoopTracerProvider(), client, cbnoop.NewCircuitBreaker(), nil)
-		require.NotNil(t, c)
-		require.NoError(t, err)
+		must.NotNil(t, c)
+		must.NoError(t, err)
 
 		c.client.BaseURL = ts.URL
 
@@ -89,7 +89,7 @@ func TestSendGridEmailer_SendEmail(T *testing.T) {
 		}
 
 		err = c.SendEmail(ctx, details)
-		require.Error(t, err)
+		must.Error(t, err)
 	})
 
 	T.Run("with invalid response code", func(t *testing.T) {
@@ -102,8 +102,8 @@ func TestSendGridEmailer_SendEmail(T *testing.T) {
 		}))
 
 		c, err := NewSendGridEmailer(&Config{APIToken: t.Name()}, logger, tracing.NewNoopTracerProvider(), ts.Client(), cbnoop.NewCircuitBreaker(), nil)
-		require.NotNil(t, c)
-		require.NoError(t, err)
+		must.NotNil(t, c)
+		must.NoError(t, err)
 
 		c.client.BaseURL = ts.URL
 
@@ -118,7 +118,7 @@ func TestSendGridEmailer_SendEmail(T *testing.T) {
 		}
 
 		err = c.SendEmail(ctx, details)
-		require.Error(t, err)
+		must.Error(t, err)
 	})
 }
 
@@ -135,8 +135,8 @@ func TestSendGridEmailer_sendDynamicTemplateEmail(T *testing.T) {
 		}))
 
 		c, err := NewSendGridEmailer(&Config{APIToken: t.Name()}, logger, tracing.NewNoopTracerProvider(), ts.Client(), cbnoop.NewCircuitBreaker(), nil)
-		require.NotNil(t, c)
-		require.NoError(t, err)
+		must.NotNil(t, c)
+		must.NoError(t, err)
 
 		c.client.BaseURL = ts.URL
 
@@ -146,6 +146,6 @@ func TestSendGridEmailer_sendDynamicTemplateEmail(T *testing.T) {
 
 		request := sendgrid.GetRequest(c.config.APIToken, "/v3/mail/send", ts.URL)
 
-		require.NoError(t, c.sendDynamicTemplateEmail(ctx, to, from, t.Name(), map[string]any{"things": "stuff"}, request))
+		must.NoError(t, c.sendDynamicTemplateEmail(ctx, to, from, t.Name(), map[string]any{"things": "stuff"}, request))
 	})
 }

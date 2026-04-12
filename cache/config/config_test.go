@@ -1,7 +1,7 @@
 package config
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/cache/redis"
@@ -11,8 +11,8 @@ import (
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -31,7 +31,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider: ProviderMemory,
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("redis provider with config", func(t *testing.T) {
@@ -42,21 +42,21 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Redis:    &redis.Config{QueueAddresses: []string{"localhost:6379"}},
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(t.Context()))
+		test.NoError(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("redis provider missing config", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ProviderRedis}
-		assert.Error(t, cfg.ValidateWithContext(t.Context()))
+		test.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("invalid provider name", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: "vault"}
-		assert.Error(t, cfg.ValidateWithContext(t.Context()))
+		test.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 }
 
@@ -70,8 +70,8 @@ func TestProvideCache(T *testing.T) {
 			Provider: ProviderMemory,
 		}, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider())
 
-		require.NoError(t, err)
-		assert.NotNil(t, c)
+		must.NoError(t, err)
+		test.NotNil(t, c)
 	})
 
 	T.Run("redis provider", func(t *testing.T) {
@@ -91,8 +91,8 @@ func TestProvideCache(T *testing.T) {
 			metrics.NewNoopMetricsProvider(),
 		)
 
-		require.NoError(t, err)
-		assert.NotNil(t, c)
+		must.NoError(t, err)
+		test.NotNil(t, c)
 	})
 
 	T.Run("redis provider with cluster addresses", func(t *testing.T) {
@@ -112,8 +112,8 @@ func TestProvideCache(T *testing.T) {
 			metrics.NewNoopMetricsProvider(),
 		)
 
-		require.NoError(t, err)
-		assert.NotNil(t, c)
+		must.NoError(t, err)
+		test.NotNil(t, c)
 	})
 
 	T.Run("redis provider with circuit breaker error", func(t *testing.T) {
@@ -129,9 +129,12 @@ func TestProvideCache(T *testing.T) {
 			},
 		}
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", "redis-cache-breaker_circuit_breaker_tripped", []metric.Int64CounterOption(nil)).
-			Return(&mockmetrics.Int64Counter{}, fmt.Errorf("counter init failure"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(name string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, "redis-cache-breaker_circuit_breaker_tripped", name)
+				return nil, errors.New("counter init failure")
+			},
+		}
 
 		c, err := ProvideCache[example](
 			t.Context(),
@@ -141,9 +144,9 @@ func TestProvideCache(T *testing.T) {
 			mp,
 		)
 
-		require.Error(t, err)
-		assert.Nil(t, c)
-		mp.AssertExpectations(t)
+		must.Error(t, err)
+		test.Nil(t, c)
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("invalid provider", func(t *testing.T) {
@@ -151,6 +154,6 @@ func TestProvideCache(T *testing.T) {
 
 		_, err := ProvideCache[example](t.Context(), &Config{}, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider())
 
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 }

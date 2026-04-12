@@ -14,18 +14,18 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func createTestP8File(t *testing.T) string {
 	t.Helper()
 
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	keyBytes, err := x509.MarshalPKCS8PrivateKey(key)
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	block := &pem.Block{
 		Type:  "PRIVATE KEY",
@@ -34,7 +34,7 @@ func createTestP8File(t *testing.T) string {
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "AuthKey.p8")
-	require.NoError(t, os.WriteFile(path, pem.EncodeToMemory(block), 0o600))
+	must.NoError(t, os.WriteFile(path, pem.EncodeToMemory(block), 0o600))
 	return path
 }
 
@@ -48,7 +48,7 @@ func createTestFCMCredsFile(t *testing.T) string {
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "fcm-creds.json")
-	require.NoError(t, os.WriteFile(path, []byte(fakeServiceAccountJSON), 0o600))
+	must.NoError(t, os.WriteFile(path, []byte(fakeServiceAccountJSON), 0o600))
 	return path
 }
 
@@ -61,14 +61,14 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ProviderNoop}
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with empty provider", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Provider: ""}
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with apns_fcm provider and both nil", func(t *testing.T) {
@@ -79,7 +79,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			APNs:     nil,
 			FCM:      nil,
 		}
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with apns_fcm provider and nil APNs but FCM present", func(t *testing.T) {
@@ -90,7 +90,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			APNs:     nil,
 			FCM:      &FCMConfig{},
 		}
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with apns_fcm provider and nil FCM but APNs present", func(t *testing.T) {
@@ -101,7 +101,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			APNs:     &APNsConfig{AuthKeyPath: "x", KeyID: "x", TeamID: "x", BundleID: "x"},
 			FCM:      nil,
 		}
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with apns_fcm provider and both configs", func(t *testing.T) {
@@ -113,7 +113,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			APNs:     &APNsConfig{AuthKeyPath: p8Path, KeyID: "x", TeamID: "x", BundleID: "x"},
 			FCM:      &FCMConfig{},
 		}
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 }
 
@@ -129,10 +129,10 @@ func TestConfig_ProvidePushSender(T *testing.T) {
 
 		cfg := Config{Provider: ""}
 		sender, err := cfg.ProvidePushSender(ctx, logger, tracer, nil)
-		require.NoError(t, err)
-		require.NotNil(t, sender)
+		must.NoError(t, err)
+		must.NotNil(t, sender)
 		// Noop returns nil on SendPush
-		assert.NoError(t, sender.SendPush(ctx, "ios", "token", mobile.PushMessage{Title: "title", Body: "body"}))
+		test.NoError(t, sender.SendPush(ctx, "ios", "token", mobile.PushMessage{Title: "title", Body: "body"}))
 	})
 
 	T.Run("with noop provider returns noop", func(t *testing.T) {
@@ -140,9 +140,9 @@ func TestConfig_ProvidePushSender(T *testing.T) {
 
 		cfg := Config{Provider: ProviderNoop}
 		sender, err := cfg.ProvidePushSender(ctx, logger, tracer, nil)
-		require.NoError(t, err)
-		require.NotNil(t, sender)
-		assert.NoError(t, sender.SendPush(ctx, "android", "token", mobile.PushMessage{Title: "title", Body: "body"}))
+		must.NoError(t, err)
+		must.NotNil(t, sender)
+		test.NoError(t, sender.SendPush(ctx, "android", "token", mobile.PushMessage{Title: "title", Body: "body"}))
 	})
 
 	T.Run("with apns_fcm provider and nil APNs returns noop or FCM-only sender", func(t *testing.T) {
@@ -154,8 +154,8 @@ func TestConfig_ProvidePushSender(T *testing.T) {
 			FCM:      &FCMConfig{},
 		}
 		sender, err := cfg.ProvidePushSender(ctx, logger, tracer, nil)
-		require.NoError(t, err)
-		require.NotNil(t, sender)
+		must.NoError(t, err)
+		must.NotNil(t, sender)
 		// FCM init typically fails in unit tests (no ADC), so we get noop; if it succeeds, iOS would error
 		_ = sender.SendPush(ctx, "ios", "token", mobile.PushMessage{Title: "title", Body: "body"})
 	})
@@ -170,12 +170,12 @@ func TestConfig_ProvidePushSender(T *testing.T) {
 			FCM:      nil,
 		}
 		sender, err := cfg.ProvidePushSender(ctx, logger, tracer, nil)
-		require.NoError(t, err)
-		require.NotNil(t, sender)
+		must.NoError(t, err)
+		must.NotNil(t, sender)
 		// Android not configured, should return ErrPlatformNotSupported
 		err = sender.SendPush(ctx, "android", "token", mobile.PushMessage{Title: "title", Body: "body"})
-		assert.Error(t, err)
-		assert.ErrorIs(t, err, mobile.ErrPlatformNotSupported)
+		test.Error(t, err)
+		test.ErrorIs(t, err, mobile.ErrPlatformNotSupported)
 	})
 
 	T.Run("with apns_fcm provider and invalid APNs path returns noop or FCM-only sender", func(t *testing.T) {
@@ -187,8 +187,8 @@ func TestConfig_ProvidePushSender(T *testing.T) {
 			FCM:      &FCMConfig{},
 		}
 		sender, err := cfg.ProvidePushSender(ctx, logger, tracer, nil)
-		require.NoError(t, err)
-		require.NotNil(t, sender)
+		must.NoError(t, err)
+		must.NotNil(t, sender)
 		// APNs init fails; FCM init typically fails in unit tests, so we get noop
 		_ = sender.SendPush(ctx, "ios", "token", mobile.PushMessage{Title: "title", Body: "body"})
 	})
@@ -203,12 +203,12 @@ func TestConfig_ProvidePushSender(T *testing.T) {
 			FCM:      &FCMConfig{CredentialsPath: filepath.Join(t.TempDir(), "nonexistent.json")},
 		}
 		sender, err := cfg.ProvidePushSender(ctx, logger, tracer, nil)
-		require.NoError(t, err)
-		require.NotNil(t, sender)
+		must.NoError(t, err)
+		must.NotNil(t, sender)
 		// FCM init fails, so Android not configured; should return ErrPlatformNotSupported
 		err = sender.SendPush(ctx, "android", "token", mobile.PushMessage{Title: "title", Body: "body"})
-		assert.Error(t, err)
-		assert.ErrorIs(t, err, mobile.ErrPlatformNotSupported)
+		test.Error(t, err)
+		test.ErrorIs(t, err, mobile.ErrPlatformNotSupported)
 	})
 
 	T.Run("with unknown provider returns noop", func(t *testing.T) {
@@ -216,9 +216,9 @@ func TestConfig_ProvidePushSender(T *testing.T) {
 
 		cfg := Config{Provider: "unknown"}
 		sender, err := cfg.ProvidePushSender(ctx, logger, tracer, nil)
-		require.NoError(t, err)
-		require.NotNil(t, sender)
-		assert.NoError(t, sender.SendPush(ctx, "ios", "token", mobile.PushMessage{Title: "title", Body: "body"}))
+		must.NoError(t, err)
+		must.NotNil(t, sender)
+		test.NoError(t, sender.SendPush(ctx, "ios", "token", mobile.PushMessage{Title: "title", Body: "body"}))
 	})
 
 	T.Run("with apns_fcm provider and valid FCM creds returns multi-platform sender", func(t *testing.T) {
@@ -231,8 +231,8 @@ func TestConfig_ProvidePushSender(T *testing.T) {
 			FCM:      &FCMConfig{CredentialsPath: credsPath},
 		}
 		sender, err := cfg.ProvidePushSender(ctx, logger, tracer, nil)
-		require.NoError(t, err)
-		require.NotNil(t, sender)
+		must.NoError(t, err)
+		must.NotNil(t, sender)
 	})
 
 	T.Run("with apns_fcm provider and both valid configs returns multi-platform sender", func(t *testing.T) {
@@ -246,7 +246,7 @@ func TestConfig_ProvidePushSender(T *testing.T) {
 			FCM:      &FCMConfig{CredentialsPath: credsPath},
 		}
 		sender, err := cfg.ProvidePushSender(ctx, logger, tracer, nil)
-		require.NoError(t, err)
-		require.NotNil(t, sender)
+		must.NoError(t, err)
+		must.NotNil(t, sender)
 	})
 }

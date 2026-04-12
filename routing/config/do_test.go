@@ -6,8 +6,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/routing"
 
 	"github.com/samber/do/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestRegisterRouteParamManager(T *testing.T) {
@@ -24,7 +24,7 @@ func TestRegisterRouteParamManager(T *testing.T) {
 		RegisterRouteParamManager(i)
 
 		manager, err := do.Invoke[routing.RouteParamManager](i)
-		require.NoError(t, err)
-		assert.NotNil(t, manager)
+		must.NoError(t, err)
+		test.NotNil(t, manager)
 	})
 }

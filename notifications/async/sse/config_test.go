@@ -3,7 +3,7 @@ package sse
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestConfig_ValidateWithContext(T *testing.T) {
@@ -14,6 +14,6 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 
 		cfg := &Config{}
 
-		assert.NoError(t, cfg.ValidateWithContext(t.Context()))
+		test.NoError(t, cfg.ValidateWithContext(t.Context()))
 	})
 }

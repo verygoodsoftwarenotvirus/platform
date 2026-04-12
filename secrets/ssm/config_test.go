@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 )
 
 func TestConfig_ValidateWithContext(T *testing.T) {
@@ -13,12 +13,12 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 	T.Run("valid", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Region: "us-east-1"}
-		require.NoError(t, cfg.ValidateWithContext(context.Background()))
+		must.NoError(t, cfg.ValidateWithContext(context.Background()))
 	})
 
 	T.Run("invalid missing Region", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Region: ""}
-		require.Error(t, cfg.ValidateWithContext(context.Background()))
+		must.Error(t, cfg.ValidateWithContext(context.Background()))
 	})
 }

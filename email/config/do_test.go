@@ -11,8 +11,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/samber/do/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestRegisterEmailer(T *testing.T) {
@@ -38,7 +38,7 @@ func TestRegisterEmailer(T *testing.T) {
 		RegisterEmailer(i)
 
 		emailer, err := do.Invoke[email.Emailer](i)
-		require.NoError(t, err)
-		assert.NotNil(t, emailer)
+		must.NoError(t, err)
+		test.NotNil(t, emailer)
 	})
 }

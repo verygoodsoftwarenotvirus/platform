@@ -15,8 +15,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	"gopkg.in/yaml.v3"
 )
 
@@ -84,7 +84,7 @@ func TestServerEncoderDecoder_encodeResponse(T *testing.T) {
 
 			ex := &example{Name: "name"}
 			encoderDecoder, ok := ProvideServerEncoderDecoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), tc.contentType).(*serverEncoderDecoder)
-			require.True(t, ok)
+			must.True(t, ok)
 
 			ctx := t.Context()
 			res := httptest.NewRecorder()
@@ -92,7 +92,7 @@ func TestServerEncoderDecoder_encodeResponse(T *testing.T) {
 
 			encoderDecoder.encodeResponse(ctx, res, ex, http.StatusOK)
 			actual := res.Body.String()
-			assert.Equal(t, tc.expectedResponse, actual)
+			test.EqOp(t, tc.expectedResponse, actual)
 		})
 	}
 
@@ -101,7 +101,7 @@ func TestServerEncoderDecoder_encodeResponse(T *testing.T) {
 
 		ex := &example{Name: "name"}
 		encoderDecoder, ok := ProvideServerEncoderDecoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), ContentTypeEmoji).(*serverEncoderDecoder)
-		require.True(t, ok)
+		must.True(t, ok)
 
 		ctx := t.Context()
 		res := httptest.NewRecorder()
@@ -109,7 +109,7 @@ func TestServerEncoderDecoder_encodeResponse(T *testing.T) {
 
 		encoderDecoder.encodeResponse(ctx, res, ex, http.StatusOK)
 		actual := res.Body.String()
-		assert.NotEmpty(t, actual)
+		test.NotEq(t, "", actual)
 	})
 
 	T.Run("defaults to JSON", func(t *testing.T) {
@@ -117,13 +117,13 @@ func TestServerEncoderDecoder_encodeResponse(T *testing.T) {
 		expectation := "name"
 		ex := &example{Name: expectation}
 		encoderDecoder, ok := ProvideServerEncoderDecoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), ContentTypeJSON).(*serverEncoderDecoder)
-		require.True(t, ok)
+		must.True(t, ok)
 
 		ctx := t.Context()
 		res := httptest.NewRecorder()
 
 		encoderDecoder.encodeResponse(ctx, res, ex, http.StatusOK)
-		assert.Equal(t, res.Body.String(), fmt.Sprintf("{%q:%q}\n", "name", ex.Name))
+		test.EqOp(t, fmt.Sprintf("{%q:%q}\n", "name", ex.Name), res.Body.String())
 	})
 
 	T.Run("with broken structure", func(t *testing.T) {
@@ -131,13 +131,13 @@ func TestServerEncoderDecoder_encodeResponse(T *testing.T) {
 		expectation := "name"
 		ex := &broken{Name: json.Number(expectation)}
 		encoderDecoder, ok := ProvideServerEncoderDecoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), ContentTypeJSON).(*serverEncoderDecoder)
-		require.True(t, ok)
+		must.True(t, ok)
 
 		ctx := t.Context()
 		res := httptest.NewRecorder()
 
 		encoderDecoder.encodeResponse(ctx, res, ex, http.StatusOK)
-		assert.Empty(t, res.Body.String())
+		test.EqOp(t, "", res.Body.String())
 	})
 }
 
@@ -154,7 +154,7 @@ func TestServerEncoderDecoder_MustEncodeJSON(T *testing.T) {
 `
 		actual := string(encoderDecoder.MustEncodeJSON(ctx, &example{Name: t.Name()}))
 
-		assert.Equal(t, expected, actual)
+		test.EqOp(t, expected, actual)
 	})
 
 	T.Run("with panic", func(t *testing.T) {
@@ -164,7 +164,7 @@ func TestServerEncoderDecoder_MustEncodeJSON(T *testing.T) {
 		encoderDecoder := ProvideServerEncoderDecoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), ContentTypeJSON)
 
 		defer func() {
-			assert.NotNil(t, recover())
+			test.NotNil(t, recover())
 		}()
 
 		encoderDecoder.MustEncodeJSON(ctx, &broken{Name: json.Number(t.Name())})
@@ -205,7 +205,7 @@ func TestServerEncoderDecoder_MustEncode(T *testing.T) {
 
 			actual := string(encoderDecoder.MustEncode(ctx, &example{Name: t.Name()}))
 
-			assert.Equal(t, tc.expected, actual)
+			test.EqOp(t, tc.expected, actual)
 		})
 	}
 
@@ -216,7 +216,7 @@ func TestServerEncoderDecoder_MustEncode(T *testing.T) {
 		encoderDecoder := ProvideServerEncoderDecoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), ContentTypeEmoji)
 
 		actual := string(encoderDecoder.MustEncode(ctx, &example{Name: t.Name()}))
-		assert.NotEmpty(t, actual)
+		test.NotEq(t, "", actual)
 	})
 
 	T.Run("with broken struct", func(t *testing.T) {
@@ -224,10 +224,10 @@ func TestServerEncoderDecoder_MustEncode(T *testing.T) {
 
 		ctx := t.Context()
 		encoderDecoder, ok := ProvideServerEncoderDecoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), ContentTypeJSON).(*serverEncoderDecoder)
-		require.True(t, ok)
+		must.True(t, ok)
 
 		defer func() {
-			assert.NotNil(t, recover())
+			test.NotNil(t, recover())
 		}()
 
 		encoderDecoder.MustEncode(ctx, &broken{Name: json.Number(t.Name())})
@@ -249,8 +249,8 @@ func TestServerEncoderDecoder_EncodeResponseWithStatus(T *testing.T) {
 		expected := 666
 		encoderDecoder.EncodeResponseWithStatus(ctx, res, ex, expected)
 
-		assert.Equal(t, expected, res.Code, "expected code to be %d, but got %d", expected, res.Code)
-		assert.Equal(t, res.Body.String(), fmt.Sprintf("{%q:%q}\n", "name", ex.Name))
+		test.EqOp(t, expected, res.Code, test.Sprintf("expected code to be %d, but got %d", expected, res.Code))
+		test.EqOp(t, fmt.Sprintf("{%q:%q}\n", "name", ex.Name), res.Body.String())
 	})
 }
 
@@ -299,7 +299,7 @@ func TestServerEncoderDecoder_DecodeRequest(T *testing.T) {
 			encoderDecoder := ProvideServerEncoderDecoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), tc.contentType)
 
 			bs, err := tc.marshaller(e)
-			require.NoError(t, err)
+			must.NoError(t, err)
 
 			req, err := http.NewRequestWithContext(
 				ctx,
@@ -307,12 +307,12 @@ func TestServerEncoderDecoder_DecodeRequest(T *testing.T) {
 				"https://whatever.whocares.gov",
 				bytes.NewReader(bs),
 			)
-			require.NoError(t, err)
+			must.NoError(t, err)
 			req.Header.Set(ContentTypeHeaderKey, ContentTypeToString(tc.contentType))
 
 			var x example
-			assert.NoError(t, encoderDecoder.DecodeRequest(ctx, req, &x))
-			assert.Equal(t, x.Name, e.Name)
+			test.NoError(t, encoderDecoder.DecodeRequest(ctx, req, &x))
+			test.EqOp(t, e.Name, x.Name)
 		})
 	}
 }
@@ -355,9 +355,9 @@ func Test_serverEncoderDecoder_DecodeBytes(T *testing.T) {
 			encoderDecoder := ProvideServerEncoderDecoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), tc.contentType)
 
 			var dest *example
-			assert.NoError(t, encoderDecoder.DecodeBytes(ctx, tc.data, &dest))
+			test.NoError(t, encoderDecoder.DecodeBytes(ctx, tc.data, &dest))
 
-			assert.Equal(t, goodDataExpectation, dest)
+			test.Eq(t, goodDataExpectation, dest)
 		})
 	}
 }
@@ -370,14 +370,14 @@ func TestServerEncoderDecoder_RespondWithData(T *testing.T) {
 
 		ctx := t.Context()
 		encoderDecoder, ok := ProvideServerEncoderDecoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), ContentTypeJSON).(*serverEncoderDecoder)
-		require.True(t, ok)
+		must.True(t, ok)
 
 		res := httptest.NewRecorder()
 
 		encoderDecoder.RespondWithData(ctx, res, &example{Name: t.Name()})
 
-		assert.Equal(t, http.StatusOK, res.Code)
-		assert.NotEmpty(t, res.Body.String())
+		test.EqOp(t, http.StatusOK, res.Code)
+		test.NotEq(t, "", res.Body.String())
 	})
 }
 
@@ -390,7 +390,7 @@ func Test_tomlDecoder_Decode(T *testing.T) {
 		d := newTomlDecoder(&errReader{})
 
 		var dest example
-		assert.Error(t, d.Decode(&dest))
+		test.Error(t, d.Decode(&dest))
 	})
 }
 
@@ -401,14 +401,14 @@ func Test_emojiEncoder_Encode(T *testing.T) {
 		t.Parallel()
 
 		enc := newEmojiEncoder(&bytes.Buffer{})
-		assert.Error(t, enc.Encode(make(chan int)))
+		test.Error(t, enc.Encode(make(chan int)))
 	})
 
 	T.Run("with write error", func(t *testing.T) {
 		t.Parallel()
 
 		enc := newEmojiEncoder(&errWriter{})
-		assert.Error(t, enc.Encode(&example{Name: "test"}))
+		test.Error(t, enc.Encode(&example{Name: "test"}))
 	})
 }
 
@@ -421,7 +421,7 @@ func Test_emojiDecoder_Decode(T *testing.T) {
 		d := newEmojiDecoder(&errReader{})
 
 		var dest example
-		assert.Error(t, d.Decode(&dest))
+		test.Error(t, d.Decode(&dest))
 	})
 }
 
@@ -435,14 +435,14 @@ func TestServerEncoderDecoder_DecodeRequest_bodyCloseError(T *testing.T) {
 		encoderDecoder := ProvideServerEncoderDecoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), ContentTypeJSON)
 
 		data, err := json.Marshal(&example{Name: "test"})
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://whatever.whocares.gov", &errorCloser{Reader: bytes.NewReader(data)})
-		require.NoError(t, err)
+		must.NoError(t, err)
 		req.Header.Set(ContentTypeHeaderKey, contentTypeJSON)
 
 		var dest example
-		assert.NoError(t, encoderDecoder.DecodeRequest(ctx, req, &dest))
-		assert.Equal(t, "test", dest.Name)
+		test.NoError(t, encoderDecoder.DecodeRequest(ctx, req, &dest))
+		test.EqOp(t, "test", dest.Name)
 	})
 }

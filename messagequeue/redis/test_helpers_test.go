@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/verygoodsoftwarenotvirus/platform/v5/testutils/containers"
+
 	"github.com/testcontainers/testcontainers-go"
 	rediscontainers "github.com/testcontainers/testcontainers-go/modules/redis"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -30,12 +32,17 @@ func BuildContainerBackedRedisConfigForTest(t *testing.T) (config *Config, shutd
 }
 
 func BuildContainerBackedRedisConfig(ctx context.Context) (config *Config, shutdownFunc func(context.Context) error, err error) {
-	redisContainer, err := rediscontainers.Run(
-		ctx,
-		redisContainerImageToUse,
-		rediscontainers.WithLogLevel(rediscontainers.LogLevelNotice),
-		testcontainers.WithWaitStrategyAndDeadline(30*time.Second, wait.ForListeningPort("6379/tcp")),
-	)
+	redisContainer, err := containers.StartWithRetry(ctx, func(ctx context.Context) (*rediscontainers.RedisContainer, error) {
+		return rediscontainers.Run(
+			ctx,
+			redisContainerImageToUse,
+			rediscontainers.WithLogLevel(rediscontainers.LogLevelNotice),
+			testcontainers.WithWaitStrategyAndDeadline(2*time.Minute, wait.ForAll(
+				wait.ForListeningPort("6379/tcp"),
+				wait.ForLog("Ready to accept connections"),
+			)),
+		)
+	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to build redis container: %w", err)
 	}

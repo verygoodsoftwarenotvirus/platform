@@ -15,9 +15,9 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	firebase "firebase.google.com/go/v4"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
+	"go.opentelemetry.io/otel/metric"
 	"google.golang.org/api/option"
 )
 
@@ -37,16 +37,16 @@ func createTestFCMSenderWithTransport(t *testing.T, fn roundTripFunc) *Sender {
 	httpClient := &http.Client{Transport: fn}
 
 	app, err := firebase.NewApp(ctx, &firebase.Config{ProjectID: "test-project"}, option.WithHTTPClient(httpClient))
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	client, err := app.Messaging(ctx)
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	mp := metrics.EnsureMetricsProvider(nil)
 	sendCounter, err := mp.NewInt64Counter(o11yName + "_sends")
-	require.NoError(t, err)
+	must.NoError(t, err)
 	errorCounter, err := mp.NewInt64Counter(o11yName + "_errors")
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	return &Sender{
 		client:       client,
@@ -68,9 +68,9 @@ func TestNewSender(T *testing.T) {
 		t.Parallel()
 
 		sender, err := NewSender(ctx, nil, tracingProvider, logger, nil)
-		assert.Nil(t, sender)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "config is required")
+		test.Nil(t, sender)
+		test.Error(t, err)
+		test.StrContains(t, err.Error(), "config is required")
 	})
 
 	T.Run("with non-existent credentials path", func(t *testing.T) {
@@ -80,9 +80,9 @@ func TestNewSender(T *testing.T) {
 			CredentialsPath: filepath.Join(t.TempDir(), "nonexistent-firebase-credentials.json"),
 		}
 		sender, err := NewSender(ctx, cfg, tracingProvider, logger, nil)
-		assert.Nil(t, sender)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "credentials file not found")
+		test.Nil(t, sender)
+		test.Error(t, err)
+		test.StrContains(t, err.Error(), "credentials file not found")
 	})
 
 	T.Run("with empty credentials path uses ADC", func(t *testing.T) {
@@ -92,12 +92,12 @@ func TestNewSender(T *testing.T) {
 		sender, err := NewSender(ctx, cfg, tracingProvider, logger, nil)
 		// ADC typically fails without GCP credentials in test env
 		if err != nil {
-			assert.Nil(t, sender)
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "fcm:")
+			test.Nil(t, sender)
+			test.Error(t, err)
+			test.StrContains(t, err.Error(), "fcm:")
 			return
 		}
-		require.NotNil(t, sender)
+		must.NotNil(t, sender)
 	})
 
 	T.Run("with invalid JSON credentials file", func(t *testing.T) {
@@ -105,13 +105,13 @@ func TestNewSender(T *testing.T) {
 
 		dir := t.TempDir()
 		path := filepath.Join(dir, "creds.json")
-		require.NoError(t, os.WriteFile(path, []byte("not valid json"), 0o600))
+		must.NoError(t, os.WriteFile(path, []byte("not valid json"), 0o600))
 
 		cfg := &Config{CredentialsPath: path}
 		sender, err := NewSender(ctx, cfg, tracingProvider, logger, nil)
-		assert.Nil(t, sender)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "fcm:")
+		test.Nil(t, sender)
+		test.Error(t, err)
+		test.StrContains(t, err.Error(), "fcm:")
 	})
 
 	T.Run("with valid credentials file", func(t *testing.T) {
@@ -119,12 +119,12 @@ func TestNewSender(T *testing.T) {
 
 		dir := t.TempDir()
 		path := filepath.Join(dir, "creds.json")
-		require.NoError(t, os.WriteFile(path, []byte(fakeServiceAccountJSON), 0o600))
+		must.NoError(t, os.WriteFile(path, []byte(fakeServiceAccountJSON), 0o600))
 
 		cfg := &Config{CredentialsPath: path}
 		sender, err := NewSender(ctx, cfg, tracingProvider, logger, nil)
-		require.NoError(t, err)
-		require.NotNil(t, sender)
+		must.NoError(t, err)
+		must.NotNil(t, sender)
 	})
 
 	T.Run("with send counter creation error", func(t *testing.T) {
@@ -132,17 +132,22 @@ func TestNewSender(T *testing.T) {
 
 		dir := t.TempDir()
 		path := filepath.Join(dir, "creds.json")
-		require.NoError(t, os.WriteFile(path, []byte(fakeServiceAccountJSON), 0o600))
+		must.NoError(t, os.WriteFile(path, []byte(fakeServiceAccountJSON), 0o600))
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", o11yName+"_sends", mock.Anything).
-			Return((*metrics.Int64CounterImpl)(nil), errors.New("counter error"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, o11yName+"_sends", counterName)
+				return (*metrics.Int64CounterImpl)(nil), errors.New("counter error")
+			},
+		}
 
 		cfg := &Config{CredentialsPath: path}
 		sender, err := NewSender(ctx, cfg, tracingProvider, logger, mp)
-		assert.Nil(t, sender)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "creating send counter")
+		test.Nil(t, sender)
+		must.Error(t, err)
+		test.StrContains(t, err.Error(), "creating send counter")
+
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("with error counter creation error", func(t *testing.T) {
@@ -150,19 +155,28 @@ func TestNewSender(T *testing.T) {
 
 		dir := t.TempDir()
 		path := filepath.Join(dir, "creds.json")
-		require.NoError(t, os.WriteFile(path, []byte(fakeServiceAccountJSON), 0o600))
+		must.NoError(t, os.WriteFile(path, []byte(fakeServiceAccountJSON), 0o600))
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", o11yName+"_sends", mock.Anything).
-			Return((*metrics.Int64CounterImpl)(nil), nil)
-		mp.On("NewInt64Counter", o11yName+"_errors", mock.Anything).
-			Return((*metrics.Int64CounterImpl)(nil), errors.New("counter error"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				switch counterName {
+				case o11yName + "_sends":
+					return (*metrics.Int64CounterImpl)(nil), nil
+				case o11yName + "_errors":
+					return (*metrics.Int64CounterImpl)(nil), errors.New("counter error")
+				}
+				t.Fatalf("unexpected NewInt64Counter call: %q", counterName)
+				return nil, nil
+			},
+		}
 
 		cfg := &Config{CredentialsPath: path}
 		sender, err := NewSender(ctx, cfg, tracingProvider, logger, mp)
-		assert.Nil(t, sender)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "creating error counter")
+		test.Nil(t, sender)
+		must.Error(t, err)
+		test.StrContains(t, err.Error(), "creating error counter")
+
+		test.SliceLen(t, 2, mp.NewInt64CounterCalls())
 	})
 }
 
@@ -183,7 +197,7 @@ func TestSender_Send(T *testing.T) {
 		})
 
 		err := sender.Send(ctx, "device-token-abc", "Test Title", "Test Body")
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 
 	T.Run("send returns error", func(t *testing.T) {
@@ -198,6 +212,6 @@ func TestSender_Send(T *testing.T) {
 		})
 
 		err := sender.Send(ctx, "device-token-abc", "Test Title", "Test Body")
-		require.Error(t, err)
+		must.Error(t, err)
 	})
 }

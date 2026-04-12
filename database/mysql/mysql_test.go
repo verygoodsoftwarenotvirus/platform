@@ -12,9 +12,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 // testClientConfig is a test implementation of database.ClientConfig.
@@ -62,19 +61,11 @@ func (c *testClientConfig) GetConnMaxLifetime() time.Duration {
 	return 30 * time.Minute
 }
 
-type sqlmockExpecterWrapper struct {
-	sqlmock.Sqlmock
-}
-
-func (e *sqlmockExpecterWrapper) AssertExpectations(t mock.TestingT) bool {
-	return assert.NoError(t, e.ExpectationsWereMet(), "not all database expectations were met")
-}
-
-func buildTestClient(t *testing.T) (*Client, *sqlmockExpecterWrapper) {
+func buildTestClient(t *testing.T) (*Client, sqlmock.Sqlmock) {
 	t.Helper()
 
 	fakeDB, sqlMock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	c := &Client{
 		readDB:  fakeDB,
@@ -88,7 +79,7 @@ func buildTestClient(t *testing.T) (*Client, *sqlmockExpecterWrapper) {
 		tracer:   tracing.NewTracerForTest("test"),
 	}
 
-	return c, &sqlmockExpecterWrapper{Sqlmock: sqlMock}
+	return c, sqlMock
 }
 
 // end helper funcs
@@ -106,7 +97,7 @@ func TestQuerier_IsReady(T *testing.T) {
 		// same DB for read/write, so only one ping
 		db.ExpectPing().WillDelayFor(0)
 
-		assert.True(t, c.IsReady(ctx))
+		test.True(t, c.IsReady(ctx))
 	})
 
 	T.Run("with read DB ping error", func(t *testing.T) {
@@ -118,7 +109,7 @@ func TestQuerier_IsReady(T *testing.T) {
 
 		db.ExpectPing().WillReturnError(errors.New("blah"))
 
-		assert.False(t, c.IsReady(ctx))
+		test.False(t, c.IsReady(ctx))
 	})
 
 	T.Run("with write DB ping error", func(t *testing.T) {
@@ -127,10 +118,10 @@ func TestQuerier_IsReady(T *testing.T) {
 		ctx := t.Context()
 
 		readDB, readMock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		writeDB, writeMock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		c := &Client{
 			readDB:  readDB,
@@ -143,7 +134,7 @@ func TestQuerier_IsReady(T *testing.T) {
 		readMock.ExpectPing().WillDelayFor(0)
 		writeMock.ExpectPing().WillReturnError(errors.New("blah"))
 
-		assert.False(t, c.IsReady(ctx))
+		test.False(t, c.IsReady(ctx))
 	})
 
 	T.Run("exhausting all available queries", func(t *testing.T) {
@@ -157,7 +148,7 @@ func TestQuerier_IsReady(T *testing.T) {
 
 		db.ExpectPing().WillReturnError(errors.New("blah"))
 
-		assert.False(t, c.IsReady(ctx))
+		test.False(t, c.IsReady(ctx))
 	})
 }
 
@@ -175,8 +166,8 @@ func TestProvideDatabaseClient(T *testing.T) {
 		}
 
 		actual, err := ProvideDatabaseClient(ctx, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), exampleConfig, nil)
-		assert.NotNil(t, actual)
-		assert.NoError(t, err)
+		test.NotNil(t, actual)
+		test.NoError(t, err)
 	})
 
 	T.Run("with no connection strings", func(t *testing.T) {
@@ -187,8 +178,8 @@ func TestProvideDatabaseClient(T *testing.T) {
 		exampleConfig := &testClientConfig{}
 
 		actual, err := ProvideDatabaseClient(ctx, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), exampleConfig, nil)
-		assert.Nil(t, actual)
-		assert.Error(t, err)
+		test.Nil(t, actual)
+		test.Error(t, err)
 	})
 
 	T.Run("with only read connection string", func(t *testing.T) {
@@ -202,8 +193,8 @@ func TestProvideDatabaseClient(T *testing.T) {
 		}
 
 		actual, err := ProvideDatabaseClient(ctx, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), exampleConfig, nil)
-		assert.NotNil(t, actual)
-		assert.NoError(t, err)
+		test.NotNil(t, actual)
+		test.NoError(t, err)
 	})
 
 	T.Run("with only write connection string", func(t *testing.T) {
@@ -217,8 +208,8 @@ func TestProvideDatabaseClient(T *testing.T) {
 		}
 
 		actual, err := ProvideDatabaseClient(ctx, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), exampleConfig, nil)
-		assert.NotNil(t, actual)
-		assert.NoError(t, err)
+		test.NotNil(t, actual)
+		test.NoError(t, err)
 	})
 
 	T.Run("with metrics provider", func(t *testing.T) {
@@ -232,8 +223,8 @@ func TestProvideDatabaseClient(T *testing.T) {
 		}
 
 		actual, err := ProvideDatabaseClient(ctx, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), exampleConfig, metrics.NewNoopMetricsProvider())
-		assert.NotNil(t, actual)
-		assert.NoError(t, err)
+		test.NotNil(t, actual)
+		test.NoError(t, err)
 	})
 
 	T.Run("with metrics provider and single connection", func(t *testing.T) {
@@ -247,8 +238,8 @@ func TestProvideDatabaseClient(T *testing.T) {
 		}
 
 		actual, err := ProvideDatabaseClient(ctx, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), exampleConfig, metrics.NewNoopMetricsProvider())
-		assert.NotNil(t, actual)
-		assert.NoError(t, err)
+		test.NotNil(t, actual)
+		test.NoError(t, err)
 	})
 }
 
@@ -258,7 +249,7 @@ func TestDefaultTimeFunc(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotZero(t, defaultTimeFunc())
+		test.False(t, defaultTimeFunc().IsZero())
 	})
 }
 
@@ -270,7 +261,7 @@ func TestQuerier_currentTime(T *testing.T) {
 
 		c, _ := buildTestClient(t)
 
-		assert.NotEmpty(t, c.CurrentTime())
+		test.False(t, c.CurrentTime().IsZero())
 	})
 
 	T.Run("handles nil", func(t *testing.T) {
@@ -278,7 +269,7 @@ func TestQuerier_currentTime(T *testing.T) {
 
 		var c *Client
 
-		assert.NotEmpty(t, c.CurrentTime())
+		test.False(t, c.CurrentTime().IsZero())
 	})
 }
 
@@ -295,7 +286,7 @@ func TestQuerier_rollbackTransaction(T *testing.T) {
 		db.ExpectRollback().WillReturnError(errors.New("blah"))
 
 		tx, err := c.writeDB.BeginTx(ctx, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		c.RollbackTransaction(ctx, tx)
 	})
@@ -310,7 +301,7 @@ func TestQuerier_rollbackTransaction(T *testing.T) {
 		db.ExpectRollback()
 
 		tx, err := c.writeDB.BeginTx(ctx, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		c.RollbackTransaction(ctx, tx)
 	})
@@ -324,7 +315,7 @@ func TestClient_ReadDB(T *testing.T) {
 
 		c, _ := buildTestClient(t)
 
-		assert.NotNil(t, c.ReadDB())
+		test.NotNil(t, c.ReadDB())
 	})
 }
 
@@ -336,7 +327,7 @@ func TestClient_WriteDB(T *testing.T) {
 
 		c, _ := buildTestClient(t)
 
-		assert.NotNil(t, c.WriteDB())
+		test.NotNil(t, c.WriteDB())
 	})
 }
 
@@ -350,17 +341,17 @@ func TestClient_Close(T *testing.T) {
 
 		db.ExpectClose()
 
-		assert.NoError(t, c.Close())
+		test.NoError(t, c.Close())
 	})
 
 	T.Run("with separate read and write DBs", func(t *testing.T) {
 		t.Parallel()
 
 		readDB, readMock, err := sqlmock.New()
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		writeDB, writeMock, err := sqlmock.New()
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		c := &Client{
 			readDB:  readDB,
@@ -372,7 +363,7 @@ func TestClient_Close(T *testing.T) {
 		readMock.ExpectClose()
 		writeMock.ExpectClose()
 
-		assert.NoError(t, c.Close())
+		test.NoError(t, c.Close())
 	})
 
 	T.Run("with read close error", func(t *testing.T) {
@@ -382,17 +373,17 @@ func TestClient_Close(T *testing.T) {
 
 		db.ExpectClose().WillReturnError(errors.New("blah"))
 
-		assert.Error(t, c.Close())
+		test.Error(t, c.Close())
 	})
 
 	T.Run("with write close error", func(t *testing.T) {
 		t.Parallel()
 
 		readDB, readMock, err := sqlmock.New()
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		writeDB, writeMock, err := sqlmock.New()
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		c := &Client{
 			readDB:  readDB,
@@ -404,6 +395,6 @@ func TestClient_Close(T *testing.T) {
 		readMock.ExpectClose()
 		writeMock.ExpectClose().WillReturnError(errors.New("blah"))
 
-		assert.Error(t, c.Close())
+		test.Error(t, c.Close())
 	})
 }

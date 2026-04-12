@@ -8,7 +8,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestBuildLoggingMiddleware(T *testing.T) {
@@ -21,7 +21,7 @@ func TestBuildLoggingMiddleware(T *testing.T) {
 		tracer := tracing.NewTracerForTest("")
 		middleware := buildLoggingMiddleware(logging.NewNoopLogger(), tracer, false)
 
-		assert.NotNil(t, middleware)
+		test.NotNil(t, middleware)
 
 		hf := http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {})
 

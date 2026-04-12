@@ -3,8 +3,8 @@ package pointer
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestTo(T *testing.T) {
@@ -16,8 +16,8 @@ func TestTo(T *testing.T) {
 		expected := "things"
 		actual := To(expected)
 
-		require.NotNil(t, actual)
-		assert.Equal(t, expected, *actual)
+		must.NotNil(t, actual)
+		test.EqOp(t, expected, *actual)
 	})
 
 	T.Run("with int", func(t *testing.T) {
@@ -26,8 +26,8 @@ func TestTo(T *testing.T) {
 		expected := 42
 		actual := To(expected)
 
-		require.NotNil(t, actual)
-		assert.Equal(t, expected, *actual)
+		must.NotNil(t, actual)
+		test.EqOp(t, expected, *actual)
 	})
 
 	T.Run("with zero value", func(t *testing.T) {
@@ -35,8 +35,8 @@ func TestTo(T *testing.T) {
 
 		actual := To(0)
 
-		require.NotNil(t, actual)
-		assert.Equal(t, 0, *actual)
+		must.NotNil(t, actual)
+		test.EqOp(t, 0, *actual)
 	})
 
 	T.Run("with struct", func(t *testing.T) {
@@ -46,8 +46,8 @@ func TestTo(T *testing.T) {
 		expected := example{Name: "test"}
 		actual := To(expected)
 
-		require.NotNil(t, actual)
-		assert.Equal(t, expected, *actual)
+		must.NotNil(t, actual)
+		test.EqOp(t, expected, *actual)
 	})
 }
 
@@ -60,10 +60,10 @@ func TestToSlice(T *testing.T) {
 		input := []string{"a", "b", "c"}
 		actual := ToSlice(input)
 
-		require.Len(t, actual, 3)
-		assert.Equal(t, "a", *actual[0])
-		assert.Equal(t, "b", *actual[1])
-		assert.Equal(t, "c", *actual[2])
+		must.SliceLen(t, 3, actual)
+		test.EqOp(t, "a", *actual[0])
+		test.EqOp(t, "b", *actual[1])
+		test.EqOp(t, "c", *actual[2])
 	})
 
 	T.Run("with int slice", func(t *testing.T) {
@@ -72,10 +72,10 @@ func TestToSlice(T *testing.T) {
 		input := []int{1, 2, 3}
 		actual := ToSlice(input)
 
-		require.Len(t, actual, 3)
-		assert.Equal(t, 1, *actual[0])
-		assert.Equal(t, 2, *actual[1])
-		assert.Equal(t, 3, *actual[2])
+		must.SliceLen(t, 3, actual)
+		test.EqOp(t, 1, *actual[0])
+		test.EqOp(t, 2, *actual[1])
+		test.EqOp(t, 3, *actual[2])
 	})
 
 	T.Run("with nil slice", func(t *testing.T) {
@@ -83,8 +83,8 @@ func TestToSlice(T *testing.T) {
 
 		actual := ToSlice[string](nil)
 
-		assert.NotNil(t, actual)
-		assert.Empty(t, actual)
+		test.NotNil(t, actual)
+		test.SliceEmpty(t, actual)
 	})
 
 	T.Run("with empty slice", func(t *testing.T) {
@@ -92,8 +92,8 @@ func TestToSlice(T *testing.T) {
 
 		actual := ToSlice([]string{})
 
-		assert.NotNil(t, actual)
-		assert.Empty(t, actual)
+		test.NotNil(t, actual)
+		test.SliceEmpty(t, actual)
 	})
 }
 
@@ -106,7 +106,7 @@ func TestDereference(T *testing.T) {
 		rawExpected := "things"
 		actual := Dereference(&rawExpected)
 
-		assert.Equal(t, rawExpected, actual)
+		test.EqOp(t, rawExpected, actual)
 	})
 
 	T.Run("with int pointer", func(t *testing.T) {
@@ -115,7 +115,7 @@ func TestDereference(T *testing.T) {
 		expected := 42
 		actual := Dereference(&expected)
 
-		assert.Equal(t, 42, actual)
+		test.EqOp(t, 42, actual)
 	})
 
 	T.Run("with nil string pointer", func(t *testing.T) {
@@ -123,7 +123,7 @@ func TestDereference(T *testing.T) {
 
 		actual := Dereference[string](nil)
 
-		assert.Equal(t, "", actual)
+		test.EqOp(t, "", actual)
 	})
 
 	T.Run("with nil int pointer", func(t *testing.T) {
@@ -131,7 +131,7 @@ func TestDereference(T *testing.T) {
 
 		actual := Dereference[int](nil)
 
-		assert.Equal(t, 0, actual)
+		test.EqOp(t, 0, actual)
 	})
 
 	T.Run("with nil bool pointer", func(t *testing.T) {
@@ -139,7 +139,7 @@ func TestDereference(T *testing.T) {
 
 		actual := Dereference[bool](nil)
 
-		assert.False(t, actual)
+		test.False(t, actual)
 	})
 }
 
@@ -153,10 +153,10 @@ func TestDereferenceSlice(T *testing.T) {
 		input := []*string{&a, &b, &c}
 		actual := DereferenceSlice(input)
 
-		require.Len(t, actual, 3)
-		assert.Equal(t, "a", actual[0])
-		assert.Equal(t, "b", actual[1])
-		assert.Equal(t, "c", actual[2])
+		must.SliceLen(t, 3, actual)
+		test.EqOp(t, "a", actual[0])
+		test.EqOp(t, "b", actual[1])
+		test.EqOp(t, "c", actual[2])
 	})
 
 	T.Run("with int pointer slice", func(t *testing.T) {
@@ -166,9 +166,9 @@ func TestDereferenceSlice(T *testing.T) {
 		input := []*int{&a, &b}
 		actual := DereferenceSlice(input)
 
-		require.Len(t, actual, 2)
-		assert.Equal(t, 1, actual[0])
-		assert.Equal(t, 2, actual[1])
+		must.SliceLen(t, 2, actual)
+		test.EqOp(t, 1, actual[0])
+		test.EqOp(t, 2, actual[1])
 	})
 
 	T.Run("with nil slice", func(t *testing.T) {
@@ -176,8 +176,8 @@ func TestDereferenceSlice(T *testing.T) {
 
 		actual := DereferenceSlice[string](nil)
 
-		assert.NotNil(t, actual)
-		assert.Empty(t, actual)
+		test.NotNil(t, actual)
+		test.SliceEmpty(t, actual)
 	})
 
 	T.Run("with empty slice", func(t *testing.T) {
@@ -185,7 +185,7 @@ func TestDereferenceSlice(T *testing.T) {
 
 		actual := DereferenceSlice([]*string{})
 
-		assert.NotNil(t, actual)
-		assert.Empty(t, actual)
+		test.NotNil(t, actual)
+		test.SliceEmpty(t, actual)
 	})
 }

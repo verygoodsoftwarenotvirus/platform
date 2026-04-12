@@ -3,7 +3,7 @@ package tracing
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestGetCallerName(T *testing.T) {
@@ -12,6 +12,6 @@ func TestGetCallerName(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotEmpty(t, GetCallerName())
+		test.NotEq(t, "", GetCallerName())
 	})
 }

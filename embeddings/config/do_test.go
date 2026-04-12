@@ -8,8 +8,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/samber/do/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestRegisterEmbedder(T *testing.T) {
@@ -26,7 +26,7 @@ func TestRegisterEmbedder(T *testing.T) {
 		RegisterEmbedder(i)
 
 		embedder, err := do.Invoke[embeddings.Embedder](i)
-		require.NoError(t, err)
-		assert.NotNil(t, embedder)
+		must.NoError(t, err)
+		test.NotNil(t, embedder)
 	})
 }

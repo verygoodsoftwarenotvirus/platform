@@ -18,17 +18,19 @@ import (
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 	"google.golang.org/grpc"
 )
 
+var errStub = errors.New("stub error")
+
 type mockTracerProvider struct {
 	noop.TracerProvider
-	mock.Mock
+	forceFlushFunc  func(ctx context.Context) error
+	forceFlushCalls int
 }
 
 func (m *mockTracerProvider) Tracer(name string, opts ...trace.TracerOption) trace.Tracer {
@@ -36,14 +38,18 @@ func (m *mockTracerProvider) Tracer(name string, opts ...trace.TracerOption) tra
 }
 
 func (m *mockTracerProvider) ForceFlush(ctx context.Context) error {
-	return m.Called(ctx).Error(0)
+	m.forceFlushCalls++
+	if m.forceFlushFunc == nil {
+		return nil
+	}
+	return m.forceFlushFunc(ctx)
 }
 
 func generateTestTLSCerts(t *testing.T) (certFile, keyFile string) {
 	t.Helper()
 
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	template := x509.Certificate{
 		SerialNumber: big.NewInt(1),
@@ -55,23 +61,23 @@ func generateTestTLSCerts(t *testing.T) (certFile, keyFile string) {
 	}
 
 	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	dir := t.TempDir()
 
 	certPath := filepath.Join(dir, "cert.pem")
 	certOut, err := os.Create(certPath)
-	require.NoError(t, err)
-	require.NoError(t, pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: certDER}))
-	require.NoError(t, certOut.Close())
+	must.NoError(t, err)
+	must.NoError(t, pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: certDER}))
+	must.NoError(t, certOut.Close())
 
 	keyDER, err := x509.MarshalECPrivateKey(key)
-	require.NoError(t, err)
+	must.NoError(t, err)
 	keyPath := filepath.Join(dir, "key.pem")
 	keyOut, err := os.Create(keyPath)
-	require.NoError(t, err)
-	require.NoError(t, pem.Encode(keyOut, &pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER}))
-	require.NoError(t, keyOut.Close())
+	must.NoError(t, err)
+	must.NoError(t, pem.Encode(keyOut, &pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER}))
+	must.NoError(t, keyOut.Close())
 
 	return certPath, keyPath
 }
@@ -84,8 +90,8 @@ func TestNewGRPCServer(T *testing.T) {
 
 		server, err := NewGRPCServer(nil, nil, nil, nil, nil)
 
-		assert.Nil(t, server)
-		assert.Error(t, err)
+		test.Nil(t, server)
+		test.Error(t, err)
 	})
 
 	T.Run("succeeds with valid config", func(t *testing.T) {
@@ -94,8 +100,8 @@ func TestNewGRPCServer(T *testing.T) {
 		cfg := &Config{Port: 0}
 		server, err := NewGRPCServer(cfg, nil, nil, nil, nil)
 
-		require.NoError(t, err)
-		assert.NotNil(t, server)
+		must.NoError(t, err)
+		test.NotNil(t, server)
 	})
 
 	T.Run("succeeds with registration functions", func(t *testing.T) {
@@ -109,9 +115,9 @@ func TestNewGRPCServer(T *testing.T) {
 		cfg := &Config{Port: 0}
 		server, err := NewGRPCServer(cfg, logging.NewNoopLogger(), nil, nil, nil, rf)
 
-		require.NoError(t, err)
-		assert.NotNil(t, server)
-		assert.True(t, called)
+		must.NoError(t, err)
+		test.NotNil(t, server)
+		test.True(t, called)
 	})
 
 	T.Run("returns error with invalid TLS files", func(t *testing.T) {
@@ -125,8 +131,8 @@ func TestNewGRPCServer(T *testing.T) {
 
 		server, err := NewGRPCServer(cfg, nil, nil, nil, nil)
 
-		assert.Nil(t, server)
-		assert.Error(t, err)
+		test.Nil(t, server)
+		test.Error(t, err)
 	})
 
 	T.Run("succeeds with valid TLS files", func(t *testing.T) {
@@ -142,8 +148,8 @@ func TestNewGRPCServer(T *testing.T) {
 
 		server, err := NewGRPCServer(cfg, logging.NewNoopLogger(), nil, nil, nil)
 
-		require.NoError(t, err)
-		assert.NotNil(t, server)
+		must.NoError(t, err)
+		test.NotNil(t, server)
 	})
 }
 
@@ -154,7 +160,7 @@ func TestLoggingInterceptor(T *testing.T) {
 		t.Parallel()
 
 		interceptor := LoggingInterceptor(nil)
-		assert.NotNil(t, interceptor)
+		test.NotNil(t, interceptor)
 
 		handlerCalled := false
 		handler := func(ctx context.Context, req any) (any, error) {
@@ -165,18 +171,18 @@ func TestLoggingInterceptor(T *testing.T) {
 		info := &grpc.UnaryServerInfo{FullMethod: "/test/Method"}
 		result, err := interceptor(context.Background(), "request", info, handler)
 
-		assert.NoError(t, err)
-		assert.Equal(t, "result", result)
-		assert.True(t, handlerCalled)
+		test.NoError(t, err)
+		test.Eq(t, "result", result)
+		test.True(t, handlerCalled)
 	})
 
 	T.Run("logs error when handler fails", func(t *testing.T) {
 		t.Parallel()
 
 		interceptor := LoggingInterceptor(logging.NewNoopLogger())
-		assert.NotNil(t, interceptor)
+		test.NotNil(t, interceptor)
 
-		expectedErr := assert.AnError
+		expectedErr := errStub
 		handler := func(ctx context.Context, req any) (any, error) {
 			return nil, expectedErr
 		}
@@ -184,8 +190,8 @@ func TestLoggingInterceptor(T *testing.T) {
 		info := &grpc.UnaryServerInfo{FullMethod: "/test/Method"}
 		result, err := interceptor(context.Background(), "request", info, handler)
 
-		assert.ErrorIs(t, err, expectedErr)
-		assert.Nil(t, result)
+		test.ErrorIs(t, err, expectedErr)
+		test.Nil(t, result)
 	})
 }
 
@@ -197,7 +203,7 @@ func TestServer_Shutdown(T *testing.T) {
 
 		cfg := &Config{Port: 0}
 		server, err := NewGRPCServer(cfg, nil, nil, nil, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		server.Shutdown(context.Background())
 	})
@@ -207,7 +213,7 @@ func TestServer_Shutdown(T *testing.T) {
 
 		cfg := &Config{Port: 0}
 		server, err := NewGRPCServer(cfg, logging.NewNoopLogger(), nil, nil, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		server.Shutdown(context.Background())
 	})
@@ -215,16 +221,17 @@ func TestServer_Shutdown(T *testing.T) {
 	T.Run("logs error when ForceFlush fails", func(t *testing.T) {
 		t.Parallel()
 
-		mtp := &mockTracerProvider{}
-		mtp.On("ForceFlush", mock.Anything).Return(errors.New("flush failed"))
+		mtp := &mockTracerProvider{
+			forceFlushFunc: func(_ context.Context) error { return errors.New("flush failed") },
+		}
 
 		cfg := &Config{Port: 0}
 		srv, err := NewGRPCServer(cfg, logging.NewNoopLogger(), mtp, nil, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		srv.Shutdown(context.Background())
 
-		mock.AssertExpectationsForObjects(t, mtp)
+		test.EqOp(t, 1, mtp.forceFlushCalls)
 	})
 }
 
@@ -241,8 +248,8 @@ func TestNewGRPCServer_withInterceptors(T *testing.T) {
 		cfg := &Config{Port: 0}
 		server, err := NewGRPCServer(cfg, logging.NewNoopLogger(), nil, []grpc.UnaryServerInterceptor{unaryInterceptor}, nil)
 
-		require.NoError(t, err)
-		assert.NotNil(t, server)
+		must.NoError(t, err)
+		test.NotNil(t, server)
 	})
 
 	T.Run("with stream interceptors", func(t *testing.T) {
@@ -255,8 +262,8 @@ func TestNewGRPCServer_withInterceptors(T *testing.T) {
 		cfg := &Config{Port: 0}
 		server, err := NewGRPCServer(cfg, logging.NewNoopLogger(), nil, nil, []grpc.StreamServerInterceptor{streamInterceptor})
 
-		require.NoError(t, err)
-		assert.NotNil(t, server)
+		must.NoError(t, err)
+		test.NotNil(t, server)
 	})
 
 	T.Run("with multiple registration functions", func(t *testing.T) {
@@ -269,9 +276,9 @@ func TestNewGRPCServer_withInterceptors(T *testing.T) {
 		cfg := &Config{Port: 0}
 		server, err := NewGRPCServer(cfg, nil, nil, nil, nil, rf1, rf2)
 
-		require.NoError(t, err)
-		assert.NotNil(t, server)
-		assert.Equal(t, 2, callCount)
+		must.NoError(t, err)
+		test.NotNil(t, server)
+		test.EqOp(t, 2, callCount)
 	})
 }
 
@@ -283,7 +290,7 @@ func TestServer_Serve(T *testing.T) {
 
 		cfg := &Config{Port: 0}
 		srv, err := NewGRPCServer(cfg, logging.NewNoopLogger(), nil, nil, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		ctx, cancel := context.WithCancel(t.Context())
 
@@ -305,14 +312,14 @@ func TestServer_Serve(T *testing.T) {
 
 		// Occupy a port so the server's Listen call fails with "address already in use".
 		lis, err := new(net.ListenConfig).Listen(t.Context(), "tcp", ":0")
-		require.NoError(t, err)
+		must.NoError(t, err)
 		defer lis.Close()
 
 		port := lis.Addr().(*net.TCPAddr).Port
 
 		cfg := &Config{Port: uint16(port)}
 		srv, err := NewGRPCServer(cfg, logging.NewNoopLogger(), nil, nil, nil)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		// Should return immediately because the port is already in use.
 		srv.Serve(t.Context())

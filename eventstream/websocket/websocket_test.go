@@ -11,8 +11,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	gorillawebsocket "github.com/gorilla/websocket"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestNewUpgrader(T *testing.T) {
@@ -22,10 +22,10 @@ func TestNewUpgrader(T *testing.T) {
 		t.Parallel()
 
 		u := NewUpgrader(nil, tracing.NewNoopTracerProvider(), nil)
-		require.NotNil(t, u)
-		assert.Equal(t, defaultHeartbeatInterval, u.heartbeatInterval)
-		assert.Equal(t, defaultBufferSize, u.wsUpgrader.ReadBufferSize)
-		assert.Equal(t, defaultBufferSize, u.wsUpgrader.WriteBufferSize)
+		must.NotNil(t, u)
+		test.EqOp(t, defaultHeartbeatInterval, u.heartbeatInterval)
+		test.EqOp(t, defaultBufferSize, u.wsUpgrader.ReadBufferSize)
+		test.EqOp(t, defaultBufferSize, u.wsUpgrader.WriteBufferSize)
 	})
 
 	T.Run("custom config", func(t *testing.T) {
@@ -36,10 +36,10 @@ func TestNewUpgrader(T *testing.T) {
 			ReadBufferSize:    2048,
 			WriteBufferSize:   4096,
 		})
-		require.NotNil(t, u)
-		assert.Equal(t, 10*time.Second, u.heartbeatInterval)
-		assert.Equal(t, 2048, u.wsUpgrader.ReadBufferSize)
-		assert.Equal(t, 4096, u.wsUpgrader.WriteBufferSize)
+		must.NotNil(t, u)
+		test.EqOp(t, 10*time.Second, u.heartbeatInterval)
+		test.EqOp(t, 2048, u.wsUpgrader.ReadBufferSize)
+		test.EqOp(t, 4096, u.wsUpgrader.WriteBufferSize)
 	})
 }
 
@@ -63,11 +63,11 @@ func TestUpgrader_UpgradeToEventStream(T *testing.T) {
 		defer server.Close()
 
 		conn, _, err := gorillawebsocket.DefaultDialer.Dial("ws"+server.URL[4:], http.Header{"Origin": {server.URL}})
-		require.NoError(t, err)
+		must.NoError(t, err)
 		defer conn.Close()
 
 		stream := <-streamReady
-		require.NotNil(t, stream)
+		must.NotNil(t, stream)
 		defer stream.Close()
 	})
 }
@@ -92,14 +92,14 @@ func TestUpgrader_UpgradeToBidirectionalStream(T *testing.T) {
 		defer server.Close()
 
 		conn, _, err := gorillawebsocket.DefaultDialer.Dial("ws"+server.URL[4:], http.Header{"Origin": {server.URL}})
-		require.NoError(t, err)
+		must.NoError(t, err)
 		defer conn.Close()
 
 		stream := <-streamReady
-		require.NotNil(t, stream)
+		must.NotNil(t, stream)
 		defer stream.Close()
 
-		assert.NotNil(t, stream.Receive())
+		test.NotNil(t, stream.Receive())
 	})
 }
 
@@ -128,7 +128,7 @@ func TestWSStream_Send(T *testing.T) {
 		defer server.Close()
 
 		conn, _, err := gorillawebsocket.DefaultDialer.Dial("ws"+server.URL[4:], http.Header{"Origin": {server.URL}})
-		require.NoError(t, err)
+		must.NoError(t, err)
 		defer conn.Close()
 
 		go func() {
@@ -140,10 +140,10 @@ func TestWSStream_Send(T *testing.T) {
 
 		select {
 		case event := <-received:
-			assert.Equal(t, "test", event.Type)
-			assert.JSONEq(t, `{"msg":"hello"}`, string(event.Payload))
+			test.EqOp(t, "test", event.Type)
+			test.EqOp(t, `{"msg":"hello"}`, string(event.Payload))
 		case <-time.After(2 * time.Second):
-			require.Fail(t, "did not receive event")
+			t.Fatalf("did not receive event")
 		}
 	})
 
@@ -163,15 +163,15 @@ func TestWSStream_Send(T *testing.T) {
 		defer server.Close()
 
 		conn, _, err := gorillawebsocket.DefaultDialer.Dial("ws"+server.URL[4:], http.Header{"Origin": {server.URL}})
-		require.NoError(t, err)
+		must.NoError(t, err)
 		defer conn.Close()
 
 		stream := <-streamReady
-		require.NoError(t, stream.Close())
+		must.NoError(t, stream.Close())
 
 		sendErr := stream.Send(t.Context(), &eventstream.Event{Type: "x"})
-		assert.Error(t, sendErr)
-		assert.Contains(t, sendErr.Error(), "stream closed")
+		test.Error(t, sendErr)
+		test.StrContains(t, sendErr.Error(), "stream closed")
 	})
 }
 
@@ -194,18 +194,18 @@ func TestWSStream_Done(T *testing.T) {
 		defer server.Close()
 
 		conn, _, err := gorillawebsocket.DefaultDialer.Dial("ws"+server.URL[4:], http.Header{"Origin": {server.URL}})
-		require.NoError(t, err)
+		must.NoError(t, err)
 		defer conn.Close()
 
 		stream := <-streamReady
 		done := stream.Done()
-		require.NoError(t, stream.Close())
+		must.NoError(t, stream.Close())
 
 		select {
 		case <-done:
 			// expected
 		case <-time.After(time.Second):
-			require.Fail(t, "Done() channel was not closed after Close()")
+			t.Fatalf("Done() channel was not closed after Close()")
 		}
 	})
 }
@@ -229,12 +229,12 @@ func TestWSStream_Close(T *testing.T) {
 		defer server.Close()
 
 		conn, _, err := gorillawebsocket.DefaultDialer.Dial("ws"+server.URL[4:], http.Header{"Origin": {server.URL}})
-		require.NoError(t, err)
+		must.NoError(t, err)
 		defer conn.Close()
 
 		stream := <-streamReady
-		assert.NoError(t, stream.Close())
-		assert.NoError(t, stream.Close())
+		test.NoError(t, stream.Close())
+		test.NoError(t, stream.Close())
 	})
 }
 
@@ -257,7 +257,7 @@ func TestBidirectionalWSStream_Receive(T *testing.T) {
 		defer server.Close()
 
 		conn, _, err := gorillawebsocket.DefaultDialer.Dial("ws"+server.URL[4:], http.Header{"Origin": {server.URL}})
-		require.NoError(t, err)
+		must.NoError(t, err)
 		defer conn.Close()
 
 		stream := <-streamReady
@@ -268,15 +268,15 @@ func TestBidirectionalWSStream_Receive(T *testing.T) {
 			Type:    "ping",
 			Payload: json.RawMessage(`{"seq":1}`),
 		}
-		require.NoError(t, conn.WriteJSON(outgoing))
+		must.NoError(t, conn.WriteJSON(outgoing))
 
 		select {
 		case event := <-stream.Receive():
-			require.NotNil(t, event)
-			assert.Equal(t, "ping", event.Type)
-			assert.JSONEq(t, `{"seq":1}`, string(event.Payload))
+			must.NotNil(t, event)
+			test.EqOp(t, "ping", event.Type)
+			test.EqOp(t, `{"seq":1}`, string(event.Payload))
 		case <-time.After(2 * time.Second):
-			require.Fail(t, "did not receive event from client")
+			t.Fatalf("did not receive event from client")
 		}
 	})
 
@@ -296,19 +296,19 @@ func TestBidirectionalWSStream_Receive(T *testing.T) {
 		defer server.Close()
 
 		conn, _, err := gorillawebsocket.DefaultDialer.Dial("ws"+server.URL[4:], http.Header{"Origin": {server.URL}})
-		require.NoError(t, err)
+		must.NoError(t, err)
 		defer conn.Close()
 
 		stream := <-streamReady
 		incoming := stream.Receive()
 
-		require.NoError(t, stream.Close())
+		must.NoError(t, stream.Close())
 
 		select {
 		case _, open := <-incoming:
-			assert.False(t, open, "Receive channel should be closed")
+			test.False(t, open, test.Sprintf("Receive channel should be closed"))
 		case <-time.After(2 * time.Second):
-			require.Fail(t, "Receive channel was not closed after stream.Close()")
+			t.Fatalf("Receive channel was not closed after stream.Close()")
 		}
 	})
 }

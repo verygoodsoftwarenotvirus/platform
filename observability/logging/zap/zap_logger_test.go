@@ -8,8 +8,8 @@ import (
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -19,25 +19,25 @@ func TestNewLogger(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, NewZapLogger(logging.DebugLevel))
+		test.NotNil(t, NewZapLogger(logging.DebugLevel))
 	})
 
 	T.Run("with info level", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, NewZapLogger(logging.InfoLevel))
+		test.NotNil(t, NewZapLogger(logging.InfoLevel))
 	})
 
 	T.Run("with warn level", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, NewZapLogger(logging.WarnLevel))
+		test.NotNil(t, NewZapLogger(logging.WarnLevel))
 	})
 
 	T.Run("with error level", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, NewZapLogger(logging.ErrorLevel))
+		test.NotNil(t, NewZapLogger(logging.ErrorLevel))
 	})
 }
 
@@ -49,7 +49,7 @@ func Test_zapLogger_WithName(T *testing.T) {
 
 		l := NewZapLogger(logging.DebugLevel)
 
-		assert.NotNil(t, l.WithName(t.Name()))
+		test.NotNil(t, l.WithName(t.Name()))
 	})
 }
 
@@ -60,7 +60,7 @@ func Test_zapLogger_SetLevel(T *testing.T) {
 		t.Parallel()
 
 		l, ok := NewZapLogger(logging.DebugLevel).(*zapLogger)
-		require.True(t, ok)
+		must.True(t, ok)
 
 		l.SetLevel(logging.InfoLevel)
 	})
@@ -69,7 +69,7 @@ func Test_zapLogger_SetLevel(T *testing.T) {
 		t.Parallel()
 
 		l, ok := NewZapLogger(logging.DebugLevel).(*zapLogger)
-		require.True(t, ok)
+		must.True(t, ok)
 
 		l.SetLevel(logging.DebugLevel)
 	})
@@ -78,7 +78,7 @@ func Test_zapLogger_SetLevel(T *testing.T) {
 		t.Parallel()
 
 		l, ok := NewZapLogger(logging.DebugLevel).(*zapLogger)
-		require.True(t, ok)
+		must.True(t, ok)
 
 		l.SetLevel(logging.WarnLevel)
 	})
@@ -87,7 +87,7 @@ func Test_zapLogger_SetLevel(T *testing.T) {
 		t.Parallel()
 
 		l, ok := NewZapLogger(logging.DebugLevel).(*zapLogger)
-		require.True(t, ok)
+		must.True(t, ok)
 
 		l.SetLevel(logging.ErrorLevel)
 	})
@@ -96,7 +96,7 @@ func Test_zapLogger_SetLevel(T *testing.T) {
 		t.Parallel()
 
 		l, ok := NewZapLogger(logging.DebugLevel).(*zapLogger)
-		require.True(t, ok)
+		must.True(t, ok)
 
 		l.SetLevel(nil)
 	})
@@ -176,7 +176,7 @@ func Test_zapLogger_Clone(T *testing.T) {
 
 		l := NewZapLogger(logging.DebugLevel)
 
-		assert.NotNil(t, l.Clone())
+		test.NotNil(t, l.Clone())
 	})
 }
 
@@ -188,7 +188,7 @@ func Test_zapLogger_WithValue(T *testing.T) {
 
 		l := NewZapLogger(logging.DebugLevel)
 
-		assert.NotNil(t, l.WithValue("name", t.Name()))
+		test.NotNil(t, l.WithValue("name", t.Name()))
 	})
 }
 
@@ -200,7 +200,7 @@ func Test_zapLogger_WithValues(T *testing.T) {
 
 		l := NewZapLogger(logging.DebugLevel)
 
-		assert.NotNil(t, l.WithValues(map[string]any{"name": t.Name()}))
+		test.NotNil(t, l.WithValues(map[string]any{"name": t.Name()}))
 	})
 }
 
@@ -212,7 +212,7 @@ func Test_zapLogger_WithError(T *testing.T) {
 
 		l := NewZapLogger(logging.DebugLevel)
 
-		assert.NotNil(t, l.WithError(errors.New("blah")))
+		test.NotNil(t, l.WithError(errors.New("blah")))
 	})
 }
 
@@ -227,7 +227,7 @@ func Test_zapLogger_WithSpan(T *testing.T) {
 
 		span := trace.SpanFromContext(ctx)
 
-		assert.NotNil(t, l.WithSpan(span))
+		test.NotNil(t, l.WithSpan(span))
 	})
 }
 
@@ -238,16 +238,16 @@ func Test_zapLogger_WithRequest(T *testing.T) {
 		t.Parallel()
 
 		l, ok := NewZapLogger(logging.DebugLevel).(*zapLogger)
-		require.True(t, ok)
+		must.True(t, ok)
 
 		l.requestIDFunc = func(*http.Request) string {
 			return t.Name()
 		}
 
 		u, err := url.ParseRequestURI("https://whatever.whocares.gov/path?things=stuff")
-		require.NoError(t, err)
+		must.NoError(t, err)
 
-		assert.NotNil(t, l.WithRequest(&http.Request{
+		test.NotNil(t, l.WithRequest(&http.Request{
 			URL: u,
 		}))
 	})
@@ -257,7 +257,7 @@ func Test_zapLogger_WithRequest(T *testing.T) {
 
 		l := NewZapLogger(logging.DebugLevel)
 
-		assert.NotNil(t, l.WithRequest(nil))
+		test.NotNil(t, l.WithRequest(nil))
 	})
 }
 
@@ -269,7 +269,7 @@ func Test_zapLogger_WithResponse(T *testing.T) {
 
 		l := NewZapLogger(logging.DebugLevel)
 
-		assert.NotNil(t, l.WithResponse(&http.Response{}))
+		test.NotNil(t, l.WithResponse(&http.Response{}))
 	})
 
 	T.Run("with nil response", func(t *testing.T) {
@@ -277,6 +277,6 @@ func Test_zapLogger_WithResponse(T *testing.T) {
 
 		l := NewZapLogger(logging.DebugLevel)
 
-		assert.NotNil(t, l.WithResponse(nil))
+		test.NotNil(t, l.WithResponse(nil))
 	})
 }

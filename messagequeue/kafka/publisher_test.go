@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"testing"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/encoding"
@@ -13,25 +14,34 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/v5/testutils"
 
 	"github.com/segmentio/kafka-go"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/metric"
 )
 
 type mockKafkaWriter struct {
-	mock.Mock
+	writeMessagesFunc func(ctx context.Context, msgs ...kafka.Message) error
+	closeFunc         func() error
+	writeCalls        int
+	closeCalls        int
 }
 
 func (m *mockKafkaWriter) WriteMessages(ctx context.Context, msgs ...kafka.Message) error {
-	return m.Called(ctx, msgs).Error(0)
+	m.writeCalls++
+	if m.writeMessagesFunc == nil {
+		return nil
+	}
+	return m.writeMessagesFunc(ctx, msgs...)
 }
 
 func (m *mockKafkaWriter) Close() error {
-	return m.Called().Error(0)
+	m.closeCalls++
+	if m.closeFunc == nil {
+		return nil
+	}
+	return m.closeFunc()
 }
 
 func buildTestPublisher(t *testing.T) (*kafkaPublisher, *mockKafkaWriter) {
@@ -42,13 +52,13 @@ func buildTestPublisher(t *testing.T) (*kafkaPublisher, *mockKafkaWriter) {
 	mp := metrics.NewNoopMetricsProvider()
 
 	publishedCounter, err := mp.NewInt64Counter("test_published")
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	publishErrCounter, err := mp.NewInt64Counter("test_publish_errors")
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	latencyHist, err := mp.NewFloat64Histogram("test_publish_latency_ms")
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	pub := &kafkaPublisher{
 		writer:            writer,
@@ -70,22 +80,22 @@ func Test_kafkaPublisher_Stop(T *testing.T) {
 		t.Parallel()
 
 		pub, writer := buildTestPublisher(t)
-		writer.On("Close").Return(nil)
+		writer.closeFunc = func() error { return nil }
 
 		pub.Stop()
 
-		mock.AssertExpectationsForObjects(t, writer)
+		test.EqOp(t, 1, writer.closeCalls)
 	})
 
 	T.Run("with close error", func(t *testing.T) {
 		t.Parallel()
 
 		pub, writer := buildTestPublisher(t)
-		writer.On("Close").Return(errors.New("close failed"))
+		writer.closeFunc = func() error { return errors.New("close failed") }
 
 		pub.Stop()
 
-		mock.AssertExpectationsForObjects(t, writer)
+		test.EqOp(t, 1, writer.closeCalls)
 	})
 }
 
@@ -104,12 +114,12 @@ func Test_kafkaPublisher_Publish(T *testing.T) {
 			Name: t.Name(),
 		}
 
-		writer.On("WriteMessages", testutils.ContextMatcher, mock.AnythingOfType("[]kafka.Message")).Return(nil)
+		writer.writeMessagesFunc = func(_ context.Context, _ ...kafka.Message) error { return nil }
 
 		err := pub.Publish(ctx, inputData)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
-		mock.AssertExpectationsForObjects(t, writer)
+		test.EqOp(t, 1, writer.writeCalls)
 	})
 
 	T.Run("with encoding error", func(t *testing.T) {
@@ -125,7 +135,7 @@ func Test_kafkaPublisher_Publish(T *testing.T) {
 		}
 
 		err := pub.Publish(ctx, inputData)
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 
 	T.Run("with write error", func(t *testing.T) {
@@ -140,12 +150,12 @@ func Test_kafkaPublisher_Publish(T *testing.T) {
 			Name: t.Name(),
 		}
 
-		writer.On("WriteMessages", testutils.ContextMatcher, mock.AnythingOfType("[]kafka.Message")).Return(errors.New("write failed"))
+		writer.writeMessagesFunc = func(_ context.Context, _ ...kafka.Message) error { return errors.New("write failed") }
 
 		err := pub.Publish(ctx, inputData)
-		assert.Error(t, err)
+		test.Error(t, err)
 
-		mock.AssertExpectationsForObjects(t, writer)
+		test.EqOp(t, 1, writer.writeCalls)
 	})
 
 	T.Run("with mock encoder error", func(t *testing.T) {
@@ -154,14 +164,17 @@ func Test_kafkaPublisher_Publish(T *testing.T) {
 		ctx := t.Context()
 		pub, _ := buildTestPublisher(t)
 
-		enc := &mockencoding.ClientEncoder{}
-		enc.On("Encode", testutils.ContextMatcher, mock.Anything, mock.Anything).Return(errors.New("encode failed"))
+		enc := &mockencoding.ClientEncoderMock{
+			EncodeFunc: func(_ context.Context, _ io.Writer, _ any) error {
+				return errors.New("encode failed")
+			},
+		}
 		pub.encoder = enc
 
 		err := pub.Publish(ctx, "something")
-		assert.Error(t, err)
+		test.Error(t, err)
 
-		mock.AssertExpectationsForObjects(t, enc)
+		test.SliceLen(t, 1, enc.EncodeCalls())
 	})
 }
 
@@ -180,11 +193,11 @@ func Test_kafkaPublisher_PublishAsync(T *testing.T) {
 			Name: t.Name(),
 		}
 
-		writer.On("WriteMessages", testutils.ContextMatcher, mock.AnythingOfType("[]kafka.Message")).Return(nil)
+		writer.writeMessagesFunc = func(_ context.Context, _ ...kafka.Message) error { return nil }
 
 		pub.PublishAsync(ctx, inputData)
 
-		mock.AssertExpectationsForObjects(t, writer)
+		test.EqOp(t, 1, writer.writeCalls)
 	})
 
 	T.Run("with encoding error", func(t *testing.T) {
@@ -214,11 +227,11 @@ func Test_kafkaPublisher_PublishAsync(T *testing.T) {
 			Name: t.Name(),
 		}
 
-		writer.On("WriteMessages", testutils.ContextMatcher, mock.AnythingOfType("[]kafka.Message")).Return(errors.New("write failed"))
+		writer.writeMessagesFunc = func(_ context.Context, _ ...kafka.Message) error { return errors.New("write failed") }
 
 		pub.PublishAsync(ctx, inputData)
 
-		mock.AssertExpectationsForObjects(t, writer)
+		test.EqOp(t, 1, writer.writeCalls)
 	})
 }
 
@@ -239,7 +252,7 @@ func TestProvideKafkaPublisherProvider(T *testing.T) {
 			nil,
 			cfg,
 		)
-		assert.NotNil(t, actual)
+		test.NotNil(t, actual)
 	})
 }
 
@@ -262,11 +275,11 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 			nil,
 			cfg,
 		)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		actual, err := provider.ProvidePublisher(ctx, t.Name())
-		assert.NoError(t, err)
-		assert.NotNil(t, actual)
+		test.NoError(t, err)
+		test.NotNil(t, actual)
 	})
 
 	T.Run("with empty topic", func(t *testing.T) {
@@ -285,12 +298,12 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 			nil,
 			cfg,
 		)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		actual, err := provider.ProvidePublisher(ctx, "")
-		assert.Error(t, err)
-		assert.ErrorIs(t, err, messagequeue.ErrEmptyTopicName)
-		assert.Nil(t, actual)
+		test.Error(t, err)
+		test.ErrorIs(t, err, messagequeue.ErrEmptyTopicName)
+		test.Nil(t, actual)
 	})
 
 	T.Run("with cache hit", func(t *testing.T) {
@@ -309,17 +322,17 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 			nil,
 			cfg,
 		)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		first, err := provider.ProvidePublisher(ctx, t.Name())
-		assert.NoError(t, err)
-		assert.NotNil(t, first)
+		test.NoError(t, err)
+		test.NotNil(t, first)
 
 		second, err := provider.ProvidePublisher(ctx, t.Name())
-		assert.NoError(t, err)
-		assert.NotNil(t, second)
+		test.NoError(t, err)
+		test.NotNil(t, second)
 
-		assert.Equal(t, first, second)
+		test.True(t, first == second)
 	})
 
 	T.Run("with error creating published counter", func(t *testing.T) {
@@ -327,8 +340,11 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 
 		ctx := t.Context()
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", mock.Anything, []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("counter error"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(_ string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				return metrics.Int64CounterForTest(t, "x"), errors.New("counter error")
+			},
+		}
 
 		cfg := Config{
 			Brokers: []string{"localhost:9092"},
@@ -341,11 +357,13 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 			mp,
 			cfg,
 		)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		actual, err := provider.ProvidePublisher(ctx, t.Name())
-		assert.Error(t, err)
-		assert.Nil(t, actual)
+		test.Error(t, err)
+		test.Nil(t, actual)
+
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("with error creating publish error counter", func(t *testing.T) {
@@ -353,9 +371,13 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 
 		ctx := t.Context()
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", mock.Anything, []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil).Once()
-		mp.On("NewInt64Counter", mock.Anything, []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("counter error")).Once()
+		mp := &mockmetrics.ProviderMock{}
+		mp.NewInt64CounterFunc = func(_ string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+			if len(mp.NewInt64CounterCalls()) >= 2 {
+				return metrics.Int64CounterForTest(t, "x"), errors.New("counter error")
+			}
+			return metrics.Int64CounterForTest(t, "x"), nil
+		}
 
 		cfg := Config{
 			Brokers: []string{"localhost:9092"},
@@ -368,11 +390,13 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 			mp,
 			cfg,
 		)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		actual, err := provider.ProvidePublisher(ctx, t.Name())
-		assert.Error(t, err)
-		assert.Nil(t, actual)
+		test.Error(t, err)
+		test.Nil(t, actual)
+
+		test.SliceLen(t, 2, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("with error creating latency histogram", func(t *testing.T) {
@@ -380,9 +404,14 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 
 		ctx := t.Context()
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", mock.Anything, []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), nil)
-		mp.On("NewFloat64Histogram", mock.Anything, []metric.Float64HistogramOption(nil)).Return(&metrics.Float64HistogramImpl{}, errors.New("histogram error"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(_ string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				return metrics.Int64CounterForTest(t, "x"), nil
+			},
+			NewFloat64HistogramFunc: func(_ string, _ ...metric.Float64HistogramOption) (metrics.Float64Histogram, error) {
+				return &metrics.Float64HistogramImpl{}, errors.New("histogram error")
+			},
+		}
 
 		cfg := Config{
 			Brokers: []string{"localhost:9092"},
@@ -395,11 +424,13 @@ func Test_publisherProvider_ProvidePublisher(T *testing.T) {
 			mp,
 			cfg,
 		)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		actual, err := provider.ProvidePublisher(ctx, t.Name())
-		assert.Error(t, err)
-		assert.Nil(t, actual)
+		test.Error(t, err)
+		test.Nil(t, actual)
+
+		test.SliceLen(t, 1, mp.NewFloat64HistogramCalls())
 	})
 }
 
@@ -422,10 +453,10 @@ func Test_publisherProvider_Ping(T *testing.T) {
 			nil,
 			cfg,
 		)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		err := provider.Ping(ctx)
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 }
 
@@ -448,17 +479,18 @@ func Test_publisherProvider_Close(T *testing.T) {
 			nil,
 			cfg,
 		)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		_, err := provider.ProvidePublisher(ctx, t.Name())
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		pp, ok := provider.(*publisherProvider)
-		require.True(t, ok)
+		must.True(t, ok)
 
 		// Replace cached publisher with one using a mock writer so Close doesn't hit real Kafka
-		mw := &mockKafkaWriter{}
-		mw.On("Close").Return(nil)
+		mw := &mockKafkaWriter{
+			closeFunc: func() error { return nil },
+		}
 
 		mp := metrics.NewNoopMetricsProvider()
 		publishedCounter, _ := mp.NewInt64Counter("test_published")
@@ -476,7 +508,7 @@ func Test_publisherProvider_Close(T *testing.T) {
 
 		provider.Close()
 
-		mock.AssertExpectationsForObjects(t, mw)
+		test.EqOp(t, 1, mw.closeCalls)
 	})
 
 	T.Run("with empty cache", func(t *testing.T) {
@@ -493,7 +525,7 @@ func Test_publisherProvider_Close(T *testing.T) {
 			nil,
 			cfg,
 		)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		provider.Close()
 	})

@@ -3,7 +3,7 @@ package panicking
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestNewProductionPanicker(T *testing.T) {
@@ -12,7 +12,7 @@ func TestNewProductionPanicker(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, NewProductionPanicker())
+		test.NotNil(t, NewProductionPanicker())
 	})
 }
 
@@ -25,7 +25,7 @@ func Test_stdLibPanicker_Panic(T *testing.T) {
 		p := NewProductionPanicker()
 
 		defer func() {
-			assert.NotNil(t, recover(), "expected panic to occur")
+			test.NotNil(t, recover(), test.Sprint("expected panic to occur"))
 		}()
 
 		p.Panic("blah")
@@ -41,7 +41,7 @@ func Test_stdLibPanicker_Panicf(T *testing.T) {
 		p := NewProductionPanicker()
 
 		defer func() {
-			assert.NotNil(t, recover(), "expected panic to occur")
+			test.NotNil(t, recover(), test.Sprint("expected panic to occur"))
 		}()
 
 		p.Panicf("blah")

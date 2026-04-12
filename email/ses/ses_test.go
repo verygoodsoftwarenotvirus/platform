@@ -12,8 +12,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/aws/aws-sdk-go-v2/service/sesv2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 type mockSESClient struct {
@@ -35,17 +35,17 @@ func TestNewSESEmailer(T *testing.T) {
 		mock := &mockSESClient{}
 
 		client, err := NewSESEmailer(t.Context(), cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker(), nil, mock)
-		require.NoError(t, err)
-		require.NotNil(t, client)
+		must.NoError(t, err)
+		must.NotNil(t, client)
 	})
 
 	T.Run("with nil config", func(t *testing.T) {
 		t.Parallel()
 
 		client, err := NewSESEmailer(t.Context(), nil, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker(), nil, &mockSESClient{})
-		require.Error(t, err)
-		assert.Nil(t, client)
-		assert.ErrorIs(t, err, ErrNilConfig)
+		must.Error(t, err)
+		test.Nil(t, client)
+		test.ErrorIs(t, err, ErrNilConfig)
 	})
 
 	T.Run("with empty region", func(t *testing.T) {
@@ -54,9 +54,9 @@ func TestNewSESEmailer(T *testing.T) {
 		cfg := &Config{}
 
 		client, err := NewSESEmailer(t.Context(), cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker(), nil, &mockSESClient{})
-		require.Error(t, err)
-		assert.Nil(t, client)
-		assert.ErrorIs(t, err, ErrEmptyRegion)
+		must.Error(t, err)
+		test.Nil(t, client)
+		test.ErrorIs(t, err, ErrEmptyRegion)
 	})
 
 	T.Run("with nil HTTP client and nil SES client", func(t *testing.T) {
@@ -65,9 +65,9 @@ func TestNewSESEmailer(T *testing.T) {
 		cfg := &Config{Region: "us-east-1"}
 
 		client, err := NewSESEmailer(t.Context(), cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker(), nil, nil)
-		require.Error(t, err)
-		assert.Nil(t, client)
-		assert.ErrorIs(t, err, ErrNilHTTPClient)
+		must.Error(t, err)
+		test.Nil(t, client)
+		test.ErrorIs(t, err, ErrNilHTTPClient)
 	})
 
 	T.Run("with HTTP client and nil SES client", func(t *testing.T) {
@@ -76,8 +76,8 @@ func TestNewSESEmailer(T *testing.T) {
 		cfg := &Config{Region: "us-east-1"}
 
 		client, err := NewSESEmailer(t.Context(), cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil, nil)
-		require.NoError(t, err)
-		require.NotNil(t, client)
+		must.NoError(t, err)
+		must.NotNil(t, client)
 	})
 }
 
@@ -91,7 +91,7 @@ func TestEmailer_SendEmail(T *testing.T) {
 		cfg := &Config{Region: "us-east-1"}
 
 		e, err := NewSESEmailer(t.Context(), cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker(), nil, mock)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		details := &email.OutboundEmailMessage{
 			ToAddress:   "to@example.com",
@@ -102,7 +102,7 @@ func TestEmailer_SendEmail(T *testing.T) {
 			HTMLContent: t.Name(),
 		}
 
-		require.NoError(t, e.SendEmail(t.Context(), details))
+		must.NoError(t, e.SendEmail(t.Context(), details))
 	})
 
 	T.Run("without names", func(t *testing.T) {
@@ -112,7 +112,7 @@ func TestEmailer_SendEmail(T *testing.T) {
 		cfg := &Config{Region: "us-east-1"}
 
 		e, err := NewSESEmailer(t.Context(), cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker(), nil, mock)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		details := &email.OutboundEmailMessage{
 			ToAddress:   "to@example.com",
@@ -121,7 +121,7 @@ func TestEmailer_SendEmail(T *testing.T) {
 			HTMLContent: t.Name(),
 		}
 
-		require.NoError(t, e.SendEmail(t.Context(), details))
+		must.NoError(t, e.SendEmail(t.Context(), details))
 	})
 
 	T.Run("with error from SES", func(t *testing.T) {
@@ -131,7 +131,7 @@ func TestEmailer_SendEmail(T *testing.T) {
 		cfg := &Config{Region: "us-east-1"}
 
 		e, err := NewSESEmailer(t.Context(), cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker(), nil, mock)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		details := &email.OutboundEmailMessage{
 			ToAddress:   "to@example.com",
@@ -143,7 +143,7 @@ func TestEmailer_SendEmail(T *testing.T) {
 		}
 
 		err = e.SendEmail(t.Context(), details)
-		require.Error(t, err)
+		must.Error(t, err)
 	})
 
 	T.Run("with broken circuit breaker", func(t *testing.T) {
@@ -153,7 +153,7 @@ func TestEmailer_SendEmail(T *testing.T) {
 		cfg := &Config{Region: "us-east-1"}
 
 		e, err := NewSESEmailer(t.Context(), cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker(), nil, mock)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		e.circuitBreaker = &brokenCircuitBreaker{}
 
@@ -167,7 +167,7 @@ func TestEmailer_SendEmail(T *testing.T) {
 		}
 
 		err = e.SendEmail(t.Context(), details)
-		require.Error(t, err)
+		must.Error(t, err)
 	})
 }
 

@@ -13,7 +13,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/mailjet/mailjet-apiv3-go/v4"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 )
 
 func TestNewMailjetEmailer(T *testing.T) {
@@ -27,8 +27,8 @@ func TestNewMailjetEmailer(T *testing.T) {
 		config := &Config{SecretKey: t.Name(), APIKey: t.Name()}
 
 		client, err := NewMailjetEmailer(config, logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
-		require.NotNil(t, client)
-		require.NoError(t, err)
+		must.NotNil(t, client)
+		must.NoError(t, err)
 	})
 
 	T.Run("with missing config", func(t *testing.T) {
@@ -37,8 +37,8 @@ func TestNewMailjetEmailer(T *testing.T) {
 		logger := logging.NewNoopLogger()
 
 		client, err := NewMailjetEmailer(nil, logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
-		require.Nil(t, client)
-		require.Error(t, err)
+		must.Nil(t, client)
+		must.Error(t, err)
 	})
 
 	T.Run("with missing config secret key", func(t *testing.T) {
@@ -49,8 +49,8 @@ func TestNewMailjetEmailer(T *testing.T) {
 		config := &Config{APIKey: t.Name()}
 
 		client, err := NewMailjetEmailer(config, logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
-		require.Nil(t, client)
-		require.Error(t, err)
+		must.Nil(t, client)
+		must.Error(t, err)
 	})
 
 	T.Run("with missing config public key", func(t *testing.T) {
@@ -61,8 +61,8 @@ func TestNewMailjetEmailer(T *testing.T) {
 		config := &Config{SecretKey: t.Name()}
 
 		client, err := NewMailjetEmailer(config, logger, tracing.NewNoopTracerProvider(), &http.Client{}, cbnoop.NewCircuitBreaker(), nil)
-		require.Nil(t, client)
-		require.Error(t, err)
+		must.Nil(t, client)
+		must.Error(t, err)
 	})
 
 	T.Run("with missing HTTP client", func(t *testing.T) {
@@ -73,8 +73,8 @@ func TestNewMailjetEmailer(T *testing.T) {
 		config := &Config{SecretKey: t.Name(), APIKey: t.Name()}
 
 		client, err := NewMailjetEmailer(config, logger, tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker(), nil)
-		require.Nil(t, client)
-		require.Error(t, err)
+		must.Nil(t, client)
+		must.Error(t, err)
 	})
 }
 
@@ -93,8 +93,8 @@ func TestMailjetEmailer_SendEmail(T *testing.T) {
 		config := &Config{SecretKey: t.Name(), APIKey: t.Name()}
 
 		c, err := NewMailjetEmailer(config, logger, tracing.NewNoopTracerProvider(), ts.Client(), cbnoop.NewCircuitBreaker(), nil)
-		require.NotNil(t, c)
-		require.NoError(t, err)
+		must.NotNil(t, c)
+		must.NoError(t, err)
 
 		c.client.(*mailjet.Client).SetBaseURL(ts.URL + "/")
 
@@ -108,7 +108,7 @@ func TestMailjetEmailer_SendEmail(T *testing.T) {
 			HTMLContent: t.Name(),
 		}
 
-		require.NoError(t, c.SendEmail(ctx, details))
+		must.NoError(t, c.SendEmail(ctx, details))
 	})
 
 	T.Run("with error executing request", func(t *testing.T) {
@@ -124,8 +124,8 @@ func TestMailjetEmailer_SendEmail(T *testing.T) {
 		client := ts.Client()
 
 		c, err := NewMailjetEmailer(config, logger, tracing.NewNoopTracerProvider(), client, cbnoop.NewCircuitBreaker(), nil)
-		require.NotNil(t, c)
-		require.NoError(t, err)
+		must.NotNil(t, c)
+		must.NoError(t, err)
 
 		c.client.(*mailjet.Client).SetBaseURL(ts.URL + "/")
 		client.Timeout = time.Millisecond
@@ -140,6 +140,6 @@ func TestMailjetEmailer_SendEmail(T *testing.T) {
 			HTMLContent: t.Name(),
 		}
 
-		require.Error(t, c.SendEmail(ctx, details))
+		must.Error(t, c.SendEmail(ctx, details))
 	})
 }

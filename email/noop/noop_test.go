@@ -6,8 +6,8 @@ import (
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/email"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestNewEmailer(T *testing.T) {
@@ -17,8 +17,8 @@ func TestNewEmailer(T *testing.T) {
 		t.Parallel()
 
 		e, err := NewEmailer()
-		require.NoError(t, err)
-		assert.NotNil(t, e)
+		must.NoError(t, err)
+		test.NotNil(t, e)
 	})
 }
 
@@ -29,23 +29,23 @@ func TestEmailer_SendEmail(T *testing.T) {
 		t.Parallel()
 
 		e, err := NewEmailer()
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		err = e.SendEmail(context.Background(), &email.OutboundEmailMessage{
 			ToAddress:   "test@example.com",
 			Subject:     "Test",
 			HTMLContent: "<p>hello</p>",
 		})
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 
 	T.Run("with nil message", func(t *testing.T) {
 		t.Parallel()
 
 		e, err := NewEmailer()
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		err = e.SendEmail(context.Background(), nil)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 }

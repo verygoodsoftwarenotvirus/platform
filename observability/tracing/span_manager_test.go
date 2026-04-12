@@ -3,7 +3,7 @@ package tracing
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestNewTracer(T *testing.T) {
@@ -12,7 +12,7 @@ func TestNewTracer(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, NewTracerForTest(t.Name()))
+		test.NotNil(t, NewTracerForTest(t.Name()))
 	})
 }
 
@@ -22,13 +22,13 @@ func TestNewNamedTracer(T *testing.T) {
 	T.Run("with nil provider", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, NewNamedTracer(nil, t.Name()))
+		test.NotNil(t, NewNamedTracer(nil, t.Name()))
 	})
 
 	T.Run("with valid provider", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, NewNamedTracer(NewNoopTracerProvider(), t.Name()))
+		test.NotNil(t, NewNamedTracer(NewNoopTracerProvider(), t.Name()))
 	})
 }
 

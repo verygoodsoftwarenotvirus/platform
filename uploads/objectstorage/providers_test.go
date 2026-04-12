@@ -3,7 +3,7 @@ package objectstorage
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 	"gocloud.dev/blob/memblob"
 )
 
@@ -18,7 +18,7 @@ func TestProvideUploadManager(T *testing.T) {
 		}
 
 		result := ProvideUploadManager(u)
-		assert.NotNil(t, result)
-		assert.Equal(t, u, result)
+		test.NotNil(t, result)
+		test.True(t, u == result)
 	})
 }

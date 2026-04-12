@@ -8,38 +8,31 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/messagequeue"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/v5/testutils"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
+	"go.opentelemetry.io/otel/metric"
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
 )
 
 type mockMessageReceiver struct {
-	mock.Mock
+	receiveMessageFunc func(ctx context.Context, input *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error)
+	deleteMessageFunc  func(ctx context.Context, input *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)
+	deleteMessageCalls int
 }
 
 func (m *mockMessageReceiver) ReceiveMessage(ctx context.Context, input *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
-	retVals := m.Called(ctx, input, optFns)
-	out := retVals.Get(0)
-	if out == nil {
-		return nil, retVals.Error(1)
-	}
-	return out.(*sqs.ReceiveMessageOutput), retVals.Error(1)
+	return m.receiveMessageFunc(ctx, input, optFns...)
 }
 
 func (m *mockMessageReceiver) DeleteMessage(ctx context.Context, input *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
-	retVals := m.Called(ctx, input, optFns)
-	out := retVals.Get(0)
-	if out == nil {
-		return nil, retVals.Error(1)
-	}
-	return out.(*sqs.DeleteMessageOutput), retVals.Error(1)
+	m.deleteMessageCalls++
+	return m.deleteMessageFunc(ctx, input, optFns...)
 }
 
 func Test_sqsConsumer_Consume(T *testing.T) {
@@ -50,45 +43,36 @@ func Test_sqsConsumer_Consume(T *testing.T) {
 	T.Run("successful message handling and deletion", func(t *testing.T) {
 		t.Parallel()
 
-		mmr := &mockMessageReceiver{}
-		mmr.On(
-			"ReceiveMessage",
-			testutils.ContextMatcher,
-			mock.MatchedBy(func(in *sqs.ReceiveMessageInput) bool {
-				return aws.ToString(in.QueueUrl) == queueURL &&
-					in.MaxNumberOfMessages == maxNumberOfMessages &&
-					in.WaitTimeSeconds == longPollWaitSeconds
-			}),
-			mock.Anything,
-		).Return(&sqs.ReceiveMessageOutput{
-			Messages: []types.Message{
-				{
-					Body:          aws.String("test-payload"),
-					ReceiptHandle: aws.String("receipt-handle-123"),
-				},
+		deleteCalled := make(chan struct{}, 1)
+		var receiveCalls int
+		mmr := &mockMessageReceiver{
+			receiveMessageFunc: func(_ context.Context, in *sqs.ReceiveMessageInput, _ ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
+				receiveCalls++
+				if receiveCalls == 1 {
+					test.EqOp(t, queueURL, aws.ToString(in.QueueUrl))
+					test.EqOp(t, int32(maxNumberOfMessages), in.MaxNumberOfMessages)
+					test.EqOp(t, int32(longPollWaitSeconds), in.WaitTimeSeconds)
+					return &sqs.ReceiveMessageOutput{
+						Messages: []types.Message{
+							{
+								Body:          aws.String("test-payload"),
+								ReceiptHandle: aws.String("receipt-handle-123"),
+							},
+						},
+					}, nil
+				}
+				return &sqs.ReceiveMessageOutput{Messages: []types.Message{}}, nil
 			},
-		}, nil).Once()
-
-		mmr.On(
-			"ReceiveMessage",
-			testutils.ContextMatcher,
-			mock.Anything,
-			mock.Anything,
-		).Return(&sqs.ReceiveMessageOutput{Messages: []types.Message{}}, nil)
-
-		deleteCalled := make(chan struct{})
-		mmr.On(
-			"DeleteMessage",
-			testutils.ContextMatcher,
-			mock.MatchedBy(func(in *sqs.DeleteMessageInput) bool {
-				return aws.ToString(in.QueueUrl) == queueURL &&
-					aws.ToString(in.ReceiptHandle) == "receipt-handle-123"
-			}),
-			mock.Anything,
-		).Run(func(args mock.Arguments) { deleteCalled <- struct{}{} }).Return(&sqs.DeleteMessageOutput{}, nil).Once()
+			deleteMessageFunc: func(_ context.Context, in *sqs.DeleteMessageInput, _ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
+				test.EqOp(t, queueURL, aws.ToString(in.QueueUrl))
+				test.EqOp(t, "receipt-handle-123", aws.ToString(in.ReceiptHandle))
+				deleteCalled <- struct{}{}
+				return &sqs.DeleteMessageOutput{}, nil
+			},
+		}
 
 		handlerDone := make(chan []byte, 1)
-		handler := func(ctx context.Context, body []byte) error {
+		handler := func(_ context.Context, body []byte) error {
 			handlerDone <- body
 			return nil
 		}
@@ -103,37 +87,36 @@ func Test_sqsConsumer_Consume(T *testing.T) {
 		<-deleteCalled // wait for DeleteMessage before stopping
 		stopChan <- true
 
-		assert.Equal(t, []byte("test-payload"), receivedBody)
-		mock.AssertExpectationsForObjects(t, mmr)
+		test.Eq(t, []byte("test-payload"), receivedBody)
 	})
 
 	T.Run("handler error does not delete message", func(t *testing.T) {
 		t.Parallel()
 
 		anticipatedErr := errors.New("handler failed")
-		mmr := &mockMessageReceiver{}
-		mmr.On(
-			"ReceiveMessage",
-			testutils.ContextMatcher,
-			mock.Anything,
-			mock.Anything,
-		).Return(&sqs.ReceiveMessageOutput{
-			Messages: []types.Message{
-				{
-					Body:          aws.String("fail-payload"),
-					ReceiptHandle: aws.String("receipt-handle-456"),
-				},
+		var receiveCalls int
+		mmr := &mockMessageReceiver{
+			receiveMessageFunc: func(_ context.Context, _ *sqs.ReceiveMessageInput, _ ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
+				receiveCalls++
+				if receiveCalls == 1 {
+					return &sqs.ReceiveMessageOutput{
+						Messages: []types.Message{
+							{
+								Body:          aws.String("fail-payload"),
+								ReceiptHandle: aws.String("receipt-handle-456"),
+							},
+						},
+					}, nil
+				}
+				return &sqs.ReceiveMessageOutput{Messages: []types.Message{}}, nil
 			},
-		}, nil).Once()
+			deleteMessageFunc: func(_ context.Context, _ *sqs.DeleteMessageInput, _ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
+				t.Fatal("DeleteMessage should not be called when handler errors")
+				return nil, nil
+			},
+		}
 
-		mmr.On(
-			"ReceiveMessage",
-			testutils.ContextMatcher,
-			mock.Anything,
-			mock.Anything,
-		).Return(&sqs.ReceiveMessageOutput{Messages: []types.Message{}}, nil)
-
-		handler := func(ctx context.Context, body []byte) error {
+		handler := func(_ context.Context, _ []byte) error {
 			return anticipatedErr
 		}
 
@@ -144,13 +127,12 @@ func Test_sqsConsumer_Consume(T *testing.T) {
 		go consumer.Consume(t.Context(), stopChan, errs)
 
 		receivedErr := <-errs
-		assert.Error(t, receivedErr)
-		assert.Equal(t, anticipatedErr, receivedErr)
+		test.Error(t, receivedErr)
+		test.ErrorIs(t, receivedErr, anticipatedErr)
 
 		stopChan <- true
 
-		mmr.AssertNotCalled(t, "DeleteMessage")
-		mock.AssertExpectationsForObjects(t, mmr)
+		test.EqOp(t, 0, mmr.deleteMessageCalls)
 	})
 }
 
@@ -165,8 +147,8 @@ func TestProvideSQSConsumerProvider(T *testing.T) {
 		cfg := Config{}
 
 		actual, err := ProvideSQSConsumerProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil, cfg)
-		assert.NoError(t, err)
-		assert.NotNil(t, actual)
+		test.NoError(t, err)
+		test.NotNil(t, actual)
 	})
 }
 
@@ -181,12 +163,12 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 		cfg := Config{}
 
 		provider, err := ProvideSQSConsumerProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil, cfg)
-		require.NoError(t, err)
-		require.NotNil(t, provider)
+		must.NoError(t, err)
+		must.NotNil(t, provider)
 
 		actual, err := provider.ProvideConsumer(ctx, "https://sqs.us-east-1.amazonaws.com/123/test", nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, actual)
+		test.NoError(t, err)
+		test.NotNil(t, actual)
 	})
 
 	T.Run("with cache hit", func(t *testing.T) {
@@ -198,17 +180,17 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 		topic := "https://sqs.us-east-1.amazonaws.com/123/cached-queue"
 
 		provider, err := ProvideSQSConsumerProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil, cfg)
-		require.NoError(t, err)
-		require.NotNil(t, provider)
+		must.NoError(t, err)
+		must.NotNil(t, provider)
 
 		actual, err := provider.ProvideConsumer(ctx, topic, nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, actual)
+		test.NoError(t, err)
+		test.NotNil(t, actual)
 
 		actual2, err := provider.ProvideConsumer(ctx, topic, nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, actual2)
-		assert.Same(t, actual, actual2)
+		test.NoError(t, err)
+		test.NotNil(t, actual2)
+		test.EqOp(t, actual, actual2)
 	})
 
 	T.Run("with empty topic returns error", func(t *testing.T) {
@@ -219,13 +201,13 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 		cfg := Config{}
 
 		provider, err := ProvideSQSConsumerProvider(ctx, logger, tracing.NewNoopTracerProvider(), nil, cfg)
-		require.NoError(t, err)
-		require.NotNil(t, provider)
+		must.NoError(t, err)
+		must.NotNil(t, provider)
 
 		actual, err := provider.ProvideConsumer(ctx, "", nil)
-		assert.Error(t, err)
-		assert.Nil(t, actual)
-		assert.ErrorIs(t, err, messagequeue.ErrEmptyTopicName)
+		test.Error(t, err)
+		test.Nil(t, actual)
+		test.ErrorIs(t, err, messagequeue.ErrEmptyTopicName)
 	})
 }
 
@@ -236,19 +218,21 @@ func Test_provideSQSConsumer(T *testing.T) {
 		t.Parallel()
 
 		consumer := provideSQSConsumer(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, nil, "https://sqs.us-east-1.amazonaws.com/123/test", nil)
-		require.NotNil(t, consumer)
+		must.NotNil(t, consumer)
 	})
 
 	T.Run("panics when NewInt64Counter fails", func(t *testing.T) {
 		t.Parallel()
 
-		mp := &metrics.MockProvider{}
-		mp.On("NewInt64Counter", "t_consumed", mock.Anything).Return(metricnoop.Int64Counter{}, errors.New("forced error"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(string, ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				return metricnoop.Int64Counter{}, errors.New("forced error")
+			},
+		}
 
-		assert.Panics(t, func() {
+		test.Panic(t, func() {
 			provideSQSConsumer(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, nil, "t", nil)
 		})
-
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 }

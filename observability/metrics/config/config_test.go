@@ -7,7 +7,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/otelgrpc"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestConfig_ProvideMetricsProvider(T *testing.T) {
@@ -19,8 +19,8 @@ func TestConfig_ProvideMetricsProvider(T *testing.T) {
 		cfg := &Config{}
 		metricsProvider, err := cfg.ProvideMetricsProvider(t.Context(), logging.NewNoopLogger())
 
-		assert.NoError(t, err)
-		assert.NotNil(t, metricsProvider)
+		test.NoError(t, err)
+		test.NotNil(t, metricsProvider)
 	})
 
 	T.Run("enabled with otel provider", func(t *testing.T) {
@@ -39,8 +39,8 @@ func TestConfig_ProvideMetricsProvider(T *testing.T) {
 
 		metricsProvider, err := cfg.ProvideMetricsProvider(t.Context(), logging.NewNoopLogger())
 
-		assert.NoError(t, err)
-		assert.NotNil(t, metricsProvider)
+		test.NoError(t, err)
+		test.NotNil(t, metricsProvider)
 	})
 
 	T.Run("enabled with unknown provider falls back to noop", func(t *testing.T) {
@@ -53,8 +53,8 @@ func TestConfig_ProvideMetricsProvider(T *testing.T) {
 
 		metricsProvider, err := cfg.ProvideMetricsProvider(t.Context(), logging.NewNoopLogger())
 
-		assert.NoError(t, err)
-		assert.NotNil(t, metricsProvider)
+		test.NoError(t, err)
+		test.NotNil(t, metricsProvider)
 	})
 
 	T.Run("not enabled returns noop", func(t *testing.T) {
@@ -66,8 +66,8 @@ func TestConfig_ProvideMetricsProvider(T *testing.T) {
 
 		metricsProvider, err := cfg.ProvideMetricsProvider(t.Context(), logging.NewNoopLogger())
 
-		assert.NoError(t, err)
-		assert.NotNil(t, metricsProvider)
+		test.NoError(t, err)
+		test.NotNil(t, metricsProvider)
 	})
 }
 
@@ -86,7 +86,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			},
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(t.Context()))
+		test.NoError(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("disabled is valid", func(t *testing.T) {
@@ -96,7 +96,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Enabled: false,
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(t.Context()))
+		test.NoError(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("enabled with invalid provider", func(t *testing.T) {
@@ -107,7 +107,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider: "bogus",
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(t.Context()))
+		test.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("enabled with otel provider but nil otel config", func(t *testing.T) {
@@ -119,7 +119,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Otel:     nil,
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(t.Context()))
+		test.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 }
 
@@ -132,7 +132,7 @@ func TestProvideMetricsProvider(T *testing.T) {
 		cfg := &Config{}
 		metricsProvider, err := ProvideMetricsProvider(t.Context(), logging.NewNoopLogger(), cfg)
 
-		assert.NoError(t, err)
-		assert.NotNil(t, metricsProvider)
+		test.NoError(t, err)
+		test.NotNil(t, metricsProvider)
 	})
 }

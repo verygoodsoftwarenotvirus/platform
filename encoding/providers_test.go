@@ -3,7 +3,7 @@ package encoding
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestProvideContentType(T *testing.T) {
@@ -12,6 +12,6 @@ func TestProvideContentType(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		assert.Equal(t, ContentTypeJSON, ProvideContentType(Config{ContentType: "application/json"}))
+		test.EqOp(t, ContentTypeJSON, ProvideContentType(Config{ContentType: "application/json"}))
 	})
 }

@@ -8,8 +8,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
 	"github.com/samber/do/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestRegisterEncryptorDecryptor(T *testing.T) {
@@ -27,7 +27,7 @@ func TestRegisterEncryptorDecryptor(T *testing.T) {
 		RegisterEncryptorDecryptor(i)
 
 		encDec, err := do.Invoke[encryption.EncryptorDecryptor](i)
-		require.NoError(t, err)
-		assert.NotNil(t, encDec)
+		must.NoError(t, err)
+		test.NotNil(t, encDec)
 	})
 }

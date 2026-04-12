@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 type testPerm uint8
@@ -25,8 +25,8 @@ func TestNew(T *testing.T) {
 
 		mask := New[testPerm]()
 
-		assert.Equal(t, testPerm(0), mask.Value())
-		assert.True(t, mask.IsEmpty())
+		test.EqOp(t, testPerm(0), mask.Value())
+		test.True(t, mask.IsEmpty())
 	})
 
 	T.Run("with single flag", func(t *testing.T) {
@@ -34,7 +34,7 @@ func TestNew(T *testing.T) {
 
 		mask := New(permRead)
 
-		assert.Equal(t, permRead, mask.Value())
+		test.EqOp(t, permRead, mask.Value())
 	})
 
 	T.Run("with multiple flags", func(t *testing.T) {
@@ -42,7 +42,7 @@ func TestNew(T *testing.T) {
 
 		mask := New(permRead, permWrite)
 
-		assert.Equal(t, permRead|permWrite, mask.Value())
+		test.EqOp(t, permRead|permWrite, mask.Value())
 	})
 
 	T.Run("with duplicate flags", func(t *testing.T) {
@@ -50,7 +50,7 @@ func TestNew(T *testing.T) {
 
 		mask := New(permRead, permRead)
 
-		assert.Equal(t, permRead, mask.Value())
+		test.EqOp(t, permRead, mask.Value())
 	})
 }
 
@@ -62,7 +62,7 @@ func TestFromValue(T *testing.T) {
 
 		mask := FromValue(testPerm(0))
 
-		assert.True(t, mask.IsEmpty())
+		test.True(t, mask.IsEmpty())
 	})
 
 	T.Run("with specific value", func(t *testing.T) {
@@ -70,9 +70,9 @@ func TestFromValue(T *testing.T) {
 
 		mask := FromValue(testPerm(5))
 
-		assert.True(t, mask.Has(permRead))
-		assert.True(t, mask.Has(permDelete))
-		assert.False(t, mask.Has(permWrite))
+		test.True(t, mask.Has(permRead))
+		test.True(t, mask.Has(permDelete))
+		test.False(t, mask.Has(permWrite))
 	})
 }
 
@@ -84,7 +84,7 @@ func TestBitmask_Value(T *testing.T) {
 
 		mask := New(permRead, permDelete)
 
-		assert.Equal(t, permRead|permDelete, mask.Value())
+		test.EqOp(t, permRead|permDelete, mask.Value())
 	})
 }
 
@@ -97,7 +97,7 @@ func TestBitmask_Set(T *testing.T) {
 		base := New[testPerm]()
 		mask := base.Set(permRead)
 
-		assert.True(t, mask.Has(permRead))
+		test.True(t, mask.Has(permRead))
 	})
 
 	T.Run("set multiple flags", func(t *testing.T) {
@@ -106,8 +106,8 @@ func TestBitmask_Set(T *testing.T) {
 		base := New[testPerm]()
 		mask := base.Set(permRead, permWrite)
 
-		assert.True(t, mask.Has(permRead))
-		assert.True(t, mask.Has(permWrite))
+		test.True(t, mask.Has(permRead))
+		test.True(t, mask.Has(permWrite))
 	})
 
 	T.Run("set already set flag", func(t *testing.T) {
@@ -116,7 +116,7 @@ func TestBitmask_Set(T *testing.T) {
 		base := New(permRead)
 		mask := base.Set(permRead)
 
-		assert.Equal(t, permRead, mask.Value())
+		test.EqOp(t, permRead, mask.Value())
 	})
 
 	T.Run("does not mutate original", func(t *testing.T) {
@@ -125,7 +125,7 @@ func TestBitmask_Set(T *testing.T) {
 		original := New(permRead)
 		_ = original.Set(permWrite)
 
-		assert.False(t, original.Has(permWrite))
+		test.False(t, original.Has(permWrite))
 	})
 }
 
@@ -138,8 +138,8 @@ func TestBitmask_Clear(T *testing.T) {
 		base := New(permRead, permWrite)
 		mask := base.Clear(permWrite)
 
-		assert.True(t, mask.Has(permRead))
-		assert.False(t, mask.Has(permWrite))
+		test.True(t, mask.Has(permRead))
+		test.False(t, mask.Has(permWrite))
 	})
 
 	T.Run("clear unset flag", func(t *testing.T) {
@@ -148,7 +148,7 @@ func TestBitmask_Clear(T *testing.T) {
 		base := New(permRead)
 		mask := base.Clear(permWrite)
 
-		assert.Equal(t, permRead, mask.Value())
+		test.EqOp(t, permRead, mask.Value())
 	})
 
 	T.Run("clear multiple flags", func(t *testing.T) {
@@ -157,9 +157,9 @@ func TestBitmask_Clear(T *testing.T) {
 		base := New(permRead, permWrite, permDelete)
 		mask := base.Clear(permRead, permWrite)
 
-		assert.False(t, mask.Has(permRead))
-		assert.False(t, mask.Has(permWrite))
-		assert.True(t, mask.Has(permDelete))
+		test.False(t, mask.Has(permRead))
+		test.False(t, mask.Has(permWrite))
+		test.True(t, mask.Has(permDelete))
 	})
 
 	T.Run("does not mutate original", func(t *testing.T) {
@@ -168,7 +168,7 @@ func TestBitmask_Clear(T *testing.T) {
 		original := New(permRead, permWrite)
 		_ = original.Clear(permWrite)
 
-		assert.True(t, original.Has(permWrite))
+		test.True(t, original.Has(permWrite))
 	})
 }
 
@@ -181,7 +181,7 @@ func TestBitmask_Toggle(T *testing.T) {
 		base := New[testPerm]()
 		mask := base.Toggle(permRead)
 
-		assert.True(t, mask.Has(permRead))
+		test.True(t, mask.Has(permRead))
 	})
 
 	T.Run("toggle set flag clears it", func(t *testing.T) {
@@ -190,7 +190,7 @@ func TestBitmask_Toggle(T *testing.T) {
 		base := New(permRead)
 		mask := base.Toggle(permRead)
 
-		assert.False(t, mask.Has(permRead))
+		test.False(t, mask.Has(permRead))
 	})
 
 	T.Run("toggle multiple flags", func(t *testing.T) {
@@ -199,8 +199,8 @@ func TestBitmask_Toggle(T *testing.T) {
 		base := New(permRead)
 		mask := base.Toggle(permRead, permWrite)
 
-		assert.False(t, mask.Has(permRead))
-		assert.True(t, mask.Has(permWrite))
+		test.False(t, mask.Has(permRead))
+		test.True(t, mask.Has(permWrite))
 	})
 
 	T.Run("does not mutate original", func(t *testing.T) {
@@ -209,7 +209,7 @@ func TestBitmask_Toggle(T *testing.T) {
 		original := New(permRead)
 		_ = original.Toggle(permRead)
 
-		assert.True(t, original.Has(permRead))
+		test.True(t, original.Has(permRead))
 	})
 }
 
@@ -221,7 +221,7 @@ func TestBitmask_Has(T *testing.T) {
 
 		mask := New(permRead, permWrite)
 
-		assert.True(t, mask.Has(permRead))
+		test.True(t, mask.Has(permRead))
 	})
 
 	T.Run("returns false for unset flag", func(t *testing.T) {
@@ -229,7 +229,7 @@ func TestBitmask_Has(T *testing.T) {
 
 		mask := New(permRead)
 
-		assert.False(t, mask.Has(permWrite))
+		test.False(t, mask.Has(permWrite))
 	})
 
 	T.Run("returns false for zero flag", func(t *testing.T) {
@@ -237,7 +237,7 @@ func TestBitmask_Has(T *testing.T) {
 
 		mask := New(permRead)
 
-		assert.False(t, mask.Has(0))
+		test.False(t, mask.Has(0))
 	})
 
 	T.Run("with empty bitmask", func(t *testing.T) {
@@ -245,7 +245,7 @@ func TestBitmask_Has(T *testing.T) {
 
 		mask := New[testPerm]()
 
-		assert.False(t, mask.Has(permRead))
+		test.False(t, mask.Has(permRead))
 	})
 }
 
@@ -257,7 +257,7 @@ func TestBitmask_HasAll(T *testing.T) {
 
 		mask := New(permRead, permWrite, permDelete)
 
-		assert.True(t, mask.HasAll(permRead, permWrite))
+		test.True(t, mask.HasAll(permRead, permWrite))
 	})
 
 	T.Run("returns false when one flag missing", func(t *testing.T) {
@@ -265,7 +265,7 @@ func TestBitmask_HasAll(T *testing.T) {
 
 		mask := New(permRead)
 
-		assert.False(t, mask.HasAll(permRead, permWrite))
+		test.False(t, mask.HasAll(permRead, permWrite))
 	})
 
 	T.Run("returns false for empty flags", func(t *testing.T) {
@@ -273,7 +273,7 @@ func TestBitmask_HasAll(T *testing.T) {
 
 		mask := New(permRead)
 
-		assert.False(t, mask.HasAll())
+		test.False(t, mask.HasAll())
 	})
 
 	T.Run("returns false for zero flag", func(t *testing.T) {
@@ -281,7 +281,7 @@ func TestBitmask_HasAll(T *testing.T) {
 
 		mask := New(permRead)
 
-		assert.False(t, mask.HasAll(0))
+		test.False(t, mask.HasAll(0))
 	})
 }
 
@@ -293,7 +293,7 @@ func TestBitmask_HasAny(T *testing.T) {
 
 		mask := New(permRead)
 
-		assert.True(t, mask.HasAny(permRead, permWrite))
+		test.True(t, mask.HasAny(permRead, permWrite))
 	})
 
 	T.Run("returns false when no flags set", func(t *testing.T) {
@@ -301,7 +301,7 @@ func TestBitmask_HasAny(T *testing.T) {
 
 		mask := New(permRead)
 
-		assert.False(t, mask.HasAny(permWrite, permDelete))
+		test.False(t, mask.HasAny(permWrite, permDelete))
 	})
 
 	T.Run("returns false for empty flags", func(t *testing.T) {
@@ -309,7 +309,7 @@ func TestBitmask_HasAny(T *testing.T) {
 
 		mask := New(permRead)
 
-		assert.False(t, mask.HasAny())
+		test.False(t, mask.HasAny())
 	})
 }
 
@@ -321,7 +321,7 @@ func TestBitmask_IsEmpty(T *testing.T) {
 
 		mask := New[testPerm]()
 
-		assert.True(t, mask.IsEmpty())
+		test.True(t, mask.IsEmpty())
 	})
 
 	T.Run("returns false for non-empty bitmask", func(t *testing.T) {
@@ -329,7 +329,7 @@ func TestBitmask_IsEmpty(T *testing.T) {
 
 		mask := New(permRead)
 
-		assert.False(t, mask.IsEmpty())
+		test.False(t, mask.IsEmpty())
 	})
 
 	T.Run("returns true for zero value", func(t *testing.T) {
@@ -337,7 +337,7 @@ func TestBitmask_IsEmpty(T *testing.T) {
 
 		var mask Bitmask[testPerm]
 
-		assert.True(t, mask.IsEmpty())
+		test.True(t, mask.IsEmpty())
 	})
 }
 
@@ -349,7 +349,7 @@ func TestBitmask_Count(T *testing.T) {
 
 		mask := New[testPerm]()
 
-		assert.Equal(t, 0, mask.Count())
+		test.EqOp(t, 0, mask.Count())
 	})
 
 	T.Run("counts one bit", func(t *testing.T) {
@@ -357,7 +357,7 @@ func TestBitmask_Count(T *testing.T) {
 
 		mask := New(permRead)
 
-		assert.Equal(t, 1, mask.Count())
+		test.EqOp(t, 1, mask.Count())
 	})
 
 	T.Run("counts multiple bits", func(t *testing.T) {
@@ -365,7 +365,7 @@ func TestBitmask_Count(T *testing.T) {
 
 		mask := New(permRead, permWrite, permDelete)
 
-		assert.Equal(t, 3, mask.Count())
+		test.EqOp(t, 3, mask.Count())
 	})
 
 	T.Run("counts all bits", func(t *testing.T) {
@@ -373,7 +373,7 @@ func TestBitmask_Count(T *testing.T) {
 
 		mask := FromValue(^testPerm(0))
 
-		assert.Equal(t, 8, mask.Count())
+		test.EqOp(t, 8, mask.Count())
 	})
 }
 
@@ -387,8 +387,8 @@ func TestBitmask_Union(T *testing.T) {
 		b := New(permWrite)
 		result := a.Union(b)
 
-		assert.True(t, result.Has(permRead))
-		assert.True(t, result.Has(permWrite))
+		test.True(t, result.Has(permRead))
+		test.True(t, result.Has(permWrite))
 	})
 
 	T.Run("union with empty", func(t *testing.T) {
@@ -398,7 +398,7 @@ func TestBitmask_Union(T *testing.T) {
 		b := New[testPerm]()
 		result := a.Union(b)
 
-		assert.Equal(t, a.Value(), result.Value())
+		test.EqOp(t, a.Value(), result.Value())
 	})
 
 	T.Run("union with self", func(t *testing.T) {
@@ -407,7 +407,7 @@ func TestBitmask_Union(T *testing.T) {
 		a := New(permRead, permWrite)
 		result := a.Union(a)
 
-		assert.Equal(t, a.Value(), result.Value())
+		test.EqOp(t, a.Value(), result.Value())
 	})
 }
 
@@ -421,9 +421,9 @@ func TestBitmask_Intersect(T *testing.T) {
 		b := New(permWrite, permDelete)
 		result := a.Intersect(b)
 
-		assert.False(t, result.Has(permRead))
-		assert.True(t, result.Has(permWrite))
-		assert.False(t, result.Has(permDelete))
+		test.False(t, result.Has(permRead))
+		test.True(t, result.Has(permWrite))
+		test.False(t, result.Has(permDelete))
 	})
 
 	T.Run("intersect with no overlap", func(t *testing.T) {
@@ -433,7 +433,7 @@ func TestBitmask_Intersect(T *testing.T) {
 		b := New(permWrite)
 		result := a.Intersect(b)
 
-		assert.True(t, result.IsEmpty())
+		test.True(t, result.IsEmpty())
 	})
 
 	T.Run("intersect with self", func(t *testing.T) {
@@ -442,7 +442,7 @@ func TestBitmask_Intersect(T *testing.T) {
 		a := New(permRead, permWrite)
 		result := a.Intersect(a)
 
-		assert.Equal(t, a.Value(), result.Value())
+		test.EqOp(t, a.Value(), result.Value())
 	})
 }
 
@@ -456,9 +456,9 @@ func TestBitmask_Difference(T *testing.T) {
 		b := New(permWrite)
 		result := a.Difference(b)
 
-		assert.True(t, result.Has(permRead))
-		assert.False(t, result.Has(permWrite))
-		assert.True(t, result.Has(permDelete))
+		test.True(t, result.Has(permRead))
+		test.False(t, result.Has(permWrite))
+		test.True(t, result.Has(permDelete))
 	})
 
 	T.Run("difference with no overlap", func(t *testing.T) {
@@ -468,7 +468,7 @@ func TestBitmask_Difference(T *testing.T) {
 		b := New(permWrite)
 		result := a.Difference(b)
 
-		assert.Equal(t, a.Value(), result.Value())
+		test.EqOp(t, a.Value(), result.Value())
 	})
 
 	T.Run("difference with self", func(t *testing.T) {
@@ -477,7 +477,7 @@ func TestBitmask_Difference(T *testing.T) {
 		a := New(permRead, permWrite)
 		result := a.Difference(a)
 
-		assert.True(t, result.IsEmpty())
+		test.True(t, result.IsEmpty())
 	})
 }
 
@@ -489,7 +489,7 @@ func TestBitmask_String(T *testing.T) {
 
 		mask := New[testPerm]()
 
-		assert.Equal(t, "00000000", mask.String())
+		test.EqOp(t, "00000000", mask.String())
 	})
 
 	T.Run("single flag", func(t *testing.T) {
@@ -497,7 +497,7 @@ func TestBitmask_String(T *testing.T) {
 
 		mask := New(permRead)
 
-		assert.Equal(t, "00000001", mask.String())
+		test.EqOp(t, "00000001", mask.String())
 	})
 
 	T.Run("multiple flags", func(t *testing.T) {
@@ -505,7 +505,7 @@ func TestBitmask_String(T *testing.T) {
 
 		mask := New(permRead, permWrite)
 
-		assert.Equal(t, "00000011", mask.String())
+		test.EqOp(t, "00000011", mask.String())
 	})
 
 	T.Run("all flags", func(t *testing.T) {
@@ -513,7 +513,7 @@ func TestBitmask_String(T *testing.T) {
 
 		mask := FromValue(^testPerm(0))
 
-		assert.Equal(t, "11111111", mask.String())
+		test.EqOp(t, "11111111", mask.String())
 	})
 }
 
@@ -526,8 +526,8 @@ func TestBitmask_MarshalJSON(T *testing.T) {
 		mask := New(permRead, permWrite)
 		data, err := json.Marshal(&mask)
 
-		require.NoError(t, err)
-		assert.Equal(t, "3", string(data))
+		must.NoError(t, err)
+		test.EqOp(t, "3", string(data))
 	})
 
 	T.Run("marshals zero", func(t *testing.T) {
@@ -536,8 +536,8 @@ func TestBitmask_MarshalJSON(T *testing.T) {
 		mask := New[testPerm]()
 		data, err := json.Marshal(&mask)
 
-		require.NoError(t, err)
-		assert.Equal(t, "0", string(data))
+		must.NoError(t, err)
+		test.EqOp(t, "0", string(data))
 	})
 
 	T.Run("marshals in struct", func(t *testing.T) {
@@ -550,8 +550,8 @@ func TestBitmask_MarshalJSON(T *testing.T) {
 		w := wrapper{Perms: New(permRead, permDelete)}
 		data, err := json.Marshal(&w)
 
-		require.NoError(t, err)
-		assert.Equal(t, `{"perms":5}`, string(data))
+		must.NoError(t, err)
+		test.EqOp(t, `{"perms":5}`, string(data))
 	})
 }
 
@@ -564,9 +564,9 @@ func TestBitmask_UnmarshalJSON(T *testing.T) {
 		var mask Bitmask[testPerm]
 		err := json.Unmarshal([]byte("3"), &mask)
 
-		require.NoError(t, err)
-		assert.True(t, mask.Has(permRead))
-		assert.True(t, mask.Has(permWrite))
+		must.NoError(t, err)
+		test.True(t, mask.Has(permRead))
+		test.True(t, mask.Has(permWrite))
 	})
 
 	T.Run("unmarshals zero", func(t *testing.T) {
@@ -575,8 +575,8 @@ func TestBitmask_UnmarshalJSON(T *testing.T) {
 		var mask Bitmask[testPerm]
 		err := json.Unmarshal([]byte("0"), &mask)
 
-		require.NoError(t, err)
-		assert.True(t, mask.IsEmpty())
+		must.NoError(t, err)
+		test.True(t, mask.IsEmpty())
 	})
 
 	T.Run("returns error for invalid input", func(t *testing.T) {
@@ -585,7 +585,7 @@ func TestBitmask_UnmarshalJSON(T *testing.T) {
 		var mask Bitmask[testPerm]
 		err := json.Unmarshal([]byte(`"not a number"`), &mask)
 
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 
 	T.Run("returns error for negative number", func(t *testing.T) {
@@ -594,7 +594,7 @@ func TestBitmask_UnmarshalJSON(T *testing.T) {
 		var mask Bitmask[testPerm]
 		err := json.Unmarshal([]byte("-1"), &mask)
 
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 
 	T.Run("unmarshals in struct", func(t *testing.T) {
@@ -607,9 +607,9 @@ func TestBitmask_UnmarshalJSON(T *testing.T) {
 		var w wrapper
 		err := json.Unmarshal([]byte(`{"perms":5}`), &w)
 
-		require.NoError(t, err)
-		assert.True(t, w.Perms.Has(permRead))
-		assert.True(t, w.Perms.Has(permDelete))
+		must.NoError(t, err)
+		test.True(t, w.Perms.Has(permRead))
+		test.True(t, w.Perms.Has(permDelete))
 	})
 
 	T.Run("round trip", func(t *testing.T) {
@@ -617,13 +617,13 @@ func TestBitmask_UnmarshalJSON(T *testing.T) {
 
 		original := New(permRead, permWrite, permAdmin)
 		data, err := json.Marshal(&original)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		var restored Bitmask[testPerm]
 		err = json.Unmarshal(data, &restored)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
-		assert.Equal(t, original.Value(), restored.Value())
+		test.EqOp(t, original.Value(), restored.Value())
 	})
 }
 
@@ -637,9 +637,9 @@ func TestBitmask_Immutability(T *testing.T) {
 		b := a.Set(permWrite)
 		c := b.Clear(permRead)
 
-		assert.Equal(t, permRead, a.Value())
-		assert.Equal(t, permRead|permWrite, b.Value())
-		assert.Equal(t, permWrite, c.Value())
+		test.EqOp(t, permRead, a.Value())
+		test.EqOp(t, permRead|permWrite, b.Value())
+		test.EqOp(t, permWrite, c.Value())
 	})
 }
 
@@ -659,7 +659,7 @@ func TestBitmask_uint16(T *testing.T) {
 
 		mask := New(f1, f3)
 
-		assert.Equal(t, "0000000000000101", mask.String())
+		test.EqOp(t, "0000000000000101", mask.String())
 	})
 
 	T.Run("operations work", func(t *testing.T) {
@@ -668,8 +668,8 @@ func TestBitmask_uint16(T *testing.T) {
 		base := New(f1, f2)
 		mask := base.Clear(f1)
 
-		assert.False(t, mask.Has(f1))
-		assert.True(t, mask.Has(f2))
+		test.False(t, mask.Has(f1))
+		test.True(t, mask.Has(f2))
 	})
 }
 
@@ -683,7 +683,7 @@ func TestBitmask_uint32(T *testing.T) {
 
 		mask := FromValue(flag32(0b11110000_00001111))
 
-		assert.Equal(t, 8, mask.Count())
+		test.EqOp(t, 8, mask.Count())
 	})
 
 	T.Run("string has 32 digits", func(t *testing.T) {
@@ -691,6 +691,6 @@ func TestBitmask_uint32(T *testing.T) {
 
 		mask := New(flag32(1))
 
-		assert.Equal(t, 32, len(mask.String()))
+		test.EqOp(t, 32, len(mask.String()))
 	})
 }

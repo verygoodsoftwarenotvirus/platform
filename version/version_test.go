@@ -3,7 +3,7 @@ package version
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestGet(T *testing.T) { //nolint:paralleltest // mutates package-level vars; subtests must run sequentially
@@ -15,10 +15,10 @@ func TestGet(T *testing.T) { //nolint:paralleltest // mutates package-level vars
 		})
 
 		info := Get()
-		assert.Equal(t, "unknown", info.Version)
-		assert.Equal(t, "unknown", info.CommitHash)
-		assert.Equal(t, "unknown", info.CommitTime)
-		assert.Equal(t, "unknown", info.BuildTime)
+		test.EqOp(t, "unknown", info.Version)
+		test.EqOp(t, "unknown", info.CommitHash)
+		test.EqOp(t, "unknown", info.CommitTime)
+		test.EqOp(t, "unknown", info.BuildTime)
 	})
 
 	T.Run("returns set values when vars are populated", func(t *testing.T) { //nolint:paralleltest // mutates package-level vars; subtests must run sequentially
@@ -32,9 +32,9 @@ func TestGet(T *testing.T) { //nolint:paralleltest // mutates package-level vars
 		})
 
 		info := Get()
-		assert.Equal(t, "v1.2.3", info.Version)
-		assert.Equal(t, "abc123", info.CommitHash)
-		assert.Equal(t, "2026-01-01T00:00:00Z", info.CommitTime)
-		assert.Equal(t, "2026-01-02T00:00:00Z", info.BuildTime)
+		test.EqOp(t, "v1.2.3", info.Version)
+		test.EqOp(t, "abc123", info.CommitHash)
+		test.EqOp(t, "2026-01-01T00:00:00Z", info.CommitTime)
+		test.EqOp(t, "2026-01-02T00:00:00Z", info.BuildTime)
 	})
 }

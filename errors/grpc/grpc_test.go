@@ -9,7 +9,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/database"
 	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v5/errors"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 	"google.golang.org/grpc/codes"
 )
 
@@ -19,69 +19,69 @@ func TestPlatformMapper_Map(T *testing.T) {
 	T.Run("nil error returns ok=false", func(t *testing.T) {
 		t.Parallel()
 		_, ok := PlatformMapper.Map(nil)
-		assert.False(t, ok)
+		test.False(t, ok)
 	})
 
 	T.Run("ErrUserAlreadyExists maps to AlreadyExists", func(t *testing.T) {
 		t.Parallel()
 		code, ok := PlatformMapper.Map(database.ErrUserAlreadyExists)
-		assert.True(t, ok)
-		assert.Equal(t, codes.AlreadyExists, code)
+		test.True(t, ok)
+		test.EqOp(t, codes.AlreadyExists, code)
 	})
 
 	T.Run("sql.ErrNoRows maps to NotFound", func(t *testing.T) {
 		t.Parallel()
 		code, ok := PlatformMapper.Map(sql.ErrNoRows)
-		assert.True(t, ok)
-		assert.Equal(t, codes.NotFound, code)
+		test.True(t, ok)
+		test.EqOp(t, codes.NotFound, code)
 	})
 
 	T.Run("ErrCircuitBroken maps to Unavailable", func(t *testing.T) {
 		t.Parallel()
 		code, ok := PlatformMapper.Map(circuitbreaking.ErrCircuitBroken)
-		assert.True(t, ok)
-		assert.Equal(t, codes.Unavailable, code)
+		test.True(t, ok)
+		test.EqOp(t, codes.Unavailable, code)
 	})
 
 	T.Run("ErrNilInputParameter maps to InvalidArgument", func(t *testing.T) {
 		t.Parallel()
 		code, ok := PlatformMapper.Map(platformerrors.ErrNilInputParameter)
-		assert.True(t, ok)
-		assert.Equal(t, codes.InvalidArgument, code)
+		test.True(t, ok)
+		test.EqOp(t, codes.InvalidArgument, code)
 	})
 
 	T.Run("ErrEmptyInputParameter maps to InvalidArgument", func(t *testing.T) {
 		t.Parallel()
 		code, ok := PlatformMapper.Map(platformerrors.ErrEmptyInputParameter)
-		assert.True(t, ok)
-		assert.Equal(t, codes.InvalidArgument, code)
+		test.True(t, ok)
+		test.EqOp(t, codes.InvalidArgument, code)
 	})
 
 	T.Run("ErrNilInputProvided maps to InvalidArgument", func(t *testing.T) {
 		t.Parallel()
 		code, ok := PlatformMapper.Map(platformerrors.ErrNilInputProvided)
-		assert.True(t, ok)
-		assert.Equal(t, codes.InvalidArgument, code)
+		test.True(t, ok)
+		test.EqOp(t, codes.InvalidArgument, code)
 	})
 
 	T.Run("ErrInvalidIDProvided maps to InvalidArgument", func(t *testing.T) {
 		t.Parallel()
 		code, ok := PlatformMapper.Map(platformerrors.ErrInvalidIDProvided)
-		assert.True(t, ok)
-		assert.Equal(t, codes.InvalidArgument, code)
+		test.True(t, ok)
+		test.EqOp(t, codes.InvalidArgument, code)
 	})
 
 	T.Run("ErrEmptyInputProvided maps to InvalidArgument", func(t *testing.T) {
 		t.Parallel()
 		code, ok := PlatformMapper.Map(platformerrors.ErrEmptyInputProvided)
-		assert.True(t, ok)
-		assert.Equal(t, codes.InvalidArgument, code)
+		test.True(t, ok)
+		test.EqOp(t, codes.InvalidArgument, code)
 	})
 
 	T.Run("unknown error returns ok=false", func(t *testing.T) {
 		t.Parallel()
 		_, ok := PlatformMapper.Map(errors.New("nope"))
-		assert.False(t, ok)
+		test.False(t, ok)
 	})
 }
 
@@ -90,12 +90,12 @@ func TestMapToGRPC(T *testing.T) {
 
 	T.Run("nil error returns OK", func(t *testing.T) {
 		t.Parallel()
-		assert.Equal(t, codes.OK, MapToGRPC(nil, codes.Internal))
+		test.EqOp(t, codes.OK, MapToGRPC(nil, codes.Internal))
 	})
 
 	T.Run("known platform error uses PlatformMapper", func(t *testing.T) {
 		t.Parallel()
-		assert.Equal(t, codes.NotFound, MapToGRPC(sql.ErrNoRows, codes.Internal))
+		test.EqOp(t, codes.NotFound, MapToGRPC(sql.ErrNoRows, codes.Internal))
 	})
 
 	T.Run("unknown error with no domain mappers returns default", func(t *testing.T) {
@@ -104,7 +104,7 @@ func TestMapToGRPC(T *testing.T) {
 		// so we test PlatformMapper directly for "unknown returns default" behavior above.
 		code := MapToGRPC(errors.New("truly unknown error that no mapper handles"), codes.Aborted)
 		// If a domain mapper catches it, that's fine; we just verify no panic.
-		assert.NotEqual(t, codes.OK, code)
+		test.NotEq(t, codes.OK, code)
 	})
 
 	T.Run("domain mapper is consulted when platform mapper does not match", func(t *testing.T) {
@@ -116,8 +116,8 @@ func TestMapToGRPC(T *testing.T) {
 		// so we test the mapper interface directly to verify the flow.
 		mapper := testGRPCMapper{err: customErr, code: codes.PermissionDenied}
 		code, ok := mapper.Map(customErr)
-		assert.True(t, ok)
-		assert.Equal(t, codes.PermissionDenied, code)
+		test.True(t, ok)
+		test.EqOp(t, codes.PermissionDenied, code)
 	})
 }
 
@@ -147,7 +147,7 @@ func TestRegisterGRPCErrorMapper(T *testing.T) {
 
 		// After registration, MapToGRPC should find it
 		code := MapToGRPC(customErr, codes.Internal)
-		assert.Equal(t, codes.ResourceExhausted, code)
+		test.EqOp(t, codes.ResourceExhausted, code)
 	})
 }
 
@@ -158,7 +158,7 @@ func TestPrepareAndLogGRPCStatus(T *testing.T) {
 		t.Parallel()
 
 		err := PrepareAndLogGRPCStatus(sql.ErrNoRows, nil, nil, codes.Internal, "fetching thing %s", "abc")
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 
 	T.Run("with nil error", func(t *testing.T) {
@@ -166,13 +166,13 @@ func TestPrepareAndLogGRPCStatus(T *testing.T) {
 
 		err := PrepareAndLogGRPCStatus(nil, nil, nil, codes.Internal, "something")
 		// nil error maps to codes.OK, which may produce nil or a status with OK
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 
 	T.Run("with unknown error uses default code", func(t *testing.T) {
 		t.Parallel()
 
 		err := PrepareAndLogGRPCStatus(errors.New("unknown"), nil, nil, codes.DataLoss, "oops")
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 }

@@ -3,7 +3,7 @@ package cloudtrace
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestCloudTraceConfig_ValidateWithContext(T *testing.T) {
@@ -17,6 +17,6 @@ func TestCloudTraceConfig_ValidateWithContext(T *testing.T) {
 			ProjectID: t.Name(),
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 }

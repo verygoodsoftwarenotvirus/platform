@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/pointer"
-	"github.com/verygoodsoftwarenotvirus/platform/v5/retry"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/testutils/containers"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	"github.com/testcontainers/testcontainers-go"
 	mysqlcontainers "github.com/testcontainers/testcontainers-go/modules/mysql"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -66,11 +66,8 @@ func buildDatabaseConnectionForTest(t *testing.T, ctx context.Context) (*sql.DB,
 	dbPassword := reverseString(dbUsername)
 	dbName := splitReverseConcat(dbUsername)
 
-	var container *mysqlcontainers.MySQLContainer
-	policy := retry.NewExponentialBackoffPolicy(retry.Config{MaxAttempts: 5, InitialDelay: 1, UseJitter: false})
-	err := policy.Execute(ctx, func(ctx context.Context) error {
-		var containerErr error
-		container, containerErr = mysqlcontainers.Run(
+	container, err := containers.StartWithRetry(ctx, func(ctx context.Context) (*mysqlcontainers.MySQLContainer, error) {
+		return mysqlcontainers.Run(
 			ctx,
 			defaultMySQLImage,
 			mysqlcontainers.WithDatabase(dbName),
@@ -78,10 +75,9 @@ func buildDatabaseConnectionForTest(t *testing.T, ctx context.Context) (*sql.DB,
 			mysqlcontainers.WithPassword(dbPassword),
 			testcontainers.WithWaitStrategyAndDeadline(2*time.Minute, wait.ForLog("ready for connections").WithOccurrence(2)),
 		)
-		return containerErr
 	})
-	require.NoError(t, err)
-	require.NotNil(t, container)
+	must.NoError(t, err)
+	must.NotNil(t, container)
 
 	// Connect as root for admin operations (CREATE USER, GRANT, etc.).
 	// WithDefaultCredentials sets MYSQL_ROOT_PASSWORD to the same value as MYSQL_PASSWORD.
@@ -89,9 +85,9 @@ func buildDatabaseConnectionForTest(t *testing.T, ctx context.Context) (*sql.DB,
 	// Replace the non-root user with root in the DSN.
 	connStr = "root:" + dbPassword + "@" + connStr[strings.Index(connStr, "@")+1:]
 	db, err := sql.Open("mysql", connStr)
-	require.NoError(t, err)
+	must.NoError(t, err)
 
-	require.NoError(t, db.PingContext(ctx))
+	must.NoError(t, db.PingContext(ctx))
 
 	return db, container
 }
@@ -140,7 +136,7 @@ func TestQuoteIdent(T *testing.T) {
 		T.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result := quoteIdent(tt.input)
-			assert.Equal(t, tt.expected, result)
+			test.EqOp(t, tt.expected, result)
 		})
 	}
 }
@@ -184,7 +180,7 @@ func TestQuoteLiteral(T *testing.T) {
 		T.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result := quoteLiteral(tt.input)
-			assert.Equal(t, tt.expected, result)
+			test.EqOp(t, tt.expected, result)
 		})
 	}
 }
@@ -206,13 +202,13 @@ func TestIsValidPrivilege(T *testing.T) {
 		}
 
 		for _, p := range validPrivileges {
-			assert.True(t, isValidPrivilege(p), "expected %q to be valid", p)
+			test.True(t, isValidPrivilege(p), test.Sprintf("expected %q to be valid", p))
 		}
 	})
 
 	T.Run("invalid privilege", func(t *testing.T) {
 		t.Parallel()
-		assert.False(t, isValidPrivilege("INVALID"))
+		test.False(t, isValidPrivilege("INVALID"))
 	})
 }
 
@@ -224,8 +220,8 @@ func TestManager_GrantUserAccessToTable_InvalidPrivilege(T *testing.T) {
 
 		m := NewManager(nil)
 		err := m.GrantUserAccessToTable(t.Context(), "user", "schema", "table", "INVALID")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid privilege")
+		test.Error(t, err)
+		test.StrContains(t, err.Error(), "invalid privilege")
 	})
 }
 
@@ -236,7 +232,7 @@ func TestNewManager(T *testing.T) {
 		t.Parallel()
 
 		m := NewManager(nil)
-		assert.NotNil(t, m)
+		test.NotNil(t, m)
 	})
 }
 
@@ -260,11 +256,11 @@ func TestManager_CreateUser(T *testing.T) {
 		password := "testpass123"
 
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		exists, err := mgr.UserExists(ctx, username)
-		assert.NoError(t, err)
-		assert.True(t, exists)
+		test.NoError(t, err)
+		test.True(t, exists)
 	})
 
 	T.Run("duplicate user", func(t *testing.T) {
@@ -284,10 +280,10 @@ func TestManager_CreateUser(T *testing.T) {
 		password := "testpass123"
 
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		err = mgr.CreateUser(ctx, username, password)
-		assert.Error(t, err)
+		test.Error(t, err)
 	})
 }
 
@@ -311,14 +307,14 @@ func TestManager_DeleteUser(T *testing.T) {
 		password := "testpass123"
 
 		err := mgr.CreateUser(ctx, username, password)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		err = mgr.DeleteUser(ctx, username)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		exists, err := mgr.UserExists(ctx, username)
-		assert.NoError(t, err)
-		assert.False(t, exists)
+		test.NoError(t, err)
+		test.False(t, exists)
 	})
 
 	T.Run("delete non-existent user", func(t *testing.T) {
@@ -335,7 +331,7 @@ func TestManager_DeleteUser(T *testing.T) {
 		mgr := NewManager(adminDB)
 
 		err := mgr.DeleteUser(ctx, "nonexistentuser")
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 }
 
@@ -357,15 +353,15 @@ func TestManager_CreateDatabase(T *testing.T) {
 
 		owner := "dbowner"
 		err := mgr.CreateUser(ctx, owner, "pass")
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		dbName := "testdb"
 		err = mgr.CreateDatabase(ctx, dbName, owner)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		exists, err := mgr.DatabaseExists(ctx, dbName)
-		assert.NoError(t, err)
-		assert.True(t, exists)
+		test.NoError(t, err)
+		test.True(t, exists)
 	})
 }
 
@@ -387,18 +383,18 @@ func TestManager_DeleteDatabase(T *testing.T) {
 
 		owner := "deldbowner"
 		err := mgr.CreateUser(ctx, owner, "pass")
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		dbName := "deldb"
 		err = mgr.CreateDatabase(ctx, dbName, owner)
-		require.NoError(t, err)
+		must.NoError(t, err)
 
 		err = mgr.DeleteDatabase(ctx, dbName)
-		assert.NoError(t, err)
+		test.NoError(t, err)
 
 		exists, err := mgr.DatabaseExists(ctx, dbName)
-		assert.NoError(t, err)
-		assert.False(t, exists)
+		test.NoError(t, err)
+		test.False(t, exists)
 	})
 }
 
@@ -419,8 +415,8 @@ func TestManager_UserExists(T *testing.T) {
 		mgr := NewManager(adminDB)
 
 		exists, err := mgr.UserExists(ctx, "nonexistent_user_xyz")
-		assert.NoError(t, err)
-		assert.False(t, exists)
+		test.NoError(t, err)
+		test.False(t, exists)
 	})
 }
 
@@ -441,7 +437,7 @@ func TestManager_DatabaseExists(T *testing.T) {
 		mgr := NewManager(adminDB)
 
 		exists, err := mgr.DatabaseExists(ctx, "nonexistent_db_xyz")
-		assert.NoError(t, err)
-		assert.False(t, exists)
+		test.NoError(t, err)
+		test.False(t, exists)
 	})
 }

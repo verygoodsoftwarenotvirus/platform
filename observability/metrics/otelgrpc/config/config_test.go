@@ -7,8 +7,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/otelgrpc"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestConfig_ValidateWithContext(T *testing.T) {
@@ -23,7 +23,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			ServiceName:       t.Name(),
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("missing collector endpoint", func(t *testing.T) {
@@ -34,7 +34,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			ServiceName: t.Name(),
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("missing service name", func(t *testing.T) {
@@ -45,7 +45,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			CollectorEndpoint: t.Name(),
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 }
 
@@ -66,8 +66,8 @@ func TestProvideMetricsProvider(T *testing.T) {
 		}
 
 		provider, err := ProvideMetricsProvider(t.Context(), logging.NewNoopLogger(), cfg)
-		require.NoError(t, err)
-		assert.NotNil(t, provider)
+		must.NoError(t, err)
+		test.NotNil(t, provider)
 	})
 
 	T.Run("with nil otel config", func(t *testing.T) {
@@ -79,7 +79,7 @@ func TestProvideMetricsProvider(T *testing.T) {
 		}
 
 		provider, err := ProvideMetricsProvider(t.Context(), logging.NewNoopLogger(), cfg)
-		assert.Nil(t, provider)
-		assert.Error(t, err)
+		test.Nil(t, provider)
+		test.Error(t, err)
 	})
 }

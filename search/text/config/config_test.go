@@ -13,7 +13,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/search/text/algolia"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/search/text/elasticsearch"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -31,7 +31,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			},
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("algolia provider", func(t *testing.T) {
@@ -46,7 +46,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			},
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("invalid provider", func(t *testing.T) {
@@ -57,7 +57,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider: "invalid-provider",
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("elasticsearch provider without elasticsearch config", func(t *testing.T) {
@@ -68,7 +68,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider: ElasticsearchProvider,
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("algolia provider without algolia config", func(t *testing.T) {
@@ -79,7 +79,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Provider: AlgoliaProvider,
 		}
 
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("empty provider", func(t *testing.T) {
@@ -91,7 +91,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		}
 
 		// Empty provider should be valid (it will default to noop)
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("provider with extra whitespace", func(t *testing.T) {
@@ -106,7 +106,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		}
 
 		// Provider with whitespace should be invalid (validation is strict)
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("provider case insensitive", func(t *testing.T) {
@@ -121,7 +121,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 		}
 
 		// Provider should be case sensitive (validation is strict)
-		assert.Error(t, cfg.ValidateWithContext(ctx))
+		test.Error(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("nil context", func(t *testing.T) {
@@ -134,7 +134,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			},
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(context.TODO()))
+		test.NoError(t, cfg.ValidateWithContext(context.TODO()))
 	})
 }
 
@@ -148,16 +148,16 @@ func TestConfig_ZeroValue(T *testing.T) {
 		cfg := &Config{}
 
 		// Zero value should be valid (it will default to noop)
-		assert.NoError(t, cfg.ValidateWithContext(ctx))
+		test.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("zero value fields", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{}
-		assert.Equal(t, "", cfg.Provider)
-		assert.Nil(t, cfg.Algolia)
-		assert.Nil(t, cfg.Elasticsearch)
+		test.EqOp(t, "", cfg.Provider)
+		test.Nil(t, cfg.Algolia)
+		test.Nil(t, cfg.Elasticsearch)
 	})
 }
 
@@ -167,21 +167,21 @@ func TestConfig_Constants(T *testing.T) {
 	T.Run("provider constants have expected values", func(t *testing.T) {
 		t.Parallel()
 
-		assert.Equal(t, "elasticsearch", ElasticsearchProvider)
-		assert.Equal(t, "algolia", AlgoliaProvider)
+		test.EqOp(t, "elasticsearch", ElasticsearchProvider)
+		test.EqOp(t, "algolia", AlgoliaProvider)
 	})
 
 	T.Run("provider constants are not empty", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotEmpty(t, ElasticsearchProvider)
-		assert.NotEmpty(t, AlgoliaProvider)
+		test.NotEq(t, "", ElasticsearchProvider)
+		test.NotEq(t, "", AlgoliaProvider)
 	})
 
 	T.Run("provider constants are different", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotEqual(t, ElasticsearchProvider, AlgoliaProvider)
+		test.NotEq(t, ElasticsearchProvider, AlgoliaProvider)
 	})
 }
 
@@ -205,8 +205,8 @@ func TestConfig_ProvideIndex(T *testing.T) {
 		tracerProvider := tracing.NewNoopTracerProvider()
 		metricsProvider := metrics.NewNoopMetricsProvider()
 		index, err := ProvideIndex[testStruct](ctx, logger, tracerProvider, metricsProvider, cfg, "test-index")
-		assert.Error(t, err)
-		assert.Nil(t, index)
+		test.Error(t, err)
+		test.Nil(t, index)
 	})
 
 	T.Run("algolia provider", func(t *testing.T) {
@@ -226,8 +226,8 @@ func TestConfig_ProvideIndex(T *testing.T) {
 		tracerProvider := tracing.NewNoopTracerProvider()
 		metricsProvider := metrics.NewNoopMetricsProvider()
 		index, err := ProvideIndex[testStruct](ctx, logger, tracerProvider, metricsProvider, cfg, "test-index")
-		assert.NoError(t, err)
-		assert.NotNil(t, index)
+		test.NoError(t, err)
+		test.NotNil(t, index)
 	})
 
 	T.Run("unknown provider returns noop", func(t *testing.T) {
@@ -242,8 +242,8 @@ func TestConfig_ProvideIndex(T *testing.T) {
 		tracerProvider := tracing.NewNoopTracerProvider()
 		metricsProvider := metrics.NewNoopMetricsProvider()
 		index, err := ProvideIndex[testStruct](ctx, logger, tracerProvider, metricsProvider, cfg, "test-index")
-		assert.NoError(t, err)
-		assert.NotNil(t, index)
+		test.NoError(t, err)
+		test.NotNil(t, index)
 	})
 
 	T.Run("empty provider returns noop", func(t *testing.T) {
@@ -258,8 +258,8 @@ func TestConfig_ProvideIndex(T *testing.T) {
 		tracerProvider := tracing.NewNoopTracerProvider()
 		metricsProvider := metrics.NewNoopMetricsProvider()
 		index, err := ProvideIndex[testStruct](ctx, logger, tracerProvider, metricsProvider, cfg, "test-index")
-		assert.NoError(t, err)
-		assert.NotNil(t, index)
+		test.NoError(t, err)
+		test.NotNil(t, index)
 	})
 
 	T.Run("provider with whitespace returns noop", func(t *testing.T) {
@@ -274,8 +274,8 @@ func TestConfig_ProvideIndex(T *testing.T) {
 		tracerProvider := tracing.NewNoopTracerProvider()
 		metricsProvider := metrics.NewNoopMetricsProvider()
 		index, err := ProvideIndex[testStruct](ctx, logger, tracerProvider, metricsProvider, cfg, "test-index")
-		assert.NoError(t, err)
-		assert.NotNil(t, index)
+		test.NoError(t, err)
+		test.NotNil(t, index)
 	})
 
 	T.Run("circuit breaker init failure", func(t *testing.T) {
@@ -291,19 +291,23 @@ func TestConfig_ProvideIndex(T *testing.T) {
 			},
 		}
 
-		mp := &mockmetrics.MetricsProvider{}
 		// Force the very first counter creation to fail so ProvideCircuitBreaker
 		// returns an error, which is wrapped by ProvideIndex.
-		mp.On("NewInt64Counter", "test-breaker_circuit_breaker_tripped", []metric.Int64CounterOption(nil)).
-			Return(&mockmetrics.Int64Counter{}, errors.New("counter init failure"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(counterName string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.EqOp(t, "test-breaker_circuit_breaker_tripped", counterName)
+				return &mockmetrics.Int64CounterMock{}, errors.New("counter init failure")
+			},
+		}
 
 		logger := logging.NewNoopLogger()
 		tracerProvider := tracing.NewNoopTracerProvider()
 		index, err := ProvideIndex[testStruct](ctx, logger, tracerProvider, mp, cfg, "test-index")
-		assert.Error(t, err)
-		assert.Nil(t, index)
-		assert.Contains(t, err.Error(), "circuit breaker")
-		mp.AssertExpectations(t)
+		test.Error(t, err)
+		test.Nil(t, index)
+		test.StrContains(t, err.Error(), "circuit breaker")
+
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 }
 

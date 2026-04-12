@@ -3,7 +3,7 @@ package tracing
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestNewInstrumentedSQLTracer(T *testing.T) {
@@ -12,7 +12,7 @@ func TestNewInstrumentedSQLTracer(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		assert.NotNil(t, NewInstrumentedSQLTracer(NewNoopTracerProvider(), t.Name()))
+		test.NotNil(t, NewInstrumentedSQLTracer(NewNoopTracerProvider(), t.Name()))
 	})
 }
 
@@ -25,6 +25,6 @@ func Test_instrumentedSQLTracerWrapper_GetSpan(T *testing.T) {
 		ctx := t.Context()
 		w := NewInstrumentedSQLTracer(NewNoopTracerProvider(), t.Name())
 
-		assert.NotNil(t, w.GetSpan(ctx))
+		test.NotNil(t, w.GetSpan(ctx))
 	})
 }

@@ -14,6 +14,7 @@ make lint           # Run golangci-lint (Docker) + shellcheck
 make format lint    # Typical workflow: format then lint
 make test           # Run tests (race detector, shuffle, failfast)
 make build          # Build all packages
+make generate       # Regenerate moq mocks after changing any mocked interface
 make setup          # Install dev tools + vendor deps
 make revendor       # Clean and re-vendor dependencies
 ```

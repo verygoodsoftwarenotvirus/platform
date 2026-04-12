@@ -3,7 +3,7 @@ package pusher
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/shoenig/test"
 )
 
 func TestConfig_ValidateWithContext(T *testing.T) {
@@ -19,7 +19,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			Cluster: "us2",
 		}
 
-		assert.NoError(t, cfg.ValidateWithContext(t.Context()))
+		test.NoError(t, cfg.ValidateWithContext(t.Context()))
 	})
 
 	T.Run("missing required fields", func(t *testing.T) {
@@ -27,6 +27,6 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 
 		cfg := &Config{}
 
-		assert.Error(t, cfg.ValidateWithContext(t.Context()))
+		test.Error(t, cfg.ValidateWithContext(t.Context()))
 	})
 }

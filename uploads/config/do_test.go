@@ -6,8 +6,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/uploads/objectstorage"
 
 	"github.com/samber/do/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestRegisterStorageConfig(T *testing.T) {
@@ -27,8 +27,8 @@ func TestRegisterStorageConfig(T *testing.T) {
 		RegisterStorageConfig(i)
 
 		storageCfg, err := do.Invoke[*objectstorage.Config](i)
-		require.NoError(t, err)
-		assert.NotNil(t, storageCfg)
-		assert.Equal(t, t.Name(), storageCfg.BucketName)
+		must.NoError(t, err)
+		test.NotNil(t, storageCfg)
+		test.EqOp(t, t.Name(), storageCfg.BucketName)
 	})
 }

@@ -12,11 +12,9 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/v5/reflection"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -34,7 +32,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			},
 		}
 
-		require.NoError(t, cfg.ValidateWithContext(ctx))
+		must.NoError(t, cfg.ValidateWithContext(ctx))
 	})
 
 	T.Run("with invalid token", func(t *testing.T) {
@@ -47,7 +45,7 @@ func TestConfig_ValidateWithContext(T *testing.T) {
 			},
 		}
 
-		require.Error(t, cfg.ValidateWithContext(ctx))
+		must.Error(t, cfg.ValidateWithContext(ctx))
 	})
 }
 
@@ -77,7 +75,7 @@ func TestConfig_ProvideCollector(T *testing.T) {
 			}
 
 			_, err := cfg.ProvideCollector(ctx, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider())
-			require.NoError(t, err)
+			must.NoError(t, err)
 		}
 	})
 
@@ -97,7 +95,7 @@ func TestConfig_ProvideCollector(T *testing.T) {
 			}
 
 			_, err := cfg.ProvideCollector(ctx, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider())
-			require.Error(t, err)
+			must.Error(t, err)
 		}
 	})
 
@@ -112,8 +110,8 @@ func TestConfig_ProvideCollector(T *testing.T) {
 		}
 
 		reporter, err := cfg.ProvideCollector(ctx, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider())
-		assert.Nil(t, reporter)
-		assert.Error(t, err)
+		test.Nil(t, reporter)
+		test.Error(t, err)
 	})
 
 	T.Run("with rudderstack provider but nil rudderstack config", func(t *testing.T) {
@@ -127,8 +125,8 @@ func TestConfig_ProvideCollector(T *testing.T) {
 		}
 
 		reporter, err := cfg.ProvideCollector(ctx, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider())
-		assert.Nil(t, reporter)
-		assert.Error(t, err)
+		test.Nil(t, reporter)
+		test.Error(t, err)
 	})
 
 	T.Run("with posthog provider but nil posthog config", func(t *testing.T) {
@@ -142,8 +140,8 @@ func TestConfig_ProvideCollector(T *testing.T) {
 		}
 
 		reporter, err := cfg.ProvideCollector(ctx, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider())
-		assert.Nil(t, reporter)
-		assert.Error(t, err)
+		test.Nil(t, reporter)
+		test.Error(t, err)
 	})
 
 	T.Run("with unrecognized provider returns noop", func(t *testing.T) {
@@ -157,8 +155,8 @@ func TestConfig_ProvideCollector(T *testing.T) {
 		}
 
 		reporter, err := cfg.ProvideCollector(ctx, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), metrics.NewNoopMetricsProvider())
-		assert.NotNil(t, reporter)
-		assert.NoError(t, err)
+		test.NotNil(t, reporter)
+		test.NoError(t, err)
 	})
 
 	T.Run("with circuit breaker error", func(t *testing.T) {
@@ -177,19 +175,18 @@ func TestConfig_ProvideCollector(T *testing.T) {
 			},
 		}
 
-		i64Counter := &mockmetrics.Int64Counter{}
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On(
-			reflection.GetMethodName(mp.NewInt64Counter),
-			mock.AnythingOfType("string"),
-			[]metric.Int64CounterOption(nil),
-		).Return(i64Counter, errors.New("arbitrary"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(_ string, options ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				test.SliceEmpty(t, options)
+				return nil, errors.New("arbitrary")
+			},
+		}
 
 		reporter, err := cfg.ProvideCollector(ctx, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp)
-		assert.Nil(t, reporter)
-		assert.Error(t, err)
+		test.Nil(t, reporter)
+		test.Error(t, err)
 
-		mock.AssertExpectationsForObjects(t, mp)
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 }
 
@@ -202,9 +199,9 @@ func TestSourceConfig_EnsureDefaults(T *testing.T) {
 		cfg := &SourceConfig{}
 		cfg.EnsureDefaults()
 
-		assert.NotEmpty(t, cfg.CircuitBreaker.Name)
-		assert.NotZero(t, cfg.CircuitBreaker.ErrorRate)
-		assert.NotZero(t, cfg.CircuitBreaker.MinimumSampleThreshold)
+		test.NotEq(t, "", cfg.CircuitBreaker.Name)
+		test.NotEq(t, float64(0), cfg.CircuitBreaker.ErrorRate)
+		test.NotEq(t, uint64(0), cfg.CircuitBreaker.MinimumSampleThreshold)
 	})
 }
 
@@ -217,7 +214,7 @@ func TestConfig_EnsureDefaults(T *testing.T) {
 		cfg := &Config{}
 		cfg.EnsureDefaults()
 
-		assert.NotEmpty(t, cfg.CircuitBreaker.Name)
+		test.NotEq(t, "", cfg.CircuitBreaker.Name)
 	})
 
 	T.Run("with both proxy sources set", func(t *testing.T) {
@@ -231,9 +228,9 @@ func TestConfig_EnsureDefaults(T *testing.T) {
 		}
 		cfg.EnsureDefaults()
 
-		assert.NotEmpty(t, cfg.CircuitBreaker.Name)
-		assert.NotEmpty(t, cfg.ProxySources.IOS.CircuitBreaker.Name)
-		assert.NotEmpty(t, cfg.ProxySources.Web.CircuitBreaker.Name)
+		test.NotEq(t, "", cfg.CircuitBreaker.Name)
+		test.NotEq(t, "", cfg.ProxySources.IOS.CircuitBreaker.Name)
+		test.NotEq(t, "", cfg.ProxySources.Web.CircuitBreaker.Name)
 	})
 }
 
@@ -244,7 +241,7 @@ func TestProxySourcesConfig_ToMap(T *testing.T) {
 		t.Parallel()
 
 		p := ProxySourcesConfig{}
-		assert.Empty(t, p.ToMap())
+		test.MapEmpty(t, p.ToMap())
 	})
 
 	T.Run("with only ios set", func(t *testing.T) {
@@ -254,8 +251,8 @@ func TestProxySourcesConfig_ToMap(T *testing.T) {
 		p := ProxySourcesConfig{IOS: ios}
 		m := p.ToMap()
 
-		assert.Len(t, m, 1)
-		assert.Same(t, ios, m["ios"])
+		test.MapLen(t, 1, m)
+		test.EqOp(t, ios, m["ios"])
 	})
 
 	T.Run("with only web set", func(t *testing.T) {
@@ -265,8 +262,8 @@ func TestProxySourcesConfig_ToMap(T *testing.T) {
 		p := ProxySourcesConfig{Web: web}
 		m := p.ToMap()
 
-		assert.Len(t, m, 1)
-		assert.Same(t, web, m["web"])
+		test.MapLen(t, 1, m)
+		test.EqOp(t, web, m["web"])
 	})
 
 	T.Run("with both sources set", func(t *testing.T) {
@@ -277,8 +274,8 @@ func TestProxySourcesConfig_ToMap(T *testing.T) {
 		p := ProxySourcesConfig{IOS: ios, Web: web}
 		m := p.ToMap()
 
-		assert.Len(t, m, 2)
-		assert.Same(t, ios, m["ios"])
-		assert.Same(t, web, m["web"])
+		test.MapLen(t, 2, m)
+		test.EqOp(t, ios, m["ios"])
+		test.EqOp(t, web, m["web"])
 	})
 }

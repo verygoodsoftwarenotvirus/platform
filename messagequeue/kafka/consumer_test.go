@@ -9,30 +9,36 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
-	"github.com/verygoodsoftwarenotvirus/platform/v5/testutils"
 
 	"github.com/segmentio/kafka-go"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/metric"
 )
 
 type mockKafkaReader struct {
-	mock.Mock
+	fetchMessageFunc   func(ctx context.Context) (kafka.Message, error)
+	commitMessagesFunc func(ctx context.Context, msgs ...kafka.Message) error
+	closeFunc          func() error
+	fetchCalls         int
+	commitCalls        int
 }
 
 func (m *mockKafkaReader) FetchMessage(ctx context.Context) (kafka.Message, error) {
-	args := m.Called(ctx)
-	return args.Get(0).(kafka.Message), args.Error(1)
+	m.fetchCalls++
+	return m.fetchMessageFunc(ctx)
 }
 
 func (m *mockKafkaReader) CommitMessages(ctx context.Context, msgs ...kafka.Message) error {
-	return m.Called(ctx, msgs).Error(0)
+	m.commitCalls++
+	return m.commitMessagesFunc(ctx, msgs...)
 }
 
 func (m *mockKafkaReader) Close() error {
-	return m.Called().Error(0)
+	if m.closeFunc == nil {
+		return nil
+	}
+	return m.closeFunc()
 }
 
 func Test_kafkaConsumer_Consume(T *testing.T) {
@@ -43,8 +49,11 @@ func Test_kafkaConsumer_Consume(T *testing.T) {
 
 		ctx, cancel := context.WithCancel(t.Context())
 
-		reader := &mockKafkaReader{}
-		reader.On("FetchMessage", testutils.ContextMatcher).Return(kafka.Message{}, context.Canceled).Maybe()
+		reader := &mockKafkaReader{
+			fetchMessageFunc: func(_ context.Context) (kafka.Message, error) {
+				return kafka.Message{}, context.Canceled
+			},
+		}
 
 		c := &kafkaConsumer{
 			reader:          reader,
@@ -68,7 +77,11 @@ func Test_kafkaConsumer_Consume(T *testing.T) {
 
 		ctx := t.Context()
 
-		reader := &mockKafkaReader{}
+		reader := &mockKafkaReader{
+			fetchMessageFunc: func(_ context.Context) (kafka.Message, error) {
+				return kafka.Message{}, context.Canceled
+			},
+		}
 
 		c := &kafkaConsumer{
 			reader:          reader,
@@ -92,8 +105,11 @@ func Test_kafkaConsumer_Consume(T *testing.T) {
 
 		ctx, cancel := context.WithCancel(t.Context())
 
-		reader := &mockKafkaReader{}
-		reader.On("FetchMessage", testutils.ContextMatcher).Return(kafka.Message{}, context.Canceled).Maybe()
+		reader := &mockKafkaReader{
+			fetchMessageFunc: func(_ context.Context) (kafka.Message, error) {
+				return kafka.Message{}, context.Canceled
+			},
+		}
 
 		c := &kafkaConsumer{
 			reader:          reader,
@@ -119,13 +135,15 @@ func Test_kafkaConsumer_Consume(T *testing.T) {
 		fetchErr := errors.New("fetch failed")
 		callCount := 0
 
-		reader := &mockKafkaReader{}
-		reader.On("FetchMessage", testutils.ContextMatcher).Return(kafka.Message{}, fetchErr).Run(func(args mock.Arguments) {
-			callCount++
-			if callCount >= 2 {
-				cancel()
-			}
-		})
+		reader := &mockKafkaReader{
+			fetchMessageFunc: func(_ context.Context) (kafka.Message, error) {
+				callCount++
+				if callCount >= 2 {
+					cancel()
+				}
+				return kafka.Message{}, fetchErr
+			},
+		}
 
 		c := &kafkaConsumer{
 			reader:          reader,
@@ -144,7 +162,7 @@ func Test_kafkaConsumer_Consume(T *testing.T) {
 
 		select {
 		case receivedErr := <-errs:
-			assert.Equal(t, fetchErr, receivedErr)
+			test.ErrorIs(t, receivedErr, fetchErr)
 		default:
 			t.Error("expected an error on the errors channel")
 		}
@@ -157,10 +175,12 @@ func Test_kafkaConsumer_Consume(T *testing.T) {
 
 		fetchErr := errors.New("fetch failed")
 
-		reader := &mockKafkaReader{}
-		reader.On("FetchMessage", testutils.ContextMatcher).Return(kafka.Message{}, fetchErr).Run(func(args mock.Arguments) {
-			cancel()
-		})
+		reader := &mockKafkaReader{
+			fetchMessageFunc: func(_ context.Context) (kafka.Message, error) {
+				cancel()
+				return kafka.Message{}, fetchErr
+			},
+		}
 
 		c := &kafkaConsumer{
 			reader:          reader,
@@ -184,10 +204,21 @@ func Test_kafkaConsumer_Consume(T *testing.T) {
 
 		msg := kafka.Message{Value: []byte("test-message")}
 
-		reader := &mockKafkaReader{}
-		reader.On("FetchMessage", testutils.ContextMatcher).Return(msg, nil).Once()
-		reader.On("CommitMessages", testutils.ContextMatcher, []kafka.Message{msg}).Return(nil).Once()
-		reader.On("FetchMessage", testutils.ContextMatcher).Return(kafka.Message{}, context.Canceled).Maybe()
+		var fetchCount int
+		reader := &mockKafkaReader{
+			fetchMessageFunc: func(_ context.Context) (kafka.Message, error) {
+				fetchCount++
+				if fetchCount == 1 {
+					return msg, nil
+				}
+				return kafka.Message{}, context.Canceled
+			},
+			commitMessagesFunc: func(_ context.Context, msgs ...kafka.Message) error {
+				must.SliceLen(t, 1, msgs)
+				test.Eq(t, msg, msgs[0])
+				return nil
+			},
+		}
 
 		handlerCalled := false
 		c := &kafkaConsumer{
@@ -197,7 +228,7 @@ func Test_kafkaConsumer_Consume(T *testing.T) {
 			consumedCounter: metrics.Int64CounterForTest(t, t.Name()),
 			handlerFunc: func(_ context.Context, data []byte) error {
 				handlerCalled = true
-				assert.Equal(t, []byte("test-message"), data)
+				test.Eq(t, []byte("test-message"), data)
 				cancel()
 				return nil
 			},
@@ -207,9 +238,8 @@ func Test_kafkaConsumer_Consume(T *testing.T) {
 		errs := make(chan error, 10)
 
 		c.Consume(ctx, stopChan, errs)
-		assert.True(t, handlerCalled)
-
-		mock.AssertExpectationsForObjects(t, reader)
+		test.True(t, handlerCalled)
+		test.EqOp(t, 1, reader.commitCalls)
 	})
 
 	T.Run("with handler error", func(t *testing.T) {
@@ -220,9 +250,16 @@ func Test_kafkaConsumer_Consume(T *testing.T) {
 		msg := kafka.Message{Value: []byte("test-message")}
 		handlerErr := errors.New("handler failed")
 
-		reader := &mockKafkaReader{}
-		reader.On("FetchMessage", testutils.ContextMatcher).Return(msg, nil).Once()
-		reader.On("FetchMessage", testutils.ContextMatcher).Return(kafka.Message{}, context.Canceled).Maybe()
+		var fetchCount int
+		reader := &mockKafkaReader{
+			fetchMessageFunc: func(_ context.Context) (kafka.Message, error) {
+				fetchCount++
+				if fetchCount == 1 {
+					return msg, nil
+				}
+				return kafka.Message{}, context.Canceled
+			},
+		}
 
 		c := &kafkaConsumer{
 			reader:          reader,
@@ -241,8 +278,8 @@ func Test_kafkaConsumer_Consume(T *testing.T) {
 		c.Consume(ctx, stopChan, errs)
 
 		receivedErr := <-errs
-		assert.Error(t, receivedErr)
-		assert.Equal(t, handlerErr, receivedErr)
+		test.Error(t, receivedErr)
+		test.ErrorIs(t, receivedErr, handlerErr)
 	})
 
 	T.Run("with handler error and nil errors channel", func(t *testing.T) {
@@ -252,9 +289,16 @@ func Test_kafkaConsumer_Consume(T *testing.T) {
 
 		msg := kafka.Message{Value: []byte("test-message")}
 
-		reader := &mockKafkaReader{}
-		reader.On("FetchMessage", testutils.ContextMatcher).Return(msg, nil).Once()
-		reader.On("FetchMessage", testutils.ContextMatcher).Return(kafka.Message{}, context.Canceled).Maybe()
+		var fetchCount int
+		reader := &mockKafkaReader{
+			fetchMessageFunc: func(_ context.Context) (kafka.Message, error) {
+				fetchCount++
+				if fetchCount == 1 {
+					return msg, nil
+				}
+				return kafka.Message{}, context.Canceled
+			},
+		}
 
 		c := &kafkaConsumer{
 			reader:          reader,
@@ -279,10 +323,19 @@ func Test_kafkaConsumer_Consume(T *testing.T) {
 
 		msg := kafka.Message{Value: []byte("test-message")}
 
-		reader := &mockKafkaReader{}
-		reader.On("FetchMessage", testutils.ContextMatcher).Return(msg, nil).Once()
-		reader.On("CommitMessages", testutils.ContextMatcher, []kafka.Message{msg}).Return(errors.New("commit failed")).Once()
-		reader.On("FetchMessage", testutils.ContextMatcher).Return(kafka.Message{}, context.Canceled).Maybe()
+		var fetchCount int
+		reader := &mockKafkaReader{
+			fetchMessageFunc: func(_ context.Context) (kafka.Message, error) {
+				fetchCount++
+				if fetchCount == 1 {
+					return msg, nil
+				}
+				return kafka.Message{}, context.Canceled
+			},
+			commitMessagesFunc: func(_ context.Context, _ ...kafka.Message) error {
+				return errors.New("commit failed")
+			},
+		}
 
 		c := &kafkaConsumer{
 			reader:          reader,
@@ -299,8 +352,7 @@ func Test_kafkaConsumer_Consume(T *testing.T) {
 		errs := make(chan error, 10)
 
 		c.Consume(ctx, stopChan, errs)
-
-		mock.AssertExpectationsForObjects(t, reader)
+		test.EqOp(t, 1, reader.commitCalls)
 	})
 }
 
@@ -321,7 +373,7 @@ func TestProvideKafkaConsumerProvider(T *testing.T) {
 			nil,
 			cfg,
 		)
-		assert.NotNil(t, actual)
+		test.NotNil(t, actual)
 	})
 }
 
@@ -344,13 +396,13 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 			nil,
 			cfg,
 		)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		hf := func(context.Context, []byte) error { return nil }
 
 		actual, err := provider.ProvideConsumer(ctx, t.Name(), hf)
-		assert.NoError(t, err)
-		assert.NotNil(t, actual)
+		test.NoError(t, err)
+		test.NotNil(t, actual)
 	})
 
 	T.Run("with empty topic", func(t *testing.T) {
@@ -369,12 +421,12 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 			nil,
 			cfg,
 		)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		actual, err := provider.ProvideConsumer(ctx, "", nil)
-		assert.Error(t, err)
-		assert.ErrorIs(t, err, ErrEmptyInputProvided)
-		assert.Nil(t, actual)
+		test.Error(t, err)
+		test.ErrorIs(t, err, ErrEmptyInputProvided)
+		test.Nil(t, actual)
 	})
 
 	T.Run("with error creating consumed counter", func(t *testing.T) {
@@ -382,8 +434,11 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 
 		ctx := t.Context()
 
-		mp := &mockmetrics.MetricsProvider{}
-		mp.On("NewInt64Counter", mock.Anything, []metric.Int64CounterOption(nil)).Return(metrics.Int64CounterForTest(t, "x"), errors.New("counter error"))
+		mp := &mockmetrics.ProviderMock{
+			NewInt64CounterFunc: func(_ string, _ ...metric.Int64CounterOption) (metrics.Int64Counter, error) {
+				return metrics.Int64CounterForTest(t, "x"), errors.New("counter error")
+			},
+		}
 
 		cfg := Config{
 			Brokers: []string{"localhost:9092"},
@@ -396,13 +451,15 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 			mp,
 			cfg,
 		)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		hf := func(context.Context, []byte) error { return nil }
 
 		actual, err := provider.ProvideConsumer(ctx, t.Name(), hf)
-		assert.Error(t, err)
-		assert.Nil(t, actual)
+		test.Error(t, err)
+		test.Nil(t, actual)
+
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("with cache hit", func(t *testing.T) {
@@ -421,18 +478,18 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 			nil,
 			cfg,
 		)
-		require.NotNil(t, provider)
+		must.NotNil(t, provider)
 
 		hf := func(context.Context, []byte) error { return nil }
 
 		first, err := provider.ProvideConsumer(ctx, t.Name(), hf)
-		assert.NoError(t, err)
-		assert.NotNil(t, first)
+		test.NoError(t, err)
+		test.NotNil(t, first)
 
 		second, err := provider.ProvideConsumer(ctx, t.Name(), hf)
-		assert.NoError(t, err)
-		assert.NotNil(t, second)
+		test.NoError(t, err)
+		test.NotNil(t, second)
 
-		assert.Equal(t, first, second)
+		test.True(t, first == second)
 	})
 }

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 type mockChecker struct {
@@ -36,9 +36,9 @@ func TestRegistry_CheckAll(T *testing.T) {
 
 		result := reg.CheckAll(ctx)
 
-		require.NotNil(t, result)
-		assert.Equal(t, StatusUp, result.Status)
-		assert.Empty(t, result.Components)
+		must.NotNil(t, result)
+		test.EqOp(t, StatusUp, result.Status)
+		test.MapEmpty(t, result.Components)
 	})
 
 	T.Run("all checkers up", func(t *testing.T) {
@@ -51,11 +51,11 @@ func TestRegistry_CheckAll(T *testing.T) {
 
 		result := reg.CheckAll(ctx)
 
-		require.NotNil(t, result)
-		assert.Equal(t, StatusUp, result.Status)
-		assert.Len(t, result.Components, 2)
-		assert.Equal(t, ComponentResult{Status: StatusUp}, result.Components["a"])
-		assert.Equal(t, ComponentResult{Status: StatusUp}, result.Components["b"])
+		must.NotNil(t, result)
+		test.EqOp(t, StatusUp, result.Status)
+		test.MapLen(t, 2, result.Components)
+		test.EqOp(t, ComponentResult{Status: StatusUp}, result.Components["a"])
+		test.EqOp(t, ComponentResult{Status: StatusUp}, result.Components["b"])
 	})
 
 	T.Run("one checker down", func(t *testing.T) {
@@ -73,11 +73,11 @@ func TestRegistry_CheckAll(T *testing.T) {
 
 		result := reg.CheckAll(ctx)
 
-		require.NotNil(t, result)
-		assert.Equal(t, StatusDown, result.Status)
-		assert.Len(t, result.Components, 2)
-		assert.Equal(t, ComponentResult{Status: StatusUp}, result.Components["up"])
-		assert.Equal(t, ComponentResult{Status: StatusDown, Message: "connection refused"}, result.Components["down"])
+		must.NotNil(t, result)
+		test.EqOp(t, StatusDown, result.Status)
+		test.MapLen(t, 2, result.Components)
+		test.EqOp(t, ComponentResult{Status: StatusUp}, result.Components["up"])
+		test.EqOp(t, ComponentResult{Status: StatusDown, Message: "connection refused"}, result.Components["down"])
 	})
 
 	T.Run("ignores nil checker", func(t *testing.T) {
@@ -90,8 +90,8 @@ func TestRegistry_CheckAll(T *testing.T) {
 
 		result := reg.CheckAll(ctx)
 
-		require.NotNil(t, result)
-		assert.Equal(t, StatusUp, result.Status)
-		assert.Len(t, result.Components, 1)
+		must.NotNil(t, result)
+		test.EqOp(t, StatusUp, result.Status)
+		test.MapLen(t, 1, result.Components)
 	})
 }

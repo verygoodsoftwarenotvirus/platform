@@ -8,8 +8,8 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/profiling"
 
 	"github.com/samber/do/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 func TestRegisterProfilingProvider(T *testing.T) {
@@ -26,7 +26,7 @@ func TestRegisterProfilingProvider(T *testing.T) {
 		RegisterProfilingProvider(i)
 
 		p, err := do.Invoke[profiling.Provider](i)
-		require.NoError(t, err)
-		assert.NotNil(t, p)
+		must.NoError(t, err)
+		test.NotNil(t, p)
 	})
 }

@@ -19,8 +19,8 @@ import (
 	openfeatureposthog "github.com/dhaus67/openfeature-posthog-go"
 	"github.com/open-feature/go-sdk/openfeature"
 	"github.com/posthog/posthog-go"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test"
+	"github.com/shoenig/test/must"
 )
 
 var testFlags = map[string]any{
@@ -82,8 +82,8 @@ func buildTestManager(t *testing.T, cb circuitbreaking.CircuitBreaker, configMod
 	}
 
 	ffm, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cb, configModifiers...)
-	require.NoError(t, err)
-	require.NotNil(t, ffm)
+	must.NoError(t, err)
+	must.NotNil(t, ffm)
 
 	return ffm.(*featureFlagManager)
 }
@@ -99,7 +99,7 @@ func buildTestManagerWithHandler(t *testing.T, handler http.Handler) *featureFla
 	}
 
 	client, err := posthog.NewWithConfig(t.Name(), phConfig)
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	t.Cleanup(func() {
 		client.Close()
@@ -110,17 +110,17 @@ func buildTestManagerWithHandler(t *testing.T, handler http.Handler) *featureFla
 	domain := "test_" + strings.ReplaceAll(t.Name(), "/", "_")
 	provider := openfeatureposthog.NewProvider(client)
 	err = openfeature.SetNamedProviderAndWait(domain, provider)
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	ofClient := openfeature.NewClient(domain)
 
 	mp := metrics.EnsureMetricsProvider(nil)
 	evalCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_evaluations", serviceName))
-	require.NoError(t, err)
+	must.NoError(t, err)
 	errorCounter, err := mp.NewInt64Counter(fmt.Sprintf("%s_errors", serviceName))
-	require.NoError(t, err)
+	must.NoError(t, err)
 	latencyHist, err := mp.NewFloat64Histogram(fmt.Sprintf("%s_latency_ms", serviceName))
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	return &featureFlagManager{
 		posthogClient:  client,
@@ -146,16 +146,16 @@ func TestNewFeatureFlagManager(T *testing.T) {
 		}
 
 		actual, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker())
-		assert.NoError(t, err)
-		assert.NotNil(t, actual)
+		test.NoError(t, err)
+		test.NotNil(t, actual)
 	})
 
 	T.Run("with nil config", func(t *testing.T) {
 		t.Parallel()
 
 		actual, err := NewFeatureFlagManager(nil, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker())
-		assert.Error(t, err)
-		assert.Nil(t, actual)
+		test.Error(t, err)
+		test.Nil(t, actual)
 	})
 
 	T.Run("with missing project API key", func(t *testing.T) {
@@ -164,8 +164,8 @@ func TestNewFeatureFlagManager(T *testing.T) {
 		cfg := &Config{}
 
 		actual, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker())
-		assert.Error(t, err)
-		assert.Nil(t, actual)
+		test.Error(t, err)
+		test.Nil(t, actual)
 	})
 
 	T.Run("with missing personal API key", func(t *testing.T) {
@@ -176,8 +176,8 @@ func TestNewFeatureFlagManager(T *testing.T) {
 		}
 
 		actual, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker())
-		assert.Error(t, err)
-		assert.Nil(t, actual)
+		test.Error(t, err)
+		test.Nil(t, actual)
 	})
 
 	T.Run("with invalid config", func(t *testing.T) {
@@ -191,8 +191,8 @@ func TestNewFeatureFlagManager(T *testing.T) {
 		actual, err := NewFeatureFlagManager(cfg, logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, cbnoop.NewCircuitBreaker(), func(config *posthog.Config) {
 			config.Interval = -1
 		})
-		assert.Error(t, err)
-		assert.Nil(t, actual)
+		test.Error(t, err)
+		test.Nil(t, actual)
 	})
 }
 
@@ -209,9 +209,9 @@ func TestToOpenFeatureContext(T *testing.T) {
 
 		result := toOpenFeatureContext(ec)
 
-		assert.Equal(t, "user123", result.TargetingKey())
-		assert.Equal(t, "pro", result.Attribute("plan"))
-		assert.Equal(t, "us-east", result.Attribute("region"))
+		test.EqOp(t, "user123", result.TargetingKey())
+		test.Eq(t, "pro", result.Attribute("plan"))
+		test.Eq(t, "us-east", result.Attribute("region"))
 	})
 
 	T.Run("with nil attributes", func(t *testing.T) {
@@ -223,7 +223,7 @@ func TestToOpenFeatureContext(T *testing.T) {
 
 		result := toOpenFeatureContext(ec)
 
-		assert.Equal(t, "user456", result.TargetingKey())
+		test.EqOp(t, "user456", result.TargetingKey())
 	})
 }
 
@@ -237,8 +237,8 @@ func TestFeatureFlagManager_CanUseFeature(T *testing.T) {
 		ffm := buildTestManagerWithHandler(t, posthogFlagsHandler(testFlags))
 
 		actual, err := ffm.CanUseFeature(ctx, "bool-flag", evalCtx("user123"))
-		assert.NoError(t, err)
-		assert.True(t, actual)
+		test.NoError(t, err)
+		test.True(t, actual)
 	})
 
 	T.Run("with error executing request", func(t *testing.T) {
@@ -248,22 +248,24 @@ func TestFeatureFlagManager_CanUseFeature(T *testing.T) {
 		ffm := buildTestManagerWithHandler(t, posthogErrorHandler())
 
 		actual, err := ffm.CanUseFeature(ctx, "bool-flag", evalCtx("user123"))
-		assert.Error(t, err)
-		assert.False(t, actual)
+		test.Error(t, err)
+		test.False(t, actual)
 	})
 
 	T.Run("with broken circuit", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		cb := &mockCircuitBreaker.MockCircuitBreaker{}
-		cb.On("CanProceed").Return(false)
+		cb := &mockCircuitBreaker.CircuitBreakerMock{
+			CanProceedFunc: func() bool { return false },
+		}
 
 		ffm := buildTestManager(t, cb)
 
 		result, err := ffm.CanUseFeature(ctx, "some-flag", evalCtx("user123"))
-		assert.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
-		assert.False(t, result)
+		test.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
+		test.False(t, result)
+		test.SliceLen(t, 1, cb.CanProceedCalls())
 	})
 }
 
@@ -277,8 +279,8 @@ func TestFeatureFlagManager_GetStringValue(T *testing.T) {
 		ffm := buildTestManagerWithHandler(t, posthogFlagsHandler(testFlags))
 
 		result, err := ffm.GetStringValue(ctx, "string-flag", "fallback", evalCtx("user123"))
-		assert.NoError(t, err)
-		assert.Equal(t, "hello-world", result)
+		test.NoError(t, err)
+		test.EqOp(t, "hello-world", result)
 	})
 
 	T.Run("with error executing request", func(t *testing.T) {
@@ -288,22 +290,24 @@ func TestFeatureFlagManager_GetStringValue(T *testing.T) {
 		ffm := buildTestManagerWithHandler(t, posthogErrorHandler())
 
 		result, err := ffm.GetStringValue(ctx, "string-flag", "fallback", evalCtx("user123"))
-		assert.Error(t, err)
-		assert.Equal(t, "fallback", result)
+		test.Error(t, err)
+		test.EqOp(t, "fallback", result)
 	})
 
 	T.Run("with broken circuit", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		cb := &mockCircuitBreaker.MockCircuitBreaker{}
-		cb.On("CanProceed").Return(false)
+		cb := &mockCircuitBreaker.CircuitBreakerMock{
+			CanProceedFunc: func() bool { return false },
+		}
 
 		ffm := buildTestManager(t, cb)
 
 		result, err := ffm.GetStringValue(ctx, "some-flag", "fallback", evalCtx("user123"))
-		assert.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
-		assert.Equal(t, "fallback", result)
+		test.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
+		test.EqOp(t, "fallback", result)
+		test.SliceLen(t, 1, cb.CanProceedCalls())
 	})
 }
 
@@ -317,8 +321,8 @@ func TestFeatureFlagManager_GetInt64Value(T *testing.T) {
 		ffm := buildTestManagerWithHandler(t, posthogFlagsHandler(testFlags))
 
 		result, err := ffm.GetInt64Value(ctx, "int-flag", int64(0), evalCtx("user123"))
-		assert.NoError(t, err)
-		assert.Equal(t, int64(42), result)
+		test.NoError(t, err)
+		test.EqOp(t, int64(42), result)
 	})
 
 	T.Run("with error executing request", func(t *testing.T) {
@@ -328,22 +332,24 @@ func TestFeatureFlagManager_GetInt64Value(T *testing.T) {
 		ffm := buildTestManagerWithHandler(t, posthogErrorHandler())
 
 		result, err := ffm.GetInt64Value(ctx, "int-flag", int64(42), evalCtx("user123"))
-		assert.Error(t, err)
-		assert.Equal(t, int64(42), result)
+		test.Error(t, err)
+		test.EqOp(t, int64(42), result)
 	})
 
 	T.Run("with broken circuit", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		cb := &mockCircuitBreaker.MockCircuitBreaker{}
-		cb.On("CanProceed").Return(false)
+		cb := &mockCircuitBreaker.CircuitBreakerMock{
+			CanProceedFunc: func() bool { return false },
+		}
 
 		ffm := buildTestManager(t, cb)
 
 		result, err := ffm.GetInt64Value(ctx, "some-flag", int64(42), evalCtx("user123"))
-		assert.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
-		assert.Equal(t, int64(42), result)
+		test.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
+		test.EqOp(t, int64(42), result)
+		test.SliceLen(t, 1, cb.CanProceedCalls())
 	})
 }
 
@@ -357,8 +363,8 @@ func TestFeatureFlagManager_GetFloat64Value(T *testing.T) {
 		ffm := buildTestManagerWithHandler(t, posthogFlagsHandler(testFlags))
 
 		result, err := ffm.GetFloat64Value(ctx, "float-flag", 0.0, evalCtx("user123"))
-		assert.NoError(t, err)
-		assert.InDelta(t, 3.14, result, 1e-9)
+		test.NoError(t, err)
+		test.InDelta(t, 3.14, result, 1e-9)
 	})
 
 	T.Run("with error executing request", func(t *testing.T) {
@@ -368,22 +374,24 @@ func TestFeatureFlagManager_GetFloat64Value(T *testing.T) {
 		ffm := buildTestManagerWithHandler(t, posthogErrorHandler())
 
 		result, err := ffm.GetFloat64Value(ctx, "float-flag", 3.14, evalCtx("user123"))
-		assert.Error(t, err)
-		assert.InDelta(t, 3.14, result, 1e-9)
+		test.Error(t, err)
+		test.InDelta(t, 3.14, result, 1e-9)
 	})
 
 	T.Run("with broken circuit", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		cb := &mockCircuitBreaker.MockCircuitBreaker{}
-		cb.On("CanProceed").Return(false)
+		cb := &mockCircuitBreaker.CircuitBreakerMock{
+			CanProceedFunc: func() bool { return false },
+		}
 
 		ffm := buildTestManager(t, cb)
 
 		result, err := ffm.GetFloat64Value(ctx, "some-flag", 3.14, evalCtx("user123"))
-		assert.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
-		assert.InDelta(t, 3.14, result, 1e-9)
+		test.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
+		test.InDelta(t, 3.14, result, 1e-9)
+		test.SliceLen(t, 1, cb.CanProceedCalls())
 	})
 }
 
@@ -398,8 +406,8 @@ func TestFeatureFlagManager_GetObjectValue(T *testing.T) {
 
 		def := map[string]any{"default": true}
 		result, err := ffm.GetObjectValue(ctx, "object-flag", def, evalCtx("user123"))
-		assert.NoError(t, err)
-		assert.Equal(t, map[string]any{"key": "value"}, result)
+		test.NoError(t, err)
+		test.Eq[any](t, map[string]any{"key": "value"}, result)
 	})
 
 	T.Run("with error executing request", func(t *testing.T) {
@@ -410,23 +418,25 @@ func TestFeatureFlagManager_GetObjectValue(T *testing.T) {
 
 		def := map[string]any{"k": "v"}
 		result, err := ffm.GetObjectValue(ctx, "object-flag", def, evalCtx("user123"))
-		assert.Error(t, err)
-		assert.Equal(t, def, result)
+		test.Error(t, err)
+		test.Eq[any](t, def, result)
 	})
 
 	T.Run("with broken circuit", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		cb := &mockCircuitBreaker.MockCircuitBreaker{}
-		cb.On("CanProceed").Return(false)
+		cb := &mockCircuitBreaker.CircuitBreakerMock{
+			CanProceedFunc: func() bool { return false },
+		}
 
 		ffm := buildTestManager(t, cb)
 
 		def := map[string]any{"k": "v"}
 		result, err := ffm.GetObjectValue(ctx, "some-flag", def, evalCtx("user123"))
-		assert.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
-		assert.Equal(t, def, result)
+		test.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
+		test.Eq[any](t, def, result)
+		test.SliceLen(t, 1, cb.CanProceedCalls())
 	})
 }
 
@@ -439,6 +449,6 @@ func TestFeatureFlagManager_Close(T *testing.T) {
 		ffm := buildTestManager(t, cbnoop.NewCircuitBreaker())
 
 		err := ffm.Close()
-		assert.NoError(t, err)
+		test.NoError(t, err)
 	})
 }

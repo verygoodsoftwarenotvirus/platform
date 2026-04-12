@@ -13,7 +13,7 @@ import (
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"github.com/shoenig/test"
 	"github.com/shoenig/test/must"
 	"go.opentelemetry.io/otel/metric"
@@ -306,6 +306,7 @@ func Test_provideRedisPublisher(T *testing.T) {
 		test.Panic(t, func() {
 			provideRedisPublisher(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, nil, "t")
 		})
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("panics when second NewInt64Counter fails", func(t *testing.T) {
@@ -327,6 +328,7 @@ func Test_provideRedisPublisher(T *testing.T) {
 		test.Panic(t, func() {
 			provideRedisPublisher(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, nil, "t")
 		})
+		test.SliceLen(t, 2, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("panics when NewFloat64Histogram fails", func(t *testing.T) {
@@ -344,5 +346,7 @@ func Test_provideRedisPublisher(T *testing.T) {
 		test.Panic(t, func() {
 			provideRedisPublisher(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, nil, "t")
 		})
+		test.SliceLen(t, 2, mp.NewInt64CounterCalls())
+		test.SliceLen(t, 1, mp.NewFloat64HistogramCalls())
 	})
 }

@@ -27,7 +27,6 @@ require (
 	github.com/go-chi/cors v1.2.2
 	github.com/go-faker/faker/v4 v4.7.0
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
-	github.com/go-redis/redis/v8 v8.11.5
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/gogo/protobuf v1.3.2
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
@@ -50,6 +49,7 @@ require (
 	github.com/open-feature/go-sdk-contrib/providers/launchdarkly v0.1.6
 	github.com/posthog/posthog-go v1.11.1
 	github.com/pusher/pusher-http-go/v5 v5.1.1
+	github.com/redis/go-redis/v9 v9.18.0
 	github.com/resend/resend-go/v3 v3.2.0
 	github.com/riandyrn/otelchi v0.12.2
 	github.com/rs/xid v1.6.0
@@ -120,6 +120,7 @@ require (
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
+	go.uber.org/atomic v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	golang.org/x/term v0.41.0 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect

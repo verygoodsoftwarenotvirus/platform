@@ -17,7 +17,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"github.com/shoenig/test"
 	"github.com/shoenig/test/must"
 	rediscontainers "github.com/testcontainers/testcontainers-go/modules/redis"

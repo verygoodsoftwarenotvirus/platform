@@ -60,8 +60,8 @@ func Test_redisConsumer_Consume(T *testing.T) {
 		consumer := buildRedisBackedConsumer(t, cfg, t.Name(), hf)
 		must.NotNil(t, consumer)
 
-		stopChan := make(chan bool)
-		errorsChan := make(chan error)
+		stopChan := make(chan bool, 1)
+		errorsChan := make(chan error, 1)
 		go consumer.Consume(ctx, stopChan, errorsChan)
 
 		publisher := buildRedisBackedPublisher(t, cfg, t.Name())
@@ -94,18 +94,25 @@ func Test_redisConsumer_Consume(T *testing.T) {
 		consumer := buildRedisBackedConsumer(t, cfg, t.Name(), hf)
 		must.NotNil(t, consumer)
 
-		stopChan := make(chan bool)
-		errorsChan := make(chan error)
+		stopChan := make(chan bool, 1)
+		errorsChan := make(chan error, 1)
 		go consumer.Consume(ctx, stopChan, errorsChan)
 
 		publisher := buildRedisBackedPublisher(t, cfg, t.Name())
 		must.NoError(t, publisher.Publish(ctx, []byte("blah")))
 
-		receivedErr := <-errorsChan
-		test.Error(t, receivedErr)
-		test.ErrorIs(t, receivedErr, anticipatedError)
+		select {
+		case receivedErr := <-errorsChan:
+			test.Error(t, receivedErr)
+			test.ErrorIs(t, receivedErr, anticipatedError)
+		case <-time.After(10 * time.Second):
+			t.Fatal("timed out waiting for handler error on errorsChan")
+		}
 
-		stopChan <- true
+		select {
+		case stopChan <- true:
+		case <-time.After(time.Second):
+		}
 	})
 }
 
@@ -115,17 +122,23 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 	T.Run("standard", func(t *testing.T) {
 		t.Parallel()
 
-		logger := logging.NewNoopLogger()
-		cfg := Config{
-			QueueAddresses: []string{t.Name()},
-		}
-
-		conPro := ProvideRedisConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil, cfg)
-		must.NotNil(t, conPro)
-
 		ctx := t.Context()
 
-		actual, err := conPro.ProvideConsumer(ctx, t.Name(), nil)
+		cfg, containerShutdown, err := BuildContainerBackedRedisConfigForTest(t)
+		if err != nil {
+			t.Skipf("Skipping test due to container setup failure: %v", err)
+		}
+		defer func() {
+			if containerShutdown != nil {
+				test.NoError(t, containerShutdown(ctx))
+			}
+		}()
+
+		conPro := ProvideRedisConsumerProvider(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, *cfg)
+		must.NotNil(t, conPro)
+
+		hf := func(context.Context, []byte) error { return nil }
+		actual, err := conPro.ProvideConsumer(ctx, t.Name(), hf)
 		test.NoError(t, err)
 		test.NotNil(t, actual)
 	})
@@ -133,23 +146,34 @@ func Test_consumerProvider_ProvideConsumer(T *testing.T) {
 	T.Run("hitting cache", func(t *testing.T) {
 		t.Parallel()
 
-		logger := logging.NewNoopLogger()
-		cfg := Config{
-			QueueAddresses: []string{t.Name()},
-		}
-
-		conPro := ProvideRedisConsumerProvider(logger, tracing.NewNoopTracerProvider(), nil, cfg)
-		must.NotNil(t, conPro)
-
 		ctx := t.Context()
 
-		actual, err := conPro.ProvideConsumer(ctx, t.Name(), nil)
-		test.NoError(t, err)
-		test.NotNil(t, actual)
+		cfg, containerShutdown, err := BuildContainerBackedRedisConfigForTest(t)
+		if err != nil {
+			t.Skipf("Skipping test due to container setup failure: %v", err)
+		}
+		defer func() {
+			if containerShutdown != nil {
+				test.NoError(t, containerShutdown(ctx))
+			}
+		}()
 
-		actual, err = conPro.ProvideConsumer(ctx, t.Name(), nil)
+		conPro := ProvideRedisConsumerProvider(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), nil, *cfg)
+		must.NotNil(t, conPro)
+
+		hf := func(context.Context, []byte) error { return nil }
+
+		first, err := conPro.ProvideConsumer(ctx, t.Name(), hf)
 		test.NoError(t, err)
-		test.NotNil(t, actual)
+		must.NotNil(t, first)
+
+		second, err := conPro.ProvideConsumer(ctx, t.Name(), hf)
+		test.NoError(t, err)
+		must.NotNil(t, second)
+
+		// Second call for the same topic must return the exact same instance
+		// from the cache — no second SUBSCRIBE round-trip.
+		test.True(t, first == second)
 	})
 
 	T.Run("with empty topic", func(t *testing.T) {
@@ -184,5 +208,6 @@ func Test_provideRedisConsumer(T *testing.T) {
 		test.Panic(t, func() {
 			provideRedisConsumer(t.Context(), logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, nil, "t", nil)
 		})
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 }

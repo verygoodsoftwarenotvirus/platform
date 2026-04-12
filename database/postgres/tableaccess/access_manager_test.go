@@ -23,7 +23,7 @@ import (
 // TODO: lots of duplication with the upper postgres package
 
 const (
-	defaultPostgresImage = "postgres:17"
+	defaultPostgresImage = "postgres:17-alpine"
 )
 
 func reverseString(input string) string {

@@ -42,6 +42,7 @@ func TestBuildPubSubPublisher(T *testing.T) {
 		test.Panic(t, func() {
 			buildPubSubPublisher(logging.NewNoopLogger(), nil, tracing.NewNoopTracerProvider(), mp, "t")
 		})
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("panics when second NewInt64Counter fails", func(t *testing.T) {
@@ -63,6 +64,7 @@ func TestBuildPubSubPublisher(T *testing.T) {
 		test.Panic(t, func() {
 			buildPubSubPublisher(logging.NewNoopLogger(), nil, tracing.NewNoopTracerProvider(), mp, "t")
 		})
+		test.SliceLen(t, 2, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("panics when NewFloat64Histogram fails", func(t *testing.T) {
@@ -80,6 +82,8 @@ func TestBuildPubSubPublisher(T *testing.T) {
 		test.Panic(t, func() {
 			buildPubSubPublisher(logging.NewNoopLogger(), nil, tracing.NewNoopTracerProvider(), mp, "t")
 		})
+		test.SliceLen(t, 2, mp.NewInt64CounterCalls())
+		test.SliceLen(t, 1, mp.NewFloat64HistogramCalls())
 	})
 }
 

@@ -48,7 +48,7 @@ func newCounterProviderMock(t *testing.T, results map[string]counterResult) *moc
 	}
 }
 
-const pgvectorImage = "pgvector/pgvector:pg16"
+const pgvectorImage = "pgvector/pgvector:pg17"
 
 var runningContainerTests = strings.ToLower(os.Getenv("RUN_CONTAINER_TESTS")) == "true"
 
@@ -168,6 +168,7 @@ func TestProvideIndex(T *testing.T) {
 
 		_, err := ProvideIndex[doc](t.Context(), nil, nil, mp, &Config{Dimension: 3, Metric: vectorsearch.DistanceCosine}, &testDBClient{}, "idx", cbnoop.NewCircuitBreaker())
 		must.Error(t, err)
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("error creating delete counter", func(t *testing.T) {
@@ -180,6 +181,7 @@ func TestProvideIndex(T *testing.T) {
 
 		_, err := ProvideIndex[doc](t.Context(), nil, nil, mp, &Config{Dimension: 3, Metric: vectorsearch.DistanceCosine}, &testDBClient{}, "idx", cbnoop.NewCircuitBreaker())
 		must.Error(t, err)
+		test.SliceLen(t, 2, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("error creating wipe counter", func(t *testing.T) {
@@ -193,6 +195,7 @@ func TestProvideIndex(T *testing.T) {
 
 		_, err := ProvideIndex[doc](t.Context(), nil, nil, mp, &Config{Dimension: 3, Metric: vectorsearch.DistanceCosine}, &testDBClient{}, "idx", cbnoop.NewCircuitBreaker())
 		must.Error(t, err)
+		test.SliceLen(t, 3, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("error creating query counter", func(t *testing.T) {
@@ -207,6 +210,7 @@ func TestProvideIndex(T *testing.T) {
 
 		_, err := ProvideIndex[doc](t.Context(), nil, nil, mp, &Config{Dimension: 3, Metric: vectorsearch.DistanceCosine}, &testDBClient{}, "idx", cbnoop.NewCircuitBreaker())
 		must.Error(t, err)
+		test.SliceLen(t, 4, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("error creating error counter", func(t *testing.T) {
@@ -222,6 +226,7 @@ func TestProvideIndex(T *testing.T) {
 
 		_, err := ProvideIndex[doc](t.Context(), nil, nil, mp, &Config{Dimension: 3, Metric: vectorsearch.DistanceCosine}, &testDBClient{}, "idx", cbnoop.NewCircuitBreaker())
 		must.Error(t, err)
+		test.SliceLen(t, 5, mp.NewInt64CounterCalls())
 	})
 
 	T.Run("error creating latency histogram", func(t *testing.T) {
@@ -238,6 +243,8 @@ func TestProvideIndex(T *testing.T) {
 
 		_, err := ProvideIndex[doc](t.Context(), nil, nil, mp, &Config{Dimension: 3, Metric: vectorsearch.DistanceCosine}, &testDBClient{}, "idx", cbnoop.NewCircuitBreaker())
 		must.Error(t, err)
+		test.SliceLen(t, 5, mp.NewInt64CounterCalls())
+		test.SliceLen(t, 1, mp.NewFloat64HistogramCalls())
 	})
 }
 

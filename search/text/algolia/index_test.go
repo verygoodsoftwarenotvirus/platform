@@ -124,6 +124,7 @@ func TestIndexManager_Index(T *testing.T) {
 		err := im.Index(context.Background(), "id", map[string]string{"id": "test"})
 		test.Error(t, err)
 		test.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
 	})
 
 	T.Run("with unmarshalable value", func(t *testing.T) {
@@ -169,6 +170,7 @@ func TestIndexManager_Index(T *testing.T) {
 
 		err := im.Index(context.Background(), "123", map[string]string{"id": "123", "name": "example"})
 		test.NoError(t, err)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
 	})
 }
 
@@ -188,6 +190,7 @@ func TestIndexManager_Search(T *testing.T) {
 		test.Error(t, err)
 		test.Nil(t, results)
 		test.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
 	})
 
 	T.Run("with empty query", func(t *testing.T) {
@@ -203,6 +206,7 @@ func TestIndexManager_Search(T *testing.T) {
 		test.Error(t, err)
 		test.Nil(t, results)
 		test.ErrorIs(t, err, ErrEmptyQueryProvided)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
 	})
 
 	T.Run("with valid query but invalid credentials", func(t *testing.T) {
@@ -218,6 +222,8 @@ func TestIndexManager_Search(T *testing.T) {
 		results, err := im.Search(context.Background(), "test query")
 		test.Error(t, err)
 		test.Nil(t, results)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
+		test.SliceLen(t, 1, cb.FailedCalls())
 	})
 
 	T.Run("with successful search results", func(t *testing.T) {
@@ -239,6 +245,8 @@ func TestIndexManager_Search(T *testing.T) {
 		test.NoError(t, err)
 		test.NotNil(t, results)
 		test.SliceLen(t, 1, results)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
+		test.SliceLen(t, 1, cb.SucceededCalls())
 	})
 
 	T.Run("with empty search results", func(t *testing.T) {
@@ -260,6 +268,8 @@ func TestIndexManager_Search(T *testing.T) {
 		test.NoError(t, err)
 		test.NotNil(t, results)
 		test.SliceEmpty(t, results)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
+		test.SliceLen(t, 1, cb.SucceededCalls())
 	})
 
 	T.Run("with multiple search results", func(t *testing.T) {
@@ -286,6 +296,8 @@ func TestIndexManager_Search(T *testing.T) {
 		test.EqOp(t, "second", results[1].Name)
 		test.EqOp(t, "ghi", results[2].ID)
 		test.EqOp(t, "third", results[2].Name)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
+		test.SliceLen(t, 1, cb.SucceededCalls())
 	})
 
 	T.Run("when unmarshalling search result fails", func(t *testing.T) {
@@ -305,6 +317,7 @@ func TestIndexManager_Search(T *testing.T) {
 		results, err := im.Search(context.Background(), "test query")
 		test.Error(t, err)
 		test.Nil(t, results)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
 	})
 
 	T.Run("with successful search results without objectID", func(t *testing.T) {
@@ -326,6 +339,8 @@ func TestIndexManager_Search(T *testing.T) {
 		test.NoError(t, err)
 		test.NotNil(t, results)
 		test.SliceLen(t, 1, results)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
+		test.SliceLen(t, 1, cb.SucceededCalls())
 	})
 }
 
@@ -344,6 +359,7 @@ func TestIndexManager_Delete(T *testing.T) {
 		err := im.Delete(context.Background(), "id")
 		test.Error(t, err)
 		test.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
 	})
 
 	T.Run("with invalid credentials", func(t *testing.T) {
@@ -358,6 +374,8 @@ func TestIndexManager_Delete(T *testing.T) {
 
 		err := im.Delete(context.Background(), "some-id")
 		test.Error(t, err)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
+		test.SliceLen(t, 1, cb.FailedCalls())
 	})
 
 	T.Run("with successful deletion", func(t *testing.T) {
@@ -377,6 +395,8 @@ func TestIndexManager_Delete(T *testing.T) {
 
 		err := im.Delete(context.Background(), "some-id")
 		test.NoError(t, err)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
+		test.SliceLen(t, 1, cb.SucceededCalls())
 	})
 }
 
@@ -395,6 +415,7 @@ func TestIndexManager_Wipe(T *testing.T) {
 		err := im.Wipe(context.Background())
 		test.Error(t, err)
 		test.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
 	})
 
 	T.Run("with invalid credentials", func(t *testing.T) {
@@ -409,6 +430,8 @@ func TestIndexManager_Wipe(T *testing.T) {
 
 		err := im.Wipe(context.Background())
 		test.Error(t, err)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
+		test.SliceLen(t, 1, cb.FailedCalls())
 	})
 
 	T.Run("with successful wipe", func(t *testing.T) {
@@ -428,5 +451,7 @@ func TestIndexManager_Wipe(T *testing.T) {
 
 		err := im.Wipe(context.Background())
 		test.NoError(t, err)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
+		test.SliceLen(t, 1, cb.SucceededCalls())
 	})
 }

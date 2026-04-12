@@ -279,6 +279,9 @@ func TestFeatureFlagManager_CanUseFeature(T *testing.T) {
 		result, err := ffm.CanUseFeature(ctx, "nonexistent-flag", evalCtx("user123"))
 		test.Error(t, err)
 		test.False(t, result)
+		test.SliceLen(t, 1, cb.CanProceedCalls())
+		test.SliceLen(t, 1, cb.FailedCalls())
+		test.SliceLen(t, 0, cb.SucceededCalls())
 	})
 
 	T.Run("with broken circuit", func(t *testing.T) {
@@ -294,6 +297,7 @@ func TestFeatureFlagManager_CanUseFeature(T *testing.T) {
 		result, err := ffm.CanUseFeature(ctx, "some-flag", evalCtx("user123"))
 		test.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
 		test.False(t, result)
+		test.SliceLen(t, 1, cb.CanProceedCalls())
 	})
 }
 
@@ -326,6 +330,9 @@ func TestFeatureFlagManager_GetStringValue(T *testing.T) {
 		result, err := ffm.GetStringValue(ctx, "nonexistent-flag", "fallback", evalCtx("user123"))
 		test.Error(t, err)
 		test.EqOp(t, "fallback", result)
+		test.SliceLen(t, 1, cb.CanProceedCalls())
+		test.SliceLen(t, 1, cb.FailedCalls())
+		test.SliceLen(t, 0, cb.SucceededCalls())
 	})
 
 	T.Run("with broken circuit", func(t *testing.T) {
@@ -341,6 +348,7 @@ func TestFeatureFlagManager_GetStringValue(T *testing.T) {
 		result, err := ffm.GetStringValue(ctx, "some-flag", "fallback", evalCtx("user123"))
 		test.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
 		test.EqOp(t, "fallback", result)
+		test.SliceLen(t, 1, cb.CanProceedCalls())
 	})
 }
 
@@ -373,6 +381,9 @@ func TestFeatureFlagManager_GetInt64Value(T *testing.T) {
 		result, err := ffm.GetInt64Value(ctx, "nonexistent-flag", int64(42), evalCtx("user123"))
 		test.Error(t, err)
 		test.EqOp(t, int64(42), result)
+		test.SliceLen(t, 1, cb.CanProceedCalls())
+		test.SliceLen(t, 1, cb.FailedCalls())
+		test.SliceLen(t, 0, cb.SucceededCalls())
 	})
 
 	T.Run("with broken circuit", func(t *testing.T) {
@@ -388,6 +399,7 @@ func TestFeatureFlagManager_GetInt64Value(T *testing.T) {
 		result, err := ffm.GetInt64Value(ctx, "some-flag", int64(42), evalCtx("user123"))
 		test.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
 		test.EqOp(t, int64(42), result)
+		test.SliceLen(t, 1, cb.CanProceedCalls())
 	})
 }
 
@@ -420,6 +432,9 @@ func TestFeatureFlagManager_GetFloat64Value(T *testing.T) {
 		result, err := ffm.GetFloat64Value(ctx, "nonexistent-flag", 3.14, evalCtx("user123"))
 		test.Error(t, err)
 		test.InDelta(t, 3.14, result, 1e-9)
+		test.SliceLen(t, 1, cb.CanProceedCalls())
+		test.SliceLen(t, 1, cb.FailedCalls())
+		test.SliceLen(t, 0, cb.SucceededCalls())
 	})
 
 	T.Run("with broken circuit", func(t *testing.T) {
@@ -435,6 +450,7 @@ func TestFeatureFlagManager_GetFloat64Value(T *testing.T) {
 		result, err := ffm.GetFloat64Value(ctx, "some-flag", 3.14, evalCtx("user123"))
 		test.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
 		test.InDelta(t, 3.14, result, 1e-9)
+		test.SliceLen(t, 1, cb.CanProceedCalls())
 	})
 }
 
@@ -469,6 +485,9 @@ func TestFeatureFlagManager_GetObjectValue(T *testing.T) {
 		result, err := ffm.GetObjectValue(ctx, "nonexistent-flag", def, evalCtx("user123"))
 		test.Error(t, err)
 		test.Eq[any](t, def, result)
+		test.SliceLen(t, 1, cb.CanProceedCalls())
+		test.SliceLen(t, 1, cb.FailedCalls())
+		test.SliceLen(t, 0, cb.SucceededCalls())
 	})
 
 	T.Run("with broken circuit", func(t *testing.T) {
@@ -485,6 +504,7 @@ func TestFeatureFlagManager_GetObjectValue(T *testing.T) {
 		result, err := ffm.GetObjectValue(ctx, "some-flag", def, evalCtx("user123"))
 		test.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
 		test.Eq[any](t, def, result)
+		test.SliceLen(t, 1, cb.CanProceedCalls())
 	})
 }
 

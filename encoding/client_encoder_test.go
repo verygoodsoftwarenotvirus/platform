@@ -106,13 +106,14 @@ func Test_clientEncoder_Encode(T *testing.T) {
 			ctx := t.Context()
 			e := ProvideClientEncoder(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), ct)
 
-			mw := &mockWriter{
+			mw := &ioWriterMock{
 				WriteFunc: func(_ []byte) (int, error) {
 					return 0, errors.New("blah")
 				},
 			}
 
 			test.Error(t, e.Encode(ctx, mw, &example{Name: t.Name()}))
+			test.SliceLen(t, 1, mw.WriteCalls())
 		})
 	}
 

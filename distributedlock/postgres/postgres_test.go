@@ -27,7 +27,7 @@ import (
 	"go.opentelemetry.io/otel/metric"
 )
 
-const postgresImage = "postgres:16-alpine"
+const postgresImage = "postgres:17-alpine"
 
 var runningContainerTests = strings.ToLower(os.Getenv("RUN_CONTAINER_TESTS")) == "true"
 

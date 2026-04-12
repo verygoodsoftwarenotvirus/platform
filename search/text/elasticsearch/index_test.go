@@ -79,6 +79,7 @@ func TestIndexManager_Index_CircuitBroken(T *testing.T) {
 		err := im.Index(context.Background(), "id", map[string]string{"id": "test"})
 		test.Error(t, err)
 		test.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
 	})
 
 	T.Run("with unmarshalable value", func(t *testing.T) {
@@ -92,6 +93,7 @@ func TestIndexManager_Index_CircuitBroken(T *testing.T) {
 
 		err := im.Index(context.Background(), "id", make(chan int))
 		test.Error(t, err)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
 	})
 
 	T.Run("with unreachable server", func(t *testing.T) {
@@ -106,6 +108,8 @@ func TestIndexManager_Index_CircuitBroken(T *testing.T) {
 
 		err := im.Index(context.Background(), "id", map[string]string{"id": "test"})
 		test.Error(t, err)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
+		test.SliceLen(t, 1, cb.FailedCalls())
 	})
 }
 
@@ -132,6 +136,8 @@ func TestIndexManager_Index_Unit(T *testing.T) {
 
 		err := im.Index(context.Background(), "123", &example{ID: "123", Name: "test"})
 		test.NoError(t, err)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
+		test.SliceLen(t, 1, cb.SucceededCalls())
 	})
 
 	T.Run("with non-success status code", func(t *testing.T) {
@@ -154,6 +160,8 @@ func TestIndexManager_Index_Unit(T *testing.T) {
 
 		err := im.Index(context.Background(), "123", &example{ID: "123", Name: "test"})
 		test.Error(t, err)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
+		test.SliceLen(t, 1, cb.FailedCalls())
 	})
 }
 
@@ -173,6 +181,7 @@ func TestIndexManager_Search_CircuitBroken(T *testing.T) {
 		test.Error(t, err)
 		test.Nil(t, results)
 		test.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
 	})
 
 	T.Run("with empty query", func(t *testing.T) {
@@ -188,6 +197,7 @@ func TestIndexManager_Search_CircuitBroken(T *testing.T) {
 		test.Error(t, err)
 		test.Nil(t, results)
 		test.ErrorIs(t, err, ErrEmptyQueryProvided)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
 	})
 
 	T.Run("with unreachable server", func(t *testing.T) {
@@ -203,6 +213,8 @@ func TestIndexManager_Search_CircuitBroken(T *testing.T) {
 		results, err := im.Search(context.Background(), "test query")
 		test.Error(t, err)
 		test.Nil(t, results)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
+		test.SliceLen(t, 1, cb.FailedCalls())
 	})
 }
 
@@ -232,6 +244,8 @@ func TestIndexManager_Search_Unit(T *testing.T) {
 		must.SliceLen(t, 1, results)
 		test.EqOp(t, "123", results[0].ID)
 		test.EqOp(t, "test", results[0].Name)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
+		test.SliceLen(t, 1, cb.SucceededCalls())
 	})
 
 	T.Run("with error response", func(t *testing.T) {
@@ -259,6 +273,8 @@ func TestIndexManager_Search_Unit(T *testing.T) {
 		results, err := im.Search(context.Background(), "test")
 		test.NoError(t, err)
 		test.Nil(t, results)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
+		test.SliceLen(t, 1, cb.FailedCalls())
 	})
 
 	T.Run("with invalid JSON in success response", func(t *testing.T) {
@@ -284,6 +300,8 @@ func TestIndexManager_Search_Unit(T *testing.T) {
 		results, err := im.Search(context.Background(), "test")
 		test.NoError(t, err)
 		test.Nil(t, results)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
+		test.SliceLen(t, 1, cb.FailedCalls())
 	})
 }
 
@@ -313,6 +331,8 @@ func TestIndexManager_Search_ErrorResponseDecodeFailure_Unit(T *testing.T) {
 		results, err := im.Search(context.Background(), "test")
 		test.NoError(t, err)
 		test.Nil(t, results)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
+		test.SliceLen(t, 1, cb.FailedCalls())
 	})
 }
 
@@ -342,6 +362,8 @@ func TestIndexManager_Search_SourceUnmarshalError_Unit(T *testing.T) {
 		results, err := im.Search(context.Background(), "test")
 		test.NoError(t, err)
 		test.Nil(t, results)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
+		test.SliceLen(t, 1, cb.FailedCalls())
 	})
 }
 
@@ -360,6 +382,7 @@ func TestIndexManager_Delete_CircuitBroken(T *testing.T) {
 		err := im.Delete(context.Background(), "id")
 		test.Error(t, err)
 		test.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
 	})
 
 	T.Run("with unreachable server", func(t *testing.T) {
@@ -374,6 +397,8 @@ func TestIndexManager_Delete_CircuitBroken(T *testing.T) {
 
 		err := im.Delete(context.Background(), "some-id")
 		test.Error(t, err)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
+		test.SliceLen(t, 1, cb.FailedCalls())
 	})
 }
 
@@ -400,6 +425,8 @@ func TestIndexManager_Delete_Unit(T *testing.T) {
 
 		err := im.Delete(context.Background(), "123")
 		test.NoError(t, err)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
+		test.SliceLen(t, 1, cb.SucceededCalls())
 	})
 }
 

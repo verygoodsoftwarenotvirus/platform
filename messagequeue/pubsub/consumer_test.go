@@ -142,6 +142,7 @@ func TestBuildPubSubConsumer(T *testing.T) {
 		test.Panic(t, func() {
 			buildPubSubConsumer(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, nil, "t", nil)
 		})
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 }
 

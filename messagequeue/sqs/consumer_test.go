@@ -233,5 +233,6 @@ func Test_provideSQSConsumer(T *testing.T) {
 		test.Panic(t, func() {
 			provideSQSConsumer(logging.NewNoopLogger(), tracing.NewNoopTracerProvider(), mp, nil, "t", nil)
 		})
+		test.SliceLen(t, 1, mp.NewInt64CounterCalls())
 	})
 }

@@ -117,6 +117,7 @@ func TestUploader_ReadFile(T *testing.T) {
 		x, err := u.ReadFile(ctx, "anything.txt")
 		test.ErrorIs(t, err, circuitbreaking.ErrCircuitBroken)
 		test.Nil(t, x)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
 	})
 
 	T.Run("with mock circuit breaker on successful read", func(t *testing.T) {
@@ -150,6 +151,8 @@ func TestUploader_ReadFile(T *testing.T) {
 		x, err := u.ReadFile(ctx, exampleFilename)
 		test.NoError(t, err)
 		test.Eq(t, expectedContent, x)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
+		test.SliceLen(t, 1, cb.SucceededCalls())
 	})
 }
 
@@ -199,6 +202,7 @@ func TestUploader_SaveFile(T *testing.T) {
 		}
 
 		test.ErrorIs(t, u.SaveFile(ctx, "test_file.txt", []byte(t.Name())), circuitbreaking.ErrCircuitBroken)
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
 	})
 
 	T.Run("with write error", func(t *testing.T) {
@@ -228,6 +232,8 @@ func TestUploader_SaveFile(T *testing.T) {
 		}
 
 		test.Error(t, u.SaveFile(ctx, "test_file.txt", []byte(t.Name())))
+		test.SliceLen(t, 1, cb.CannotProceedCalls())
+		test.SliceLen(t, 1, cb.FailedCalls())
 	})
 
 	T.Run("can be read back after save", func(t *testing.T) {

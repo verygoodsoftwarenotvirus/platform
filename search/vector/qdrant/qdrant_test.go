@@ -18,6 +18,7 @@ import (
 	platformerrors "github.com/verygoodsoftwarenotvirus/platform/v5/errors"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/identifiers"
 	vectorsearch "github.com/verygoodsoftwarenotvirus/platform/v5/search/vector"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/testutils/containers"
 
 	"github.com/shoenig/test"
 	"github.com/shoenig/test/must"
@@ -967,7 +968,9 @@ func buildContainerBackedQdrant(t *testing.T) (cfg *Config, shutdown func(contex
 		},
 		Started: true,
 	}
-	container, err := testcontainers.GenericContainer(ctx, req)
+	container, err := containers.StartWithRetry(ctx, func(ctx context.Context) (testcontainers.Container, error) {
+		return testcontainers.GenericContainer(ctx, req)
+	})
 	must.NoError(t, err)
 	must.NotNil(t, container)
 

@@ -16,6 +16,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/distributedlock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/identifiers"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/testutils/containers"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -51,14 +52,16 @@ func buildContainerBackedPostgres(t *testing.T) (client *testDBClient, shutdown 
 	t.Helper()
 
 	ctx := t.Context()
-	container, err := postgrescontainer.Run(
-		ctx,
-		postgresImage,
-		postgrescontainer.WithDatabase("locktest"),
-		postgrescontainer.WithUsername("locktest"),
-		postgrescontainer.WithPassword("locktest"),
-		testcontainers.WithWaitStrategyAndDeadline(2*time.Minute, wait.ForLog("database system is ready to accept connections").WithOccurrence(2)),
-	)
+	container, err := containers.StartWithRetry(ctx, func(ctx context.Context) (*postgrescontainer.PostgresContainer, error) {
+		return postgrescontainer.Run(
+			ctx,
+			postgresImage,
+			postgrescontainer.WithDatabase("locktest"),
+			postgrescontainer.WithUsername("locktest"),
+			postgrescontainer.WithPassword("locktest"),
+			testcontainers.WithWaitStrategyAndDeadline(2*time.Minute, wait.ForLog("database system is ready to accept connections").WithOccurrence(2)),
+		)
+	})
 	must.NoError(t, err)
 	must.NotNil(t, container)
 

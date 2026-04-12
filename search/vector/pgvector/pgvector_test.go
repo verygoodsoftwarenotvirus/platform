@@ -15,6 +15,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	vectorsearch "github.com/verygoodsoftwarenotvirus/platform/v5/search/vector"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/testutils/containers"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/shoenig/test"
@@ -72,14 +73,16 @@ func buildContainerBackedPgvector(t *testing.T) (client *testDBClient, shutdown 
 	t.Helper()
 
 	ctx := t.Context()
-	container, err := postgrescontainer.Run(
-		ctx,
-		pgvectorImage,
-		postgrescontainer.WithDatabase("vectortest"),
-		postgrescontainer.WithUsername("vectortest"),
-		postgrescontainer.WithPassword("vectortest"),
-		testcontainers.WithWaitStrategyAndDeadline(2*time.Minute, wait.ForLog("database system is ready to accept connections").WithOccurrence(2)),
-	)
+	container, err := containers.StartWithRetry(ctx, func(ctx context.Context) (*postgrescontainer.PostgresContainer, error) {
+		return postgrescontainer.Run(
+			ctx,
+			pgvectorImage,
+			postgrescontainer.WithDatabase("vectortest"),
+			postgrescontainer.WithUsername("vectortest"),
+			postgrescontainer.WithPassword("vectortest"),
+			testcontainers.WithWaitStrategyAndDeadline(2*time.Minute, wait.ForLog("database system is ready to accept connections").WithOccurrence(2)),
+		)
+	})
 	must.NoError(t, err)
 	must.NotNil(t, container)
 

@@ -17,6 +17,7 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/identifiers"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/testutils/containers"
 
 	"github.com/shoenig/test"
 	"github.com/shoenig/test/must"
@@ -24,6 +25,8 @@ import (
 	elasticsearchcontainers "github.com/testcontainers/testcontainers-go/modules/elasticsearch"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
+
+const elasticsearchImage = "elasticsearch:8.10.2"
 
 var runningContainerTests = strings.ToLower(os.Getenv("RUN_CONTAINER_TESTS")) == "true"
 
@@ -37,15 +40,27 @@ type esTestInfra struct {
 }
 
 // extendWaitStrategyTimeout returns a PostCreates lifecycle hook that extends
-// the timeouts of the elasticsearch module's bundled wait strategies. The
-// module hard-codes a 60s deadline on its MultiStrategy and each inner
-// FileStrategy/HTTPStrategy also defaults to 60s, which is too tight on a cold
-// start (image pull + ES auto-config + cert generation) on a busy host. We
-// have to mutate the strategies after creation because the module appends its
-// configureWaitFor customizer after any user opts, leaving no other override
-// hook. Failure to assert the expected types is loud rather than silent so a
-// future testcontainers refactor surfaces immediately instead of regressing to
-// a flaky 60s timeout.
+// the timeouts of the elasticsearch module's bundled wait strategies.
+//
+// Why this exists: the elasticsearch module appends its own configureWaitFor
+// customizer AFTER user opts, via WithAdditionalWaitStrategyAndDeadline(60s, ...),
+// which unconditionally clamps the outer MultiStrategy deadline to 60s. The
+// inner HTTPStrategy and FileStrategy also each default to 60s, and
+// HTTPStrategy.WaitUntilReady wraps its ctx in context.WithTimeout(60s), so
+// extending only the outer deadline is insufficient — each inner strategy
+// must be extended individually. Neither WithStartupTimeoutDefault on
+// MultiStrategy nor passing WithWaitStrategyAndDeadline as a user opt works
+// around this; both get overwritten by the module's append.
+//
+// A cold start (image pull + ES auto-config + cert generation) regularly
+// exceeds 60s on a busy CI host, so 60s is too tight in practice.
+//
+// The type assertions are load-bearing: we have to touch concrete types
+// (*wait.MultiStrategy and the inner *wait.HTTPStrategy / *wait.FileStrategy)
+// because wait.Strategy has no interface method for mutating a timeout. A
+// future testcontainers refactor that changes these types will fail loudly
+// here rather than silently regressing to a flaky 60s ceiling — which is the
+// right failure mode.
 func extendWaitStrategyTimeout(timeout time.Duration) testcontainers.ContainerHook {
 	return func(_ context.Context, c testcontainers.Container) error {
 		dc, ok := c.(*testcontainers.DockerContainer)
@@ -72,16 +87,18 @@ func extendWaitStrategyTimeout(timeout time.Duration) testcontainers.ContainerHo
 func buildEsTestInfra(t *testing.T) *esTestInfra {
 	t.Helper()
 
-	elasticsearchContainer, err := elasticsearchcontainers.Run(
-		t.Context(),
-		"elasticsearch:8.10.2",
-		elasticsearchcontainers.WithPassword("arbitraryPassword"),
-		testcontainers.WithAdditionalLifecycleHooks(testcontainers.ContainerLifecycleHooks{
-			PostCreates: []testcontainers.ContainerHook{
-				extendWaitStrategyTimeout(5 * time.Minute),
-			},
-		}),
-	)
+	elasticsearchContainer, err := containers.StartWithRetry(t.Context(), func(ctx context.Context) (*elasticsearchcontainers.ElasticsearchContainer, error) {
+		return elasticsearchcontainers.Run(
+			ctx,
+			elasticsearchImage,
+			elasticsearchcontainers.WithPassword("arbitraryPassword"),
+			testcontainers.WithAdditionalLifecycleHooks(testcontainers.ContainerLifecycleHooks{
+				PostCreates: []testcontainers.ContainerHook{
+					extendWaitStrategyTimeout(5 * time.Minute),
+				},
+			}),
+		)
+	})
 	must.NoError(t, err)
 	must.NotNil(t, elasticsearchContainer)
 

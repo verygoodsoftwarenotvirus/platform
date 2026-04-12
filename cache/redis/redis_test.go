@@ -15,11 +15,14 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/testutils/containers"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/shoenig/test"
 	"github.com/shoenig/test/must"
+	"github.com/testcontainers/testcontainers-go"
 	rediscontainers "github.com/testcontainers/testcontainers-go/modules/redis"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -107,19 +110,23 @@ func newCounterProviderMock(t *testing.T, results map[string]counterResult) *moc
 func buildContainerBackedRedisConfig(t *testing.T) (config *Config, shutdownFunction func(context.Context) error) {
 	t.Helper()
 
-	// Use a dedicated context that won't be cancelled for the container lifecycle
 	containerCtx := t.Context()
 
-	redisContainer, err := rediscontainers.Run(containerCtx,
-		redisImage,
-		rediscontainers.WithLogLevel(rediscontainers.LogLevelNotice),
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	// Wait a small amount to ensure container is fully ready
-	time.Sleep(100 * time.Millisecond)
+	// Explicitly wait for both the TCP port and the "Ready to accept connections"
+	// log line so we don't race the redis-server bootstrap. The module's default
+	// wait strategy is implementation-defined, so pin it here for predictability.
+	redisContainer, err := containers.StartWithRetry(containerCtx, func(ctx context.Context) (*rediscontainers.RedisContainer, error) {
+		return rediscontainers.Run(ctx,
+			redisImage,
+			rediscontainers.WithLogLevel(rediscontainers.LogLevelNotice),
+			testcontainers.WithWaitStrategyAndDeadline(2*time.Minute, wait.ForAll(
+				wait.ForListeningPort("6379/tcp"),
+				wait.ForLog("Ready to accept connections"),
+			)),
+		)
+	})
+	must.NoError(t, err)
+	must.NotNil(t, redisContainer)
 
 	redisAddress, err := redisContainer.ConnectionString(containerCtx)
 	must.NoError(t, err)

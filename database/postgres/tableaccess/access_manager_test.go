@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/pointer"
-	"github.com/verygoodsoftwarenotvirus/platform/v5/retry"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/testutils/containers"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/shoenig/test"
@@ -83,11 +83,8 @@ func buildDatabaseConnectionForTest(t *testing.T, ctx context.Context) (*sql.DB,
 
 	dbUsername := fmt.Sprintf("%d", hashStringToNumber(t.Name()))
 
-	var container *postgres.PostgresContainer
-	policy := retry.NewExponentialBackoffPolicy(retry.Config{MaxAttempts: 5, InitialDelay: 1, UseJitter: false})
-	err := policy.Execute(ctx, func(ctx context.Context) error {
-		var containerErr error
-		container, containerErr = postgres.Run(
+	container, err := containers.StartWithRetry(ctx, func(ctx context.Context) (*postgres.PostgresContainer, error) {
+		return postgres.Run(
 			ctx,
 			defaultPostgresImage,
 			postgres.WithDatabase(splitReverseConcat(dbUsername)),
@@ -95,7 +92,6 @@ func buildDatabaseConnectionForTest(t *testing.T, ctx context.Context) (*sql.DB,
 			postgres.WithPassword(reverseString(dbUsername)),
 			testcontainers.WithWaitStrategyAndDeadline(2*time.Minute, wait.ForLog("database system is ready to accept connections").WithOccurrence(2)),
 		)
-		return containerErr
 	})
 	must.NoError(t, err)
 	must.NotNil(t, container)

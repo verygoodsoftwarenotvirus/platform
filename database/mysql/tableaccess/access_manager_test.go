@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/verygoodsoftwarenotvirus/platform/v5/pointer"
-	"github.com/verygoodsoftwarenotvirus/platform/v5/retry"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/testutils/containers"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/shoenig/test"
@@ -66,11 +66,8 @@ func buildDatabaseConnectionForTest(t *testing.T, ctx context.Context) (*sql.DB,
 	dbPassword := reverseString(dbUsername)
 	dbName := splitReverseConcat(dbUsername)
 
-	var container *mysqlcontainers.MySQLContainer
-	policy := retry.NewExponentialBackoffPolicy(retry.Config{MaxAttempts: 5, InitialDelay: 1, UseJitter: false})
-	err := policy.Execute(ctx, func(ctx context.Context) error {
-		var containerErr error
-		container, containerErr = mysqlcontainers.Run(
+	container, err := containers.StartWithRetry(ctx, func(ctx context.Context) (*mysqlcontainers.MySQLContainer, error) {
+		return mysqlcontainers.Run(
 			ctx,
 			defaultMySQLImage,
 			mysqlcontainers.WithDatabase(dbName),
@@ -78,7 +75,6 @@ func buildDatabaseConnectionForTest(t *testing.T, ctx context.Context) (*sql.DB,
 			mysqlcontainers.WithPassword(dbPassword),
 			testcontainers.WithWaitStrategyAndDeadline(2*time.Minute, wait.ForLog("ready for connections").WithOccurrence(2)),
 		)
-		return containerErr
 	})
 	must.NoError(t, err)
 	must.NotNil(t, container)

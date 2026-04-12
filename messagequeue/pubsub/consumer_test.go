@@ -17,6 +17,7 @@ import (
 	mockmetrics "github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics/mock"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/random"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/testutils/containers"
 
 	"cloud.google.com/go/pubsub/v2"
 	"cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
@@ -29,6 +30,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
+
+const pubsubEmulatorImage = "gcr.io/google.com/cloudsdktool/cloud-sdk:emulators"
 
 var runningContainerTests = strings.ToLower(os.Getenv("RUN_CONTAINER_TESTS")) == "true"
 
@@ -51,11 +54,13 @@ func buildPubSubTestInfra(t *testing.T) *pubsubTestInfra {
 	must.NoError(t, err)
 	projectID := "project-" + randomID
 
-	pubsubContainer, err := tcpubsub.Run(
-		ctx,
-		"gcr.io/google.com/cloudsdktool/cloud-sdk:emulators",
-		tcpubsub.WithProjectID(projectID),
-	)
+	pubsubContainer, err := containers.StartWithRetry(ctx, func(ctx context.Context) (*tcpubsub.Container, error) {
+		return tcpubsub.Run(
+			ctx,
+			pubsubEmulatorImage,
+			tcpubsub.WithProjectID(projectID),
+		)
+	})
 	must.NoError(t, err)
 	must.NotNil(t, pubsubContainer)
 

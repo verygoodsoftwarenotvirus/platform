@@ -16,11 +16,14 @@ import (
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/logging"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/metrics"
 	"github.com/verygoodsoftwarenotvirus/platform/v5/observability/tracing"
+	"github.com/verygoodsoftwarenotvirus/platform/v5/testutils/containers"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/shoenig/test"
 	"github.com/shoenig/test/must"
+	"github.com/testcontainers/testcontainers-go"
 	rediscontainers "github.com/testcontainers/testcontainers-go/modules/redis"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -32,10 +35,19 @@ func buildContainerBackedRedisConfig(t *testing.T) (cfg *Config, shutdown func(c
 	t.Helper()
 
 	ctx := t.Context()
-	container, err := rediscontainers.Run(ctx,
-		redisImage,
-		rediscontainers.WithLogLevel(rediscontainers.LogLevelNotice),
-	)
+	// Explicitly wait for both the TCP port and the "Ready to accept connections"
+	// log line so we don't race the redis-server bootstrap. The module's default
+	// wait strategy is implementation-defined, so pin it here for predictability.
+	container, err := containers.StartWithRetry(ctx, func(ctx context.Context) (*rediscontainers.RedisContainer, error) {
+		return rediscontainers.Run(ctx,
+			redisImage,
+			rediscontainers.WithLogLevel(rediscontainers.LogLevelNotice),
+			testcontainers.WithWaitStrategyAndDeadline(2*time.Minute, wait.ForAll(
+				wait.ForListeningPort("6379/tcp"),
+				wait.ForLog("Ready to accept connections"),
+			)),
+		)
+	})
 	must.NoError(t, err)
 	must.NotNil(t, container)
 
